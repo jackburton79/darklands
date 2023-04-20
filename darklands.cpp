@@ -4,10 +4,9 @@
 
 
 /*
- * 0x00 byte = numentries
+ * 0x00 word LE = numentries
  *
  * entry (24 bytes)
- * 0x01 byte = ??
  * 0x02 12	string
  * 0x14 ??
  */
@@ -25,10 +24,6 @@ int main(int argc, char **argv)
 		off_t position = map.Position();
 		std::cout << "position: " << position << std::endl;
 
-		/*unsigned char byte;
-		map.Read(&byte, sizeof(byte));
-		std::cout << std::dec << (unsigned int)byte << std::endl;
-*/
 		char name[16];
 		map.Read(name, 12);
 		name[12] = '\0';
