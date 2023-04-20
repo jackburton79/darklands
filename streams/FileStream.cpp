@@ -137,7 +137,7 @@ FileStream::ReadWordBE(void)
 	uint8 result1 = ReadByte();
 	uint8 result2 = ReadByte();
 	
-	return (uint16)((result1) | (result2 << 8));
+	return (uint16)((result1 << 8) | (result2));
 }
 
 
@@ -145,7 +145,7 @@ uint16
 FileStream::ReadWordLE(void)
 {
 	uint16 result;
-	if (fread(&result, sizeof(result), 1, fFileHandle) != sizeof(result))
+	if (fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
 		throw std::runtime_error("ReadWordLE() read error");
 	return result;
 }
@@ -157,7 +157,7 @@ FileStream::ReadDWordBE(void)
 	uint16 result1 = ReadWordBE();
 	uint16 result2 = ReadWordBE();
 	
-	return (uint32)((result1) | (result2 << 16));
+	return (uint32)((result1 << 16) | (result2));
 }
 
 
@@ -165,7 +165,7 @@ uint32
 FileStream::ReadDWordLE(void)
 {
 	uint32 result;
-	if (fread(&result, sizeof(result), 1, fFileHandle) != sizeof(result))
+	if (fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
 		throw std::runtime_error("ReadDWordLE() read error");
 	return result;
 }
