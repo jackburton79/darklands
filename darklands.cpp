@@ -19,24 +19,25 @@ int main(int argc, char **argv)
 
 	FileStream map(fileName.c_str(), FileStream::IGNORE_CASE);
 
-	uint8 numEntries = map.ReadByte();
+	uint16 numEntries = map.ReadWordLE();
 	std::cout << "num entries: " << (unsigned int)numEntries << std::endl;
 	for (auto i = 0; i < numEntries;  i++) {
 		off_t position = map.Position();
 		std::cout << "position: " << position << std::endl;
 
-		unsigned char byte;
+		/*unsigned char byte;
 		map.Read(&byte, sizeof(byte));
 		std::cout << std::dec << (unsigned int)byte << std::endl;
-
+*/
 		char name[16];
 		map.Read(name, 12);
 		name[12] = '\0';
 		std::cout << name << std::endl;
 
-		for (auto c = 0; c < 11; c++) {
+		for (auto c = 0; c < 12; c++) {
 			std::cout << (unsigned int)map.ReadByte() << std::endl;
 		}
+		std::cout << "---" << std::endl;
 		//map.Seek(position + 24, SEEK_SET);
 	}
 

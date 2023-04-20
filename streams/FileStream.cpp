@@ -27,7 +27,7 @@ FileStream::FileStream()
 FileStream::~FileStream()
 {
 	if (fFileHandle != NULL)
-		fclose(fFileHandle);
+		::fclose(fFileHandle);
 }
 
 
@@ -53,9 +53,9 @@ FileStream::SetTo(const char *filename, int mode)
 	}
 	
 	if (openFlags & FileStream::IGNORE_CASE)
-		fFileHandle = fopen_case(filename, flags);
+		fFileHandle = ::fopen_case(filename, flags);
 	else
-		fFileHandle = fopen(filename, flags);
+		fFileHandle = ::fopen(filename, flags);
 
 	if (fFileHandle == NULL)
 		return errno;
@@ -74,32 +74,44 @@ FileStream::IsValid() const
 off_t
 FileStream::Seek(off_t where, int whence)
 {
-	fseek(fFileHandle, where, whence);
-	return ftell(fFileHandle);
+	::fseek(fFileHandle, where, whence);
+	return ::ftell(fFileHandle);
 }
 
 
 off_t
 FileStream::Position() const
 {
-	return ftell(fFileHandle);
+	return ::ftell(fFileHandle);
+}
+
+
+size_t
+FileStream::Size() const
+{
+	const off_t oldpos = Position();
+	size_t fileSize = const_cast<FileStream*>(this)->Seek(0L, SEEK_END);
+
+	const_cast<FileStream*>(this)->Seek(oldpos, SEEK_SET);
+
+	return fileSize;
 }
 
 
 bool
 FileStream::EoF()
 {
-	return feof(fFileHandle) != 0;
+	return ::feof(fFileHandle) != 0;
 }
 
 
 ssize_t
 FileStream::ReadAt(off_t pos, void *dst, size_t size)
 {
-	off_t oldPos = ftell(fFileHandle);
-	fseek(fFileHandle, pos, SEEK_SET);
-	ssize_t read = fread(dst, 1, size, fFileHandle);
-	fseek(fFileHandle, oldPos, SEEK_SET);
+	off_t oldPos = ::ftell(fFileHandle);
+	::fseek(fFileHandle, pos, SEEK_SET);
+	ssize_t read = ::fread(dst, 1, size, fFileHandle);
+	::fseek(fFileHandle, oldPos, SEEK_SET);
 
 	return read;
 }
@@ -108,14 +120,14 @@ FileStream::ReadAt(off_t pos, void *dst, size_t size)
 ssize_t
 FileStream::Read(void *dst, size_t count)
 {
-	return fread(dst, 1, count, fFileHandle);
+	return ::fread(dst, 1, count, fFileHandle);
 }
 
 
 ssize_t
 FileStream::Write(const void *src, size_t count)
 {
-	return fwrite(src, 1, count, fFileHandle);
+	return ::fwrite(src, 1, count, fFileHandle);
 }
 	
 
@@ -123,8 +135,7 @@ uint8
 FileStream::ReadByte()
 {
 	uint8 result;
-	
-	if (fread(&result, 1, 1, fFileHandle) != 1)
+	if (::fread(&result, 1, 1, fFileHandle) != 1)
 		throw std::runtime_error("ReadByte() error");
 		
 	return result;
@@ -132,7 +143,7 @@ FileStream::ReadByte()
 
 
 uint16
-FileStream::ReadWordBE(void)
+FileStream::ReadWordBE()
 {
 	uint8 result1 = ReadByte();
 	uint8 result2 = ReadByte();
@@ -142,17 +153,17 @@ FileStream::ReadWordBE(void)
 
 
 uint16
-FileStream::ReadWordLE(void)
+FileStream::ReadWordLE()
 {
 	uint16 result;
-	if (fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
+	if (::fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
 		throw std::runtime_error("ReadWordLE() read error");
 	return result;
 }
 
 
 uint32
-FileStream::ReadDWordBE(void)
+FileStream::ReadDWordBE()
 {	
 	uint16 result1 = ReadWordBE();
 	uint16 result2 = ReadWordBE();
@@ -162,22 +173,10 @@ FileStream::ReadDWordBE(void)
 
 
 uint32
-FileStream::ReadDWordLE(void)
+FileStream::ReadDWordLE()
 {
 	uint32 result;
-	if (fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
+	if (::fread(&result, 1, sizeof(result), fFileHandle) != sizeof(result))
 		throw std::runtime_error("ReadDWordLE() read error");
 	return result;
-}
-
-
-size_t
-FileStream::Size() const
-{
-	const off_t oldpos = Position();
-	size_t fileSize = const_cast<FileStream*>(this)->Seek(0L, SEEK_END);
-	
-	const_cast<FileStream*>(this)->Seek(oldpos, SEEK_SET);
-
-	return fileSize;
 }
