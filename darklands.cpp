@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
 		char name[16];
 		map.Read(name, 12);
-		name[11] = '\0';
+		name[12] = '\0';
 		std::cout << name << std::endl;
 
 		for (auto c = 0; c < 11; c++) {
