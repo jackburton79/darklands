@@ -15,7 +15,9 @@
 
 int main(int argc, char **argv)
 {
-	FileStream map("/home/stefano.ceccherini/git/dk/data/DARKLAND/IMAPS.CAT");
+	std::string fileName = argv[1];
+
+	FileStream map(fileName.c_str(), FileStream::IGNORE_CASE);
 
 	uint8 numEntries = map.ReadByte();
 	std::cout << "num entries: " << (unsigned int)numEntries << std::endl;
