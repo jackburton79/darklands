@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+/* File format info here
+/ https://wendigo.online-siesta.com/darklands/file_formats/up-to-date/
+*/
 
 /*
  * 0x00 word LE = numentries
