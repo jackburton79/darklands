@@ -94,7 +94,5 @@ Catalog::GetStream(const std::string& name)
 	if (i == fEntries.end())
 		return NULL;
 
-	Stream* stream = fStream->SubStream(i->offset, i->length);
-
-	return stream;
+	return fStream->SubStream(i->offset, i->length);
 }
