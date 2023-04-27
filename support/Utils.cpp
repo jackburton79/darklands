@@ -39,46 +39,6 @@ path_dos_to_unix(char* path)
 }
 
 
-FILE*
-fopen_case(const char* filename, const char* flags)
-{
-	assert(filename != NULL);
-	assert(::strlen(filename) > 1);
-
-	Path normalizedFileName(filename);
-	std::string newPath("/");
-	char* start = (char*)normalizedFileName.String() + 1;
-	char* end = start + ::strlen(normalizedFileName.String());
-	size_t where = 0;
-	while ((where = ::strcspn(start, "/")) > 0) {
-		std::string leaf;
-		leaf.append(start, where);
-		DIR* dir = ::opendir(newPath.c_str());
-		if (dir != NULL) {
-			dirent *entry = NULL;
-			while ((entry = ::readdir(dir)) != NULL) {
-				if (!::strcasecmp(entry->d_name, leaf.c_str())) {
-					if (newPath != "/")
-						newPath.append("/");
-					newPath.append(entry->d_name);
-					break;
-				}
-			}
-			::closedir(dir);
-		}
-		start += where + 1;
-		if (start >= end)
-			break;
-	}
-
-	FILE* handle = NULL;
-	if (!::strcasecmp(filename, newPath.c_str()))
-		handle = ::fopen(newPath.c_str(), flags);
-
-	return handle;
-}
-
-
 const char*
 extension(const char* path)
 {

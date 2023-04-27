@@ -11,8 +11,6 @@ const char* trim(char* string);
 
 void path_dos_to_unix(char* path);
 
-// Opens a file case insensitively on a case sensitive FS
-FILE* fopen_case(const char* name, const char* flags);
 const char* extension(const char* name);
 
 size_t get_unquoted_string(char* dest, char* source, size_t maxSize);
