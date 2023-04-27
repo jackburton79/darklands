@@ -25,8 +25,10 @@ int main(int argc, char **argv)
 	// PIC file:
 	// first 11 bytes are always the same, except for byte at 0x02 and 0x03
 	// sometimes
+	// example E05SWST.PIC:
 	// octal: 130 060 251 000 035 000 036 000 013 000 040
 	// decimal: 88  48 169   0  29   0  30   0  11   0  32
+	// third byte is size - 4. Maybe size of actual data ?
 
 	return 0;
 }
