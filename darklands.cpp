@@ -24,14 +24,21 @@ int main(int argc, char **argv)
 
 	// PIC file:
 	// first 11 bytes are always the same, except for byte at 0x02 and 0x03
-	// sometimes
+
 	// example E05SWST.PIC:
-	// octal: 130 060 251 000 035 000 036 000 013 000 040
 	// decimal: 88  48 169   0  29   0  30   0  11   0  32
+	// E03CLST.PIC:
+	// decimal: 88  48 148   0  29   0  30   0  11   0  32
 
-	// 0x00 byte, unknown
-	// 0x01 byte, unknown
+	// 0x00 byte, unknown, always 88
+	// 0x01 byte, unknown, always 48
 	// 0x02 unsigned, dword, size of file from here on
-
+	// 0x04 ??? always 29
+	// 0x05 ??? always 0
+	// 0x06 ??? always 30
+	// 0x07 ??? always 0
+	// 0x08 ??? always 11
+	// 0x09 ??? always 0
+	// 0x10 ??? always 32
 	return 0;
 }
