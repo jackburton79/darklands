@@ -94,12 +94,7 @@ Catalog::GetStream(const std::string& name)
 	if (i == fEntries.end())
 		return NULL;
 
-	char buffer[512];
-	MemoryStream* stream = new MemoryStream(i->length);
-	size_t readSize = 0;
-	while ((readSize = fStream->Read(buffer, sizeof(buffer))) > 0) {
-		stream->Write(buffer, readSize);
-	}
+	Stream* stream = fStream->SubStream(i->offset, i->length);
 
 	return stream;
 }
