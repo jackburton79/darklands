@@ -5,6 +5,20 @@
  *      Author: Stefano Ceccherini
  */
 
+/* File format info here
+/ https://wendigo.online-siesta.com/darklands/file_formats/up-to-date/
+*/
+
+/*
+ * 0x00 word LE = numentries
+ *
+ * entry (24 bytes)
+ * 0x02 12	string
+ * 0x0c 4	timestamp
+ * 0x10 4 length
+ * 0x14 4 offset
+ */
+
 #include "Catalog.h"
 
 #include "MemoryStream.h"
@@ -80,6 +94,12 @@ Catalog::GetStream(const std::string& name)
 	if (i == fEntries.end())
 		return NULL;
 
+	char buffer[512];
 	MemoryStream* stream = new MemoryStream(i->length);
+	size_t readSize = 0;
+	while ((readSize = fStream->Read(buffer, sizeof(buffer))) > 0) {
+		stream->Write(buffer, readSize);
+	}
+
 	return stream;
 }
