@@ -112,11 +112,40 @@ PicDecoder::GetImage(Stream* stream)
 	Bitmap* bitmap = new Bitmap(width, height, 8);
 	uint8* line = new uint8[width];
 
+	GFX::Palette palette;
+	for (auto c = 0; c < 50; c++) {
+		palette.colors[c].a = 0;
+		palette.colors[c].r = 0;
+		palette.colors[c].g = 30;
+		palette.colors[c].b = 30;
+	}
+	for (auto c = 51; c < 100; c++) {
+		palette.colors[c].a = 0;
+		palette.colors[c].r = 30;
+		palette.colors[c].g = 30;
+		palette.colors[c].b = 0;
+	}
+	for (auto c = 101; c < 200; c++) {
+		palette.colors[c].a = 0;
+		palette.colors[c].r = 90;
+		palette.colors[c].g = 0;
+		palette.colors[c].b = 140;
+	}
+	for (auto c = 201; c < 256; c++) {
+		palette.colors[c].a = 0;
+		palette.colors[c].r = 10;
+		palette.colors[c].g = 200;
+		palette.colors[c].b = 10;
+	}
+	bitmap->SetPalette(palette);
 	for (auto y = 0; y < height; y++) {
 		fContext->DecodeNextBytes(line, width);
 		for (auto x = 0; x < width; x++) {
 			uint8 value = line[x];
-			bitmap->PutPixel(x, y, value/*palette[value]*/);
+			//uint32 color = bitmap->MapColor(palette.colors[value].r,
+			//		palette.colors[value].g,
+			//		palette.colors[value].b);
+			bitmap->PutPixel(x, y, value);
 		}
 	}
 
