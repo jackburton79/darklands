@@ -52,21 +52,21 @@ private:
 
 	Stream* fStream;
 
-	uint16 fRepeatCount = 0;
+	int fRepeatCount = 0;
 	uint8 fRepeatByte = 0;
 	uint8* fBuffer;
-	uint16 fBufferOffset;
+	int fBufferOffset;
 
 	uint16 fMagicWord;
 	uint8 fMagicByte;
-	uint16 fBitPointer;
+	int fBitPointer;
 	uint8* fLUT;
 
-	uint16 fOnesCounter;
+	int fOnesCounter;
 	uint32 fBitMask;
-	uint32 fDWordUnk;
+	int32 fDWordUnk;
 
-    uint16 fSavedIndex;
+    int fSavedIndex;
     uint8 fSavedByte;
 
 };
@@ -122,6 +122,8 @@ PicDecoder::GetImage(Stream* stream)
 
 	delete line;
 
+	delete fContext;
+
 	return bitmap;
 }
 
@@ -137,7 +139,13 @@ DecodingContext::DecodingContext(Stream* stream, uint16 magic)
 	fBuffer = new uint8[10000];
 	fBufferOffset = 0;
 
-	fMagicByte = std::min(magic & 0xFF, 11);
+	fMagicByte = uint8(magic & 0xFF);
+	if (fMagicByte > 11)
+		fMagicByte = 11;
+
+	fMagicWord &= 0xff00;
+    fMagicWord |= fMagicByte;
+
 	fBitPointer = 8;
 	fLUT = new uint8[(1 << fMagicByte) * 3];
 
@@ -151,7 +159,7 @@ DecodingContext::DecodingContext(Stream* stream, uint16 magic)
 void
 DecodingContext::_SetupBuffer()
 {
-	fOnesCounter = 0;
+	fOnesCounter = 9;
 	fBitMask = 0x1FF;
 	fDWordUnk = 0x100;
 
@@ -204,6 +212,7 @@ DecodingContext::SetLUTValue(int id, uint8 value)
 void
 DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 {
+	bool debug = true;
 	bool bcdPacked = false;
 	int opcount;
 	if (bcdPacked) {
@@ -241,26 +250,24 @@ DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 			/// Unpack BCD as uint16
 			uint8 hiPart = uint8(value >> 4);
 			uint8 lowPart = uint8(value & 0xf);
-			line[2*i + 1] = hiPart;
-			line[2*i] = lowPart;
-#if 0
+			line[2 * i + 1] = hiPart;
+			line[2 * i] = lowPart;
 			if (debug) {
-				Console.Write(lowPart.ToString("X2") + " ");
-				Console.Write(hiPart.ToString("X2") + " ");
+				std::cout << std::hex;
+				std::cout << lowPart << " ";
+				std::cout << hiPart << " ";
+				std::flush(std::cout);
 			}
-#endif
 		} else {
 			line[i] = value;
-#if 0
-			if (debug)
-				Console.Write(value.ToString("X2") + " ");
-#endif
+			if (debug) {
+				std::cout << value << " ";
+				std::flush(std::cout);
+			}
 		}
 	}
-#if 0
 	if (debug)
-		Console.Write("\n");
-#endif
+		std::cout << std::endl;
 }
 
 
