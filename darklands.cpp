@@ -9,10 +9,14 @@
 
 int main(int argc, char **argv)
 {
-	std::string catalogName = argv[1];
-	std::string fileName = argv[2];
+	std::string catalogName;
+	if (argc > 1)
+		catalogName = argv[1];
+	std::string fileName;
+	if (argc > 2)
+		fileName = argv[2];
 
-	if (catalogName == "")
+	if (catalogName.empty())
 		return 0;
 
 	Catalog catalog(catalogName);
