@@ -34,7 +34,7 @@
 
 class DecodingContext {
 public:
-	DecodingContext(Stream* stream, uint16 magic);
+	DecodingContext(Stream* stream, uint16 magic, bool bcdPacked);
 
 	uint16 GetLUTIndex(int id);
 	uint8 GetLUTValue(int id);
@@ -51,9 +51,9 @@ private:
 	void _SetupBuffer();
 
 	Stream* fStream;
-
-	int fRepeatCount = 0;
-	uint8 fRepeatByte = 0;
+	bool fBCDPacked;
+	int fRepeatCount;
+	uint8 fRepeatByte;
 	uint8* fBuffer;
 	int fBufferOffset;
 
@@ -107,7 +107,7 @@ PicDecoder::GetImage(Stream* stream)
 	// Context
 	uint16 magicWord = stream->ReadWordLE(); // 0x0A
 
-	fContext = new DecodingContext(stream, magicWord);
+	fContext = new DecodingContext(stream, magicWord, bcdPacked);
 
 	Bitmap* bitmap = new Bitmap(width, height, 8);
 	uint8* line = new uint8[width];
@@ -142,9 +142,6 @@ PicDecoder::GetImage(Stream* stream)
 		fContext->DecodeNextBytes(line, width);
 		for (auto x = 0; x < width; x++) {
 			uint8 value = line[x];
-			//uint32 color = bitmap->MapColor(palette.colors[value].r,
-			//		palette.colors[value].g,
-			//		palette.colors[value].b);
 			bitmap->PutPixel(x, y, value);
 		}
 	}
@@ -158,28 +155,27 @@ PicDecoder::GetImage(Stream* stream)
 
 
 // DecodingContext
-DecodingContext::DecodingContext(Stream* stream, uint16 magic)
+DecodingContext::DecodingContext(Stream* stream, uint16 magic, bool bcdPacked)
+	:
+	fStream(stream),
+	fBCDPacked(bcdPacked),
+	fRepeatCount(0),
+	fRepeatByte(0),
+	fBuffer(nullptr),
+	fBufferOffset(0),
+	fMagicWord(magic),
+	fMagicByte(std::min(uint8(magic & 0xFF), uint8(11))),
+	fBitPointer(8),
+	fLUT(nullptr),
+	fSavedIndex(0),
+	fSavedByte(0)
 {
-	fStream = stream;
-
-	fMagicWord = magic;
-	fRepeatCount = 0;
-	fRepeatByte = 0;
 	fBuffer = new uint8[10000];
-	fBufferOffset = 0;
-
-	fMagicByte = uint8(magic & 0xFF);
-	if (fMagicByte > 11)
-		fMagicByte = 11;
 
 	fMagicWord &= 0xff00;
     fMagicWord |= fMagicByte;
-
-	fBitPointer = 8;
+	
 	fLUT = new uint8[(1 << fMagicByte) * 3];
-
-	fSavedIndex = 0;
-	fSavedByte = 0;
 
 	_SetupBuffer();
 }
@@ -242,9 +238,8 @@ void
 DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 {
 	bool debug = true;
-	bool bcdPacked = false;
 	int opcount;
-	if (bcdPacked) {
+	if (fBCDPacked) {
 		opcount = (length + 1) / 2;
 	} else {
 		opcount = length;
@@ -275,7 +270,7 @@ DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 		}
 
 		// Output byte
-		if (bcdPacked) {
+		if (fBCDPacked) {
 			/// Unpack BCD as uint16
 			uint8 hiPart = uint8(value >> 4);
 			uint8 lowPart = uint8(value & 0xf);
