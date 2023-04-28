@@ -35,6 +35,7 @@
 class DecodingContext {
 public:
 	DecodingContext(Stream* stream, uint16 magic, bool bcdPacked);
+	~DecodingContext();
 
 	uint16 GetLUTIndex(int id);
 	uint8 GetLUTValue(int id);
@@ -181,6 +182,13 @@ DecodingContext::DecodingContext(Stream* stream, uint16 magic, bool bcdPacked)
 }
 
 
+DecodingContext::~DecodingContext()
+{
+	delete fBuffer;
+	delete fLUT;
+}
+
+
 void
 DecodingContext::_SetupBuffer()
 {
@@ -256,7 +264,6 @@ DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 
 			if (value == 0x90) {
 				value = NextRun();
-
 				if (value != 0) {
 					fRepeatCount = value - 1;
 					value = fRepeatByte;
