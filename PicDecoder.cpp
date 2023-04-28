@@ -7,6 +7,9 @@
 
 #include "PicDecoder.h"
 
+#include "Stream.h"
+// https://github.com/ogamespec/PicDecoder/tree/master/PicDecode
+//
 // PIC file:
 // first 11 bytes are always the same, except for byte at 0x02 and 0x03
 // example E05SWST.PIC:
@@ -24,6 +27,8 @@
 // 0x10 ??? always 32
 
 
+#include <iostream>
+
 PicDecoder::PicDecoder()
 {
 
@@ -38,5 +43,21 @@ PicDecoder::~PicDecoder()
 Bitmap*
 PicDecoder::GetImage(Stream* stream)
 {
+	uint16 header = stream->ReadWordLE();
+	if ((header & 0xFF) != 'X') {
+		std::cerr << "GetImage: wrong format!" << std::endl;
+		return nullptr;
+	}
 
+	bool bcdPacked = (header >> 8) & 1;
+
+	uint16 compressedSize = stream->ReadWordLE();
+	uint16 width = stream->ReadWordLE();
+	uint16 height = stream->ReadWordLE();
+
+	std::cout << "width: " << width << ", height: " << height << std::endl;
+	std::cout << "size: " << compressedSize << std::endl;
+	std::cout << "BCD packed: " << (bcdPacked ? "true" : "false") << std::endl;
+
+	return NULL;
 }

@@ -1,5 +1,6 @@
 #include "Catalog.h"
 #include "FileStream.h"
+#include "PicDecoder.h"
 #include "Stream.h"
 
 #include <iostream>
@@ -17,8 +18,11 @@ int main(int argc, char **argv)
 	catalog.ListEntries();
 	Stream* stream = catalog.GetStream(fileName);
 
-	if (fileName != "")
+	if (stream != nullptr) {
 		stream->DumpToFile(fileName.c_str());
+		PicDecoder decoder;
+		decoder.GetImage(stream);
+	}
 	delete stream;
 
 	return 0;
