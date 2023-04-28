@@ -9,6 +9,7 @@
 #define PICDECODER_H_
 
 class Bitmap;
+class DecodingContext;
 class Stream;
 class PicDecoder {
 public:
@@ -16,6 +17,8 @@ public:
 	~PicDecoder();
 
 	Bitmap* GetImage(Stream* stream);
+private:
+	DecodingContext* fContext;
 };
 
 #endif /* PICDECODER_H_ */
