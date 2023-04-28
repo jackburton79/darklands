@@ -74,8 +74,9 @@ private:
 
 // PicDecoder
 PicDecoder::PicDecoder()
+	:
+	fContext(NULL)
 {
-
 }
 
 
@@ -108,7 +109,7 @@ PicDecoder::GetImage(Stream* stream)
 
 	fContext = new DecodingContext(stream, magicWord);
 
-	Bitmap* bitmap = new Bitmap(width, height, 4);
+	Bitmap* bitmap = new Bitmap(width, height, 8);
 	uint8* line = new uint8[width];
 
 	for (auto y = 0; y < height; y++) {
