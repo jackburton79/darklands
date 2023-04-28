@@ -109,7 +109,6 @@ PicDecoder::GetImage(Stream* stream)
 	fContext = new DecodingContext(stream, magicWord);
 
 	Bitmap* bitmap = new Bitmap(width, height, 4);
-
 	uint8* line = new uint8[width];
 
 	for (auto y = 0; y < height; y++) {
@@ -286,8 +285,8 @@ DecodingContext::NextRun()
 
 		/// After Loop 1
 		fBitPointer = c - fOnesCounter;
-		uint32 oldIndex = uint32(b & fBitMask);
-		uint32 newIndex = oldIndex;
+		int oldIndex = int(b & fBitMask);
+		int newIndex = oldIndex;
 		if (oldIndex >= fDWordUnk) {
 			newIndex = fDWordUnk;
 			oldIndex = fSavedIndex;
@@ -309,7 +308,7 @@ DecodingContext::NextRun()
 		SetLUTValue(fDWordUnk, fSavedByte);
 		SetLUTIndex(fDWordUnk, fSavedIndex);
 		fDWordUnk++;
-		if (fDWordUnk > fBitMask) {
+		if (fDWordUnk > (int)fBitMask) {
 			fOnesCounter++;
 			fBitMask = (fBitMask << 1) | 1;
 		}
