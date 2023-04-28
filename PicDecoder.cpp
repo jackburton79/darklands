@@ -9,6 +9,8 @@
 
 #include "Bitmap.h"
 #include "Stream.h"
+
+#include <cassert>
 // https://github.com/ogamespec/PicDecoder/tree/master/PicDecode
 //
 // PIC file:
@@ -32,25 +34,41 @@
 
 class DecodingContext {
 public:
-	DecodingContext(uint16 magic);
+	DecodingContext(Stream* stream, uint16 magic);
 
 	uint16 GetLUTIndex(int id);
 	uint8 GetLUTValue(int id);
 	void SetLUTIndex(int id, int newId);
 	void SetLUTValue(int id, uint8 value);
 
-	void DecodeNextBytes(uint8* line);
+	void DecodeNextBytes(uint8* line, uint16 length);
+	uint8 NextRun();
+
+	void PushValue(uint8 value);
+	uint8 PopValue();
+
 private:
 	void _SetupBuffer();
+
+	Stream* fStream;
 
 	uint16 fRepeatCount = 0;
 	uint8 fRepeatByte = 0;
 	uint8* fBuffer;
 	uint16 fBufferOffset;
 
+	uint16 fMagicWord;
 	uint8 fMagicByte;
 	uint16 fBitPointer;
 	uint8* fLUT;
+
+	uint16 fOnesCounter;
+	uint32 fBitMask;
+	uint32 fDWordUnk;
+
+    uint16 fSavedIndex;
+    uint8 fSavedByte;
+
 };
 
 
@@ -88,14 +106,14 @@ PicDecoder::GetImage(Stream* stream)
 	// Context
 	uint16 magicWord = stream->ReadWordLE(); // 0x0A
 
-	fContext = new DecodingContext(magicWord);
+	fContext = new DecodingContext(stream, magicWord);
 
 	Bitmap* bitmap = new Bitmap(width, height, 4);
 
 	uint8* line = new uint8[width];
 
 	for (auto y = 0; y < height; y++) {
-		fContext->DecodeNextBytes(line);
+		fContext->DecodeNextBytes(line, width);
 		for (auto x = 0; x < width; x++) {
 			uint8 value = line[x];
 			bitmap->PutPixel(x, y, value/*palette[value]*/);
@@ -109,8 +127,11 @@ PicDecoder::GetImage(Stream* stream)
 
 
 // DecodingContext
-DecodingContext::DecodingContext(uint16 magic)
+DecodingContext::DecodingContext(Stream* stream, uint16 magic)
 {
+	fStream = stream;
+
+	fMagicWord = magic;
 	fRepeatCount = 0;
 	fRepeatByte = 0;
 	fBuffer = new uint8[10000];
@@ -120,6 +141,9 @@ DecodingContext::DecodingContext(uint16 magic)
 	fBitPointer = 8;
 	fLUT = new uint8[(1 << fMagicByte) * 3];
 
+	fSavedIndex = 0;
+	fSavedByte = 0;
+
 	_SetupBuffer();
 }
 
@@ -127,9 +151,9 @@ DecodingContext::DecodingContext(uint16 magic)
 void
 DecodingContext::_SetupBuffer()
 {
-	uint16 onesCounter = 0;
-	uint32 bitMask = 0x1FF;
-	uint32 dWordUnk = 0x100;
+	fOnesCounter = 0;
+	fBitMask = 0x1FF;
+	fDWordUnk = 0x100;
 
 	// Fill FF FF 00 pattern
 	for (auto i = 0; i < (1 << fMagicByte); i++) {
@@ -178,7 +202,132 @@ DecodingContext::SetLUTValue(int id, uint8 value)
 
 
 void
-DecodingContext::DecodeNextBytes(uint8* line)
+DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 {
+	bool bcdPacked = false;
+	int opcount;
+	if (bcdPacked) {
+		opcount = (length + 1) / 2;
+	} else {
+		opcount = length;
+	}
 
+	for (auto i = 0; i < opcount; i++) {
+		uint8 value;
+		/// Fetch next byte
+		if (fRepeatCount != 0) {
+			value = fRepeatByte;
+			fRepeatCount--;
+		} else {
+			value = NextRun();
+
+			if (value == 0x90) {
+				value = NextRun();
+
+				if (value != 0) {
+					fRepeatCount = value - 1;
+					value = fRepeatByte;
+					fRepeatCount--;
+				} else {
+					fRepeatByte = value = 0x90;
+				}
+			} else {
+				fRepeatByte = value;
+			}
+		}
+
+		// Output byte
+		if (bcdPacked) {
+			/// Unpack BCD as uint16
+			uint8 hiPart = uint8(value >> 4);
+			uint8 lowPart = uint8(value & 0xf);
+			line[2*i + 1] = hiPart;
+			line[2*i] = lowPart;
+#if 0
+			if (debug) {
+				Console.Write(lowPart.ToString("X2") + " ");
+				Console.Write(hiPart.ToString("X2") + " ");
+			}
+#endif
+		} else {
+			line[i] = value;
+#if 0
+			if (debug)
+				Console.Write(value.ToString("X2") + " ");
+#endif
+		}
+	}
+#if 0
+	if (debug)
+		Console.Write("\n");
+#endif
+}
+
+
+uint8
+DecodingContext::NextRun()
+{
+	if (fBufferOffset == -1) {
+		int b = fMagicWord >> (16 - fBitPointer);
+		int c = fBitPointer;
+		/// Loop 1
+		while (c < fOnesCounter) {
+			fMagicWord = fStream->ReadWordLE();
+			b |= (fMagicWord << c);
+			c += 16;
+		}
+
+		/// After Loop 1
+		fBitPointer = c - fOnesCounter;
+		uint32 oldIndex = uint32(b & fBitMask);
+		uint32 newIndex = oldIndex;
+		if (oldIndex >= fDWordUnk) {
+			newIndex = fDWordUnk;
+			oldIndex = fSavedIndex;
+			PushValue(fSavedByte);
+		}
+
+		/// Loop 2
+		while (true) {
+			int index = GetLUTIndex(oldIndex) + 1;
+			if (index != 0x10000) {
+				PushValue(GetLUTValue(oldIndex));
+				oldIndex = index - 1;
+			} else
+				break;
+		}
+		/// After Loop 2
+		fSavedByte = GetLUTValue(oldIndex);
+		PushValue(fSavedByte);
+		SetLUTValue(fDWordUnk, fSavedByte);
+		SetLUTIndex(fDWordUnk, fSavedIndex);
+		fDWordUnk++;
+		if (fDWordUnk > fBitMask) {
+			fOnesCounter++;
+			fBitMask = (fBitMask << 1) | 1;
+		}
+		if (fOnesCounter > fMagicByte) {
+			_SetupBuffer();
+			newIndex = 0;
+		}
+		fSavedIndex = newIndex;
+	}
+
+	return PopValue();
+}
+
+
+void
+DecodingContext::PushValue(uint8 value)
+{
+	fBufferOffset++;
+	fBuffer[fBufferOffset] = value;
+}
+
+
+uint8
+DecodingContext::PopValue()
+{
+	assert(fBufferOffset >= 0);
+	return fBuffer[fBufferOffset--];
 }
