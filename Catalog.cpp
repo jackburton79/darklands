@@ -83,9 +83,6 @@ Catalog::ListEntries() const
 Stream*
 Catalog::GetStream(const std::string& name)
 {
-	// Allocates a new stream and read the "parent" stream
-	// into it.
-	// TODO: find a way to attach to the parent stream without
 	entry_list::iterator i;
 	for (i = fEntries.begin(); i != fEntries.end(); i++) {
 		if (name == (*i).filename)
@@ -96,3 +93,12 @@ Catalog::GetStream(const std::string& name)
 
 	return fStream->SubStream(i->offset, i->length);
 }
+
+
+Stream*
+Catalog::GetStreamAt(uint32 index)
+{
+	const catalog_entry entry = fEntries.at(index);
+	return fStream->SubStream(entry.offset, entry.length);
+}
+

@@ -11,8 +11,8 @@
 
 #include "SupportDefs.h"
 
-#include <list>
 #include <string>
+#include <vector>
 
 struct catalog_entry {
 	std::string filename;
@@ -29,10 +29,11 @@ public:
 	void ListEntries() const;
 	int SetTo(const std::string& fileName);
 	Stream* GetStream(const std::string& name);
+	Stream* GetStreamAt(uint32 index);
 private:
 	Stream* fStream;
 
-	typedef std::list<catalog_entry> entry_list;
+	typedef std::vector<catalog_entry> entry_list;
 	entry_list fEntries;
 };
 

@@ -245,7 +245,7 @@ DecodingContext::SetLUTValue(int id, uint8 value)
 void
 DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 {
-	bool debug = true;
+	bool debug = false;
 	int opcount;
 	if (fBCDPacked) {
 		opcount = (length + 1) / 2;
