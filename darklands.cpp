@@ -80,7 +80,11 @@ int main(int argc, char **argv)
 			}
 
 			if (bitmap != NULL) {
-				GraphicsEngine::Get()->BlitToScreen(bitmap, NULL, NULL);
+				GFX::rect screenFrame = GraphicsEngine::Get()->ScreenFrame();
+				GFX::rect bitmapFrame = bitmap->Frame();
+				GraphicsEngine::Get()->BlitToScreen(bitmap, &bitmapFrame, &screenFrame);
+				bitmap->Release();
+				bitmap = NULL;
 			}
 		}
 		GraphicsEngine::Get()->Update();
