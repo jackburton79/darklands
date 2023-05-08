@@ -11,6 +11,8 @@
 #include "Stream.h"
 
 #include <cassert>
+#include <iostream>
+
 // https://github.com/ogamespec/PicDecoder/tree/master/PicDecode
 //
 // PIC file:
@@ -30,7 +32,7 @@
 // 0x10 ??? always 32
 
 
-#include <iostream>
+static GFX::Palette* sEGADefaultPalette;
 
 class DecodingContext {
 public:
@@ -78,6 +80,27 @@ PICImage::PICImage(Stream* stream)
 	:
 	fStream(stream)
 {
+	// EGA palette taken from here:
+	// https://moddingwiki.shikadi.net/wiki/EGA_Palette
+	if (sEGADefaultPalette == NULL) {
+		sEGADefaultPalette = new GFX::Palette;
+		sEGADefaultPalette->colors[0] = GFX::Color{0, 0, 0, 0}; // black
+		sEGADefaultPalette->colors[1] = GFX::Color{0, 0, 170, 0}; // blue
+		sEGADefaultPalette->colors[2] = GFX::Color{0, 170, 0, 0}; // green
+		sEGADefaultPalette->colors[3] = GFX::Color{0, 170, 170, 0}; // cyan
+		sEGADefaultPalette->colors[4] = GFX::Color{170, 0, 0, 0}; // red
+		sEGADefaultPalette->colors[5] = GFX::Color{170, 0, 170, 0}; // magenta
+		sEGADefaultPalette->colors[6] = GFX::Color{170, 85, 0, 0}; // yellow / brown
+		sEGADefaultPalette->colors[7] = GFX::Color{170, 170, 170, 0}; // white / light gray
+		sEGADefaultPalette->colors[8] = GFX::Color{85, 85, 85, 0}; // dark gray / bright black
+		sEGADefaultPalette->colors[9] = GFX::Color{85, 85, 255, 0}; // bright blue
+		sEGADefaultPalette->colors[10] = GFX::Color{85, 255, 85, 0}; // bright green
+		sEGADefaultPalette->colors[11] = GFX::Color{85, 255, 255, 0}; // bright cyan
+		sEGADefaultPalette->colors[12] = GFX::Color{255, 85, 85, 0}; // bright red
+		sEGADefaultPalette->colors[13] = GFX::Color{255, 85, 255, 0}; // bright magenta
+		sEGADefaultPalette->colors[14] = GFX::Color{255, 255, 85, 0}; // bright yellow
+		sEGADefaultPalette->colors[15] = GFX::Color{255, 255, 255, 0}; // bright white
+	}
 }
 
 
@@ -137,36 +160,18 @@ PICImage::Image()
 	Bitmap* bitmap = new Bitmap(width, height, 8);
 	uint8* line = new uint8[width];
 
-	GFX::Palette palette;
-	for (auto c = 0; c < 50; c++) {
-		palette.colors[c].a = 0;
-		palette.colors[c].r = 0;
-		palette.colors[c].g = 30;
-		palette.colors[c].b = 30;
-	}
-	for (auto c = 51; c < 100; c++) {
-		palette.colors[c].a = 0;
-		palette.colors[c].r = 30;
-		palette.colors[c].g = 30;
-		palette.colors[c].b = 0;
-	}
-	for (auto c = 101; c < 200; c++) {
-		palette.colors[c].a = 0;
-		palette.colors[c].r = 90;
-		palette.colors[c].g = 0;
-		palette.colors[c].b = 140;
-	}
-	for (auto c = 201; c < 256; c++) {
-		palette.colors[c].a = 0;
-		palette.colors[c].r = 10;
-		palette.colors[c].g = 200;
-		palette.colors[c].b = 10;
-	}
-	bitmap->SetPalette(palette);
+	// TODO: Check if there is an embedded palette,
+	// otherwise use the default
+	if (true)
+		bitmap->SetColors(sEGADefaultPalette->colors, 0, 15);
+
 	for (auto y = 0; y < height; y++) {
 		context->DecodeNextBytes(line, width);
 		for (auto x = 0; x < width; x++) {
 			uint8 value = line[x];
+			value = value % 16;
+			if (value > 15)
+				std::cout << "value:" << (int)value << std::endl;
 			bitmap->PutPixel(x, y, value);
 		}
 	}
