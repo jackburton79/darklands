@@ -2,12 +2,12 @@
 #include "Catalog.h"
 #include "GraphicsEngine.h"
 #include "FileStream.h"
-#include "PicDecoder.h"
 #include "Stream.h"
 
 #include <iostream>
 
 #include <SDL.h>
+#include "PICImage.h"
 
 
 static
@@ -16,7 +16,7 @@ DecodeImage(Catalog* catalog, uint32 index)
 {
 	try {
 		Stream* stream = catalog->GetStreamAt(index);
-		PicDecoder decoder;
+		PICImage decoder;
 		return decoder.GetImage(stream);
 	} catch (...) {
 		return NULL;

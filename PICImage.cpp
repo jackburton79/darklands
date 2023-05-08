@@ -5,7 +5,7 @@
  *      Author: Stefano Ceccherini
  */
 
-#include "PicDecoder.h"
+#include "PICImage.h"
 
 #include "Bitmap.h"
 #include "Stream.h"
@@ -74,20 +74,20 @@ private:
 
 
 // PicDecoder
-PicDecoder::PicDecoder()
+PICImage::PICImage()
 	:
 	fContext(NULL)
 {
 }
 
 
-PicDecoder::~PicDecoder()
+PICImage::~PICImage()
 {
 }
 
 
 Bitmap*
-PicDecoder::GetImage(Stream* stream)
+PICImage::GetImage(Stream* stream)
 {
 	uint16 header = stream->ReadWordLE();
 	if ((header & 0xFF) != 'X') {

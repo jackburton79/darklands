@@ -5,20 +5,20 @@
  *      Author: Stefano Ceccherini
  */
 
-#ifndef PICDECODER_H_
-#define PICDECODER_H_
+#ifndef PICIMAGE_H_
+#define PICIMAGE_H_
 
 class Bitmap;
 class DecodingContext;
 class Stream;
-class PicDecoder {
+class PICImage {
 public:
-	PicDecoder();
-	~PicDecoder();
+	PICImage();
+	~PICImage();
 
 	Bitmap* GetImage(Stream* stream);
 private:
 	DecodingContext* fContext;
 };
 
-#endif /* PICDECODER_H_ */
+#endif /* PICIMAGE_H_ */
