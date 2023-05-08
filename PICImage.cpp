@@ -74,9 +74,9 @@ private:
 
 
 // PicDecoder
-PICImage::PICImage()
+PICImage::PICImage(Stream* stream)
 	:
-	fContext(NULL)
+	fStream(stream)
 {
 }
 
@@ -86,10 +86,34 @@ PICImage::~PICImage()
 }
 
 
-Bitmap*
-PICImage::GetImage(Stream* stream)
+uint16
+PICImage::Width() const
 {
-	uint16 header = stream->ReadWordLE();
+	uint16 width;
+	fStream->ReadAt(0x06, &width, sizeof(width)); // 0x06
+	return width;
+
+}
+
+
+uint16
+PICImage::Height() const
+{
+	// 0x08
+	uint16 height;
+	fStream->ReadAt(0x08, &height, sizeof(height));
+	return height;
+}
+
+
+Bitmap*
+PICImage::Image()
+{
+	off_t initialPos = fStream->Position();
+	fStream->Seek(0, SEEK_SET);
+
+	// 0x00
+	uint16 header = fStream->ReadWordLE();
 	if ((header & 0xFF) != 'X') {
 		std::cerr << "GetImage: wrong format!" << std::endl;
 		return nullptr;
@@ -97,18 +121,18 @@ PICImage::GetImage(Stream* stream)
 
 	bool bcdPacked = (header >> 8) & 1;
 
-	uint16 compressedSize = stream->ReadWordLE(); // 0x04
-	uint16 width = stream->ReadWordLE(); // 0x06
-	uint16 height = stream->ReadWordLE(); // 0x08
+	uint16 compressedSize = fStream->ReadWordLE(); // 0x04
+	uint16 width = fStream->ReadWordLE(); // 0x06
+	uint16 height = fStream->ReadWordLE(); // 0x08
 
 	std::cout << "width: " << width << ", height: " << height << std::endl;
 	std::cout << "size: " << compressedSize << std::endl;
 	std::cout << "BCD packed: " << (bcdPacked ? "true" : "false") << std::endl;
 
 	// Context
-	uint16 magicWord = stream->ReadWordLE(); // 0x0A
+	uint16 magicWord = fStream->ReadWordLE(); // 0x0A
 
-	fContext = new DecodingContext(stream, magicWord, bcdPacked);
+	DecodingContext* context = new DecodingContext(fStream, magicWord, bcdPacked);
 
 	Bitmap* bitmap = new Bitmap(width, height, 8);
 	uint8* line = new uint8[width];
@@ -140,7 +164,7 @@ PICImage::GetImage(Stream* stream)
 	}
 	bitmap->SetPalette(palette);
 	for (auto y = 0; y < height; y++) {
-		fContext->DecodeNextBytes(line, width);
+		context->DecodeNextBytes(line, width);
 		for (auto x = 0; x < width; x++) {
 			uint8 value = line[x];
 			bitmap->PutPixel(x, y, value);
@@ -149,7 +173,9 @@ PICImage::GetImage(Stream* stream)
 
 	delete line;
 
-	delete fContext;
+	delete context;
+
+	fStream->Seek(initialPos, SEEK_SET);
 
 	return bitmap;
 }

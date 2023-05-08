@@ -8,17 +8,22 @@
 #ifndef PICIMAGE_H_
 #define PICIMAGE_H_
 
+#include "SupportDefs.h"
+
 class Bitmap;
-class DecodingContext;
 class Stream;
 class PICImage {
 public:
-	PICImage();
+	PICImage(Stream* stream);
 	~PICImage();
 
-	Bitmap* GetImage(Stream* stream);
+	uint16 Width() const;
+	uint16 Height() const;
+
+	Bitmap* Image();
+
 private:
-	DecodingContext* fContext;
+	Stream* fStream;
 };
 
 #endif /* PICIMAGE_H_ */

@@ -16,8 +16,8 @@ DecodeImage(Catalog* catalog, uint32 index)
 {
 	try {
 		Stream* stream = catalog->GetStreamAt(index);
-		PICImage decoder;
-		return decoder.GetImage(stream);
+		PICImage decoder(stream);
+		return decoder.Image();
 	} catch (...) {
 		return NULL;
 	}
