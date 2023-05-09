@@ -340,14 +340,14 @@ DecodingContext::NextRun()
 	if (fBufferOffset == -1) {
 		int b = fMagicWord >> (16 - fBitPointer);
 		int c = fBitPointer;
-		/// Loop 1
+		// Loop 1
 		while (c < fOnesCounter) {
 			fMagicWord = fStream->ReadWordLE();
 			b |= (fMagicWord << c);
 			c += 16;
 		}
 
-		/// After Loop 1
+		// After Loop 1
 		fBitPointer = c - fOnesCounter;
 		int oldIndex = int(b & fBitMask);
 		int newIndex = oldIndex;
@@ -357,7 +357,7 @@ DecodingContext::NextRun()
 			PushValue(fSavedByte);
 		}
 
-		/// Loop 2
+		// Loop 2
 		while (true) {
 			int index = GetLUTIndex(oldIndex) + 1;
 			if (index != 0x10000) {
@@ -366,7 +366,7 @@ DecodingContext::NextRun()
 			} else
 				break;
 		}
-		/// After Loop 2
+		// After Loop 2
 		fSavedByte = GetLUTValue(oldIndex);
 		PushValue(fSavedByte);
 		SetLUTValue(fDWordUnk, fSavedByte);
