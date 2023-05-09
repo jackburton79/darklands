@@ -36,7 +36,7 @@ static GFX::Palette* sEGADefaultPalette;
 
 class DecodingContext {
 public:
-	DecodingContext(Stream* stream, uint16 magic, bool bcdPacked);
+	DecodingContext(Stream* stream);
 	~DecodingContext();
 
 	uint16 GetLUTIndex(int id);
@@ -153,15 +153,12 @@ PICImage::Image()
 	std::cout << "BCD packed: " << (bcdPacked ? "true" : "false") << std::endl;
 
 	// Context
-	uint16 magicWord = fStream->ReadWordLE(); // 0x0A
-
-	DecodingContext* context = new DecodingContext(fStream, magicWord, bcdPacked);
-
-	Bitmap* bitmap = new Bitmap(width, height, 8);
-	uint8* line = new uint8[width];
+	DecodingContext* context = new DecodingContext(fStream);
 
 	// TODO: Check if there is an embedded palette,
 	// otherwise use the default
+	Bitmap* bitmap = new Bitmap(width, height, 8);
+	uint8* line = new uint8[width];
 	if (true)
 		bitmap->SetColors(sEGADefaultPalette->colors, 0, 15);
 
@@ -180,6 +177,7 @@ PICImage::Image()
 
 	delete context;
 
+	// Return to previous position
 	fStream->Seek(initialPos, SEEK_SET);
 
 	return bitmap;
@@ -187,21 +185,24 @@ PICImage::Image()
 
 
 // DecodingContext
-DecodingContext::DecodingContext(Stream* stream, uint16 magic, bool bcdPacked)
+DecodingContext::DecodingContext(Stream* stream)
 	:
 	fStream(stream),
-	fBCDPacked(bcdPacked),
+	fBCDPacked(false),
 	fRepeatCount(0),
 	fRepeatByte(0),
 	fBuffer(nullptr),
 	fBufferOffset(0),
-	fMagicWord(magic),
-	fMagicByte(std::min(uint8(magic & 0xFF), uint8(11))),
+	fMagicWord(0),
+	fMagicByte(0),
 	fBitPointer(8),
 	fLUT(nullptr),
 	fSavedIndex(0),
 	fSavedByte(0)
 {
+	fMagicWord = fStream->ReadWordLE(); // 0x0A
+	fMagicByte = std::min(uint8(fMagicWord & 0xFF), uint8(11));
+
 	fBuffer = new uint8[10000];
 
 	fMagicWord &= 0xff00;
