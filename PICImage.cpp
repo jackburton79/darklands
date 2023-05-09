@@ -216,8 +216,8 @@ DecodingContext::DecodingContext(Stream* stream)
 
 DecodingContext::~DecodingContext()
 {
-	delete fBuffer;
-	delete fLUT;
+	delete[] fBuffer;
+	delete[] fLUT;
 }
 
 
