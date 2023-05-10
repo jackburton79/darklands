@@ -136,7 +136,7 @@ PICImage::Image()
 	fStream->Seek(0, SEEK_SET);
 
 	// 0x00
-	uint16 header = fStream->ReadWordLE();
+	uint16 header = fStream->ReadWordLEAt(0x00);
 	if ((header & 0xFF) != 'X') {
 		std::cerr << "GetImage: wrong format!" << std::endl;
 		return nullptr;
@@ -144,9 +144,9 @@ PICImage::Image()
 
 	bool bcdPacked = (header >> 8) & 1;
 
-	uint16 compressedSize = fStream->ReadWordLE(); // 0x04
-	uint16 width = fStream->ReadWordLE(); // 0x06
-	uint16 height = fStream->ReadWordLE(); // 0x08
+	uint16 compressedSize = fStream->ReadWordLEAt(0x02);
+	uint16 width = fStream->ReadWordLEAt(0x04);
+	uint16 height = fStream->ReadWordLEAt(0x06);
 
 	std::cout << "width: " << width << ", height: " << height << std::endl;
 	std::cout << "size: " << compressedSize << std::endl;
@@ -200,7 +200,8 @@ DecodingContext::DecodingContext(Stream* stream)
 	fSavedIndex(0),
 	fSavedByte(0)
 {
-	fMagicWord = fStream->ReadWordLE(); // 0x0A
+	fBCDPacked = fStream->ReadByteAt(0x01) & 1;
+	fMagicWord = fStream->ReadWordLEAt(0x08); // 0x08
 	fMagicByte = std::min(uint8(fMagicWord & 0xFF), uint8(11));
 
 	fBuffer = new uint8[10000];
@@ -211,6 +212,8 @@ DecodingContext::DecodingContext(Stream* stream)
 	fLUT = new uint8[(1 << fMagicByte) * 3];
 
 	_SetupBuffer();
+
+	fStream->Seek(0x0A, SEEK_SET);
 }
 
 
