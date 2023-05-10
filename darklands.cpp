@@ -52,18 +52,27 @@ int main(int argc, char **argv)
 	int32 i = 0;
 	bool quitting = false;
 	SDL_Event event;
+	Bitmap* bitmap = DecodeImage(catalog, i);
 	while (!quitting) {
 		while (SDL_PollEvent(&event) != 0) {
 			switch (event.type) {
 				case SDL_KEYDOWN: {
 					switch (event.key.keysym.sym) {
 						case SDLK_RIGHT:
-							if (i < catalog->CountEntries())
+							if (i < catalog->CountEntries()) {
 								i++;
+								if (bitmap != NULL)
+									bitmap->Release();
+								bitmap = DecodeImage(catalog, i);
+							}
 							break;
 						case SDLK_LEFT:
-							if (i > 0)
+							if (i > 0) {
 								i--;
+								if (bitmap != NULL)
+									bitmap->Release();
+								bitmap = DecodeImage(catalog, i);
+							}
 							break;
 						default:
 							break;
@@ -77,13 +86,11 @@ int main(int argc, char **argv)
 					break;
 			}
 
-			Bitmap* bitmap = DecodeImage(catalog, i);
+
 			if (bitmap != NULL) {
 				GFX::rect screenFrame = GraphicsEngine::Get()->ScreenFrame();
 				GFX::rect bitmapFrame = bitmap->Frame();
 				GraphicsEngine::Get()->BlitToScreen(bitmap, &bitmapFrame, &screenFrame);
-				bitmap->Release();
-				bitmap = NULL;
 			}
 		}
 		GraphicsEngine::Get()->Update();
