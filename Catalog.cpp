@@ -66,6 +66,13 @@ Catalog::SetTo(const std::string& fileName)
 }
 
 
+int32
+Catalog::CountEntries() const
+{
+	return fEntries.size();
+}
+
+
 void
 Catalog::ListEntries() const
 {

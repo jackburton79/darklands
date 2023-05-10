@@ -59,7 +59,8 @@ int main(int argc, char **argv)
 				case SDL_KEYDOWN: {
 					switch (event.key.keysym.sym) {
 						case SDLK_RIGHT:
-							i++;
+							if (i < catalog->CountEntries())
+								i++;
 							bitmap = DecodeImage(catalog, i);
 							break;
 						case SDLK_LEFT:

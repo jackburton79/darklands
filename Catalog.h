@@ -26,6 +26,7 @@ class Catalog {
 public:
 	Catalog(const std::string& fileName);
 	virtual ~Catalog();
+	int32 CountEntries() const;
 	void ListEntries() const;
 	int SetTo(const std::string& fileName);
 	Stream* GetStream(const std::string& name);
