@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 	Catalog* catalog = NULL;
 	Stream* stream = NULL;
 	if (!catalogName.empty()) {
+		std::cout << "Requested catalog " << catalogName << std::endl;
 		catalog = new Catalog(catalogName);
 		catalog->ListEntries();
 	} else
