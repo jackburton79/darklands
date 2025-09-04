@@ -173,7 +173,7 @@ PICImage::Image()
 		}
 	}
 
-	delete line;
+	delete[] line;
 
 	delete context;
 
