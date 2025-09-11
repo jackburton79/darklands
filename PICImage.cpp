@@ -148,8 +148,9 @@ PICImage::Image()
 	uint16 width = fStream->ReadWordLEAt(0x04);
 	uint16 height = fStream->ReadWordLEAt(0x06);
 
-	std::cout << "width: " << width << ", height: " << height << std::endl;
-	std::cout << "size: " << compressedSize << std::endl;
+	std::cout << std::dec;
+	std::cout << "size: " << width << "x" << height << std::endl;
+	std::cout << "compressed length: " << compressedSize << std::endl;
 	std::cout << "BCD packed: " << (bcdPacked ? "true" : "false") << std::endl;
 
 	// Context
@@ -246,10 +247,10 @@ DecodingContext::_SetupBuffer()
 uint16
 DecodingContext::GetLUTIndex(int id)
 {
-    uint16 offset = id * 3;
-    uint16 word = (uint16)((fLUT[offset + 1] << 8) |
-        fLUT[offset]);
-    return word;
+	uint16 offset = id * 3;
+	uint16 word = (uint16)((fLUT[offset + 1] << 8) |
+		fLUT[offset]);
+	return word;
 }
 
 
@@ -263,10 +264,10 @@ DecodingContext::GetLUTValue(int id)
 void
 DecodingContext::SetLUTIndex(int id, int newId)
 {
-    uint16 offset = id * 3;
-    uint16 word = uint16(newId);
-    fLUT[offset + 1] = uint8(word >> 8);
-    fLUT[offset] = uint8(word & 0xff);
+	uint16 offset = id * 3;
+	uint16 word = uint16(newId);
+	fLUT[offset + 1] = uint8(word >> 8);
+	fLUT[offset] = uint8(word & 0xff);
 }
 
 
