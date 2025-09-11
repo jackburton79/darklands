@@ -17,6 +17,7 @@
  * 0x0c 4	timestamp
  * 0x10 4 length
  * 0x14 4 offset
+ * Example: EINFO.CAT (catalog of PIC files)
  */
 
 #include "Catalog.h"
@@ -82,7 +83,7 @@ Catalog::ListEntries() const
 	for (i = fEntries.begin(); i != fEntries.end(); i++) {
 		std::cout << (*i).filename << std::endl;
 		std::cout << "timestamp:" << (*i).timestamp << std::endl;
-		std::cout << "offset: " << (*i).offset << std::endl;
+		std::cout << "offset: " << std::dec << (*i).offset << " (" << std::hex << "0x" << (*i).offset << ")" << std::endl;
 		std::cout << "length: " << (*i).length << std::endl;
 		std::cout << "---" << std::endl;
 	}

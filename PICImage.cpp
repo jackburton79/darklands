@@ -137,6 +137,7 @@ PICImage::Image()
 
 	// 0x00
 	uint16 header = fStream->ReadWordLEAt(0x00);
+	std::cout << "header: " << char(header & 0xFF) << std::endl;
 	if ((header & 0xFF) != 'X') {
 		std::cerr << "GetImage: wrong format!" << std::endl;
 		return nullptr;
