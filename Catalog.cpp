@@ -76,6 +76,24 @@ Catalog::CountEntries() const
 }
 
 
+int
+Catalog::GetEntry(catalog_entry& entry, int32 index)
+{
+	if (index < 0 || index > fStream->ReadWordLEAt(0))
+		return -1;
+
+	fStream->Seek(sizeof(uint16) + index * (12 * sizeof(char) + sizeof(uint32) * 3), SEEK_SET);
+
+	char name[16];
+	fStream->Read(name, 12);
+	name[12] = '\0';
+	entry.filename = name;
+	entry.timestamp = fStream->ReadDWordLE();
+	entry.length = fStream->ReadDWordLE();
+	entry.offset = fStream->ReadDWordLE();
+}
+
+
 void
 Catalog::ListEntries() const
 {
