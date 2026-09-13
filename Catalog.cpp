@@ -31,8 +31,11 @@ Catalog::Catalog(const std::string& fileName)
 	:
 	fStream(NULL)
 {
-	if (SetTo(fileName) != 0)
-		throw "Error";
+	if (SetTo(fileName) != 0) {
+		std::string error;
+		error.append("Error opening ").append(fileName);
+		throw std::runtime_error(error);
+	}
 }
 
 
