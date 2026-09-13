@@ -2,8 +2,11 @@
 # C++ project using SDL graphics library
 
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -Wextra -O2
-CPPFLAGS = -I. -Ilibjgame
+CXXFLAGS = -std=c++11 -Wall -O2
+CPPFLAGS = -I. -Ilibjgame \
+	-Ilibjgame/graphics -Ilibjgame/audio \
+	-Ilibjgame/support -Ilibjgame/timers \
+	-Ilibjgame/streams
 
 # SDL flags
 SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
@@ -16,7 +19,7 @@ TARGET = darklands
 
 # Dependencies from libjgame
 LIBJGAME_DIR = libjgame
-LIBJGAME_LIB = $(LIBJGAME_DIR)/libjgame.a
+LIBJGAME_LIB = $(LIBJGAME_DIR)/lib/libjgame.a
 
 # Final target
 EXECUTABLE = $(TARGET)
