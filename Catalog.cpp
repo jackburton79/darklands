@@ -91,6 +91,8 @@ Catalog::GetEntry(catalog_entry& entry, int32 index)
 	entry.timestamp = fStream->ReadDWordLE();
 	entry.length = fStream->ReadDWordLE();
 	entry.offset = fStream->ReadDWordLE();
+
+	return 0;
 }
 
 
