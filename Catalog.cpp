@@ -49,7 +49,7 @@ int
 Catalog::SetTo(const std::string& fileName)
 {
 	try {
-		fStream = new FileStream(fileName.c_str(), FileStream::READ_ONLY | FileStream::IGNORE_CASE);
+		fStream = new FileStream(fileName.c_str(), FileStream::READ_ONLY);
 	} catch (...) {
 		std::cerr << "Cannot open " << fileName << std::endl;
 		return -1;
