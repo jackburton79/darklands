@@ -19,6 +19,10 @@
 class Bitmap;
 class Stream;
 
+namespace GFX {
+    struct Palette;
+};
+
 /**
    The constructor parses and validates the PIC header; it throws
    std::runtime_error if the stream does not contain a valid one.
@@ -37,10 +41,11 @@ public:
     uint16			Width() const	{ return fWidth; }
     uint16			Height() const	{ return fHeight; }
 
-    Bitmap*			Image() const;
+    Bitmap*			Image(const GFX::Palette* palette = nullptr) const;
 
     // Convenience: parse + decode in one call.
-    static Bitmap*	Decode(Stream* stream);
+    static Bitmap*	Decode(Stream* stream,
+                        const GFX::Palette* palette = nullptr);
 
 private:
     Stream*			fStream;

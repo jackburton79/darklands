@@ -18,7 +18,7 @@ static const size_t kHeaderSize	= 0x0A;
 static const size_t kStackSize	= 10000;
 
 static GFX::Palette
-MakeEGAPalette()
+EGAPalette()
 {
     // https://moddingwiki.shikadi.net/wiki/EGA_Palette
     static const uint8 kEGA[16][3] = {
@@ -117,23 +117,20 @@ PICImage::~PICImage()
 
 /* static */
 Bitmap*
-PICImage::Decode(Stream* stream)
+PICImage::Decode(Stream* stream, const GFX::Palette* palette)
 {
     PICImage image(stream);
-    return image.Image();
+    return image.Image(palette);
 }
 
 
 Bitmap*
-PICImage::Image() const
+PICImage::Image(const GFX::Palette* palette) const
 {
     const size_t streamSize = fStream->Size();
     if (streamSize < kHeaderSize)
         throw std::runtime_error("PICImage: stream too small for header");
 
-    // Compressed data = everything after the 10-byte header. The decoder is
-    // output-driven (it stops after Height() lines), so any bytes between
-    // the declared size and end of stream are simply never read.
     const size_t dataSize = streamSize - kHeaderSize;
 
     std::vector<uint8> compressed(dataSize);
@@ -146,15 +143,21 @@ PICImage::Image() const
 
     Bitmap* bitmap = new Bitmap(fWidth, fHeight, 8);
     try {
-        // TODO: use the embedded palette when one is present.
-        const GFX::Palette palette = MakeEGAPalette();
-        bitmap->SetColors(palette.colors, 0, 16);
+        // Fallback for images without an external palette (EGA-era UI art?):
+        // the standard 16-color EGA palette.
+        GFX::Palette fallback;
+        if (palette == NULL) {
+            fallback = EGAPalette();
+            palette = &fallback;
+        }
+        bitmap->SetColors(palette->colors, 0, 256);
 
         std::vector<uint8> line(fWidth);
         for (uint16 y = 0; y < fHeight; y++) {
             context.DecodeNextBytes(line.data(), fWidth);
             for (uint16 x = 0; x < fWidth; x++)
-                bitmap->PutPixel(x, y, line[x] % 16);
+                bitmap->PutPixel(x, y, line[x]);	// NO % 16 — indices are
+                                                    // true palette indices!
         }
     } catch (...) {
         bitmap->Release();
