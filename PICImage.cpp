@@ -209,8 +209,16 @@ DecodingContext::~DecodingContext()
 uint16
 DecodingContext::_NextWord()
 {
-    if (fDataOffset + 2 > fSize)
-        throw std::runtime_error("PICImage: unexpected end of compressed data");
+    if (fDataOffset + 2 > fSize) {
+        if (fDataOffset + 1 != fSize)
+            throw std::runtime_error("PICImage: unexpected end of compressed data");
+        // Odd-sized stream: the final word is a single byte.
+        // Zero-fill the missing byte. (Variant A: existing byte = low byte)
+        uint16 result = uint16(fData[fDataOffset]);
+        fDataOffset = fSize;	// consume it; any further read still throws
+        return result;
+    }
+
     uint16 result = uint16(fData[fDataOffset] | (fData[fDataOffset + 1] << 8));
     fDataOffset += 2;
     return result;
