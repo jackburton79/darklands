@@ -8,15 +8,15 @@ References:
 
 - File formats overview: <https://wendigo.online-siesta.com/darklands/file_formats/up-to-date/>
 - PIC decompression algorithm: <https://github.com/ogamespec/PicDecoder>
-- EGA palette values: <https://moddingwiki.shikadi.net/wiki/EGA_Palette>
 
 Conventions:
 
 - All multi-byte integers are **little-endian**.
 - Offsets are hexadecimal, relative to the start of the file/resource.
 - Facts marked **verified** were confirmed against original game data
-  (all 60 entries of `EINFO.CAT`) and by visual comparison with the
-  original game. Anything else is marked *inferred* or *unverified*.
+  (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`) and by visual
+  comparison with rendered output. Anything else is marked *inferred*
+  or *unverified*.
 
 ## Catalog archives (`.CAT`)
 
@@ -117,9 +117,51 @@ been found yet.
 
 ### Palette
 
-- Images are 8-bit indexed; color indexes are masked to 0..15 and map to
-  the standard 16-color EGA palette (see link above).
-- Whether any PIC files embed a custom palette is an open question.
+- Images are 8-bit **indexed**. The indices are full 8-bit palette
+  indices — they are **not** masked to 0..15 and do **not** refer to the
+  standard EGA palette. (An earlier revision of this document — and the
+  original viewer, whose `% 16` masked the problem — incorrectly assumed
+  16-color EGA indexing; the wrong assumption produces plausible-looking
+  but wrongly colored images.)
+- The actual colors come from **external palette files** — e.g. enemy
+  graphics index into the 256-color palette assembled from
+  `ENEMYPAL.DAT` (see next section). Observed index ranges in one
+  sprite: 0, 33–44, 72–73; each range falls inside a palette chunk's
+  16-entry slice.
+- Index 0 is most likely the **transparency/color key**: it typically
+  accounts for ~2/3 of a sprite's pixels (the uniform background).
+  *inferred*
+- Whether any PIC files embed a palette is an open question.
+
+## Palette chunk files (`ENEMYPAL.DAT`, probably `BKGNDPAL.DAT`)
+
+Arrays of small palette chunks, each patching a 16-entry slice of a
+shared 256-color palette. See `Palette.cpp` for a reference
+implementation.
+
+    chunk (relative offsets), stride 53 bytes:
+    +0x00   1     start offset (byte): divide by 3 to obtain the palette
+                  index of the chunk's first entry
+                  (observed: 0x60 -> index 32, 0xC0 -> index 64)
+    +0x01   48    16 RGB triplets; components are 6-bit (0..63)
+    +0x31   4     unknown purpose
+
+- **File size: 3763 = 71 × 53** (**verified**; both factors prime, so the
+  factorization is unique). The chunk count 71 = 0x47 matches the public
+  format reference. Note that the same reference states a 52-byte chunk
+  (16 triplets + 3 tail bytes) — the file size only works with a
+  53-byte stride, i.e. a **4-byte** trailing field.
+- 6-bit components are standard VGA DAC values; scale to 8 bits with
+  `(value << 2) | (value >> 4)` (0 -> 0, 63 -> 255).
+- Chunk slices match observed image indices: one sample sprite used
+  indices 33–44 and 72–73, covered by chunks starting at index 32
+  (`0x60`) and 64 (`0xC0`) respectively. **verified** for one sample.
+- Applying **all** chunks in file order produces plausible enemy
+  graphics for the whole bestiary catalog; multiple chunks may claim the
+  same palette range with different colors, so per-enemy chunk selection
+  must happen elsewhere — probably the `.ENM` enemy files. *unresolved*
+- `BKGNDPAL.DAT` presumably follows the same layout (*unverified* — if
+  its size is not a multiple of 53, it does not).
 
 ## Open questions
 
@@ -129,6 +171,12 @@ been found yet.
       in the game data? In which files?
 - [ ] `.PIC`: do any images embed a palette? If so, where in the file?
 - [ ] `.PIC`: is the high byte of the magic word at 0x08 always 0x00?
-- [ ] `.PIC`: can pre-mask decoded bytes ever exceed 15 in non-BCD images?
+- [ ] Palettes: which palette chunk(s) apply to a given enemy, and where
+      is that mapping stored? (probably `.ENM`)
+- [ ] Palettes: does `BKGNDPAL.DAT` use the same 53-byte chunk layout?
+- [ ] Palettes: is index 0 always the color key, across all resource
+      types?
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
       `DARKLAND.MSG`, `.MAP`/`.LOC`/`.CTY`, ...
+
+
