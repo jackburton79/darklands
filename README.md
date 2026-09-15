@@ -1,4 +1,3 @@
-````markdown
 # OpenDarklands (open-source reimplementation)
 
 A modern reimplementation of MicroProse's classic 1992 RPG **Darklands**,
@@ -81,6 +80,10 @@ PICImage.*        Decoder for the game's .PIC image format
 The repository also use, as a git submodule, [libjgame](https://github.com/jackburton79/libjgame), a game library by the same author
 that provides streams, graphics, and audio support (it has its own README
 and license). It is built automatically by the top-level Makefile.
+
+## Documentation
+
+Reverse-engineered data format notes live in docs/formats.md.
 
 ## Legal
 
