@@ -10,14 +10,26 @@
 #include "PICImage.h"
 
 
-/*static void
-SetBitmap(Bitmap*& oldBitmap, Bitmap* newBitmap)
+static void
+ExtractAll(const Catalog& catalog, const std::string& outputDir)
 {
-    if (oldBitmap != NULL)
-        oldBitmap->Release();
-    oldBitmap = newBitmap;
-}*/
-
+    for (int32 i = 0; i < catalog.CountEntries(); i++) {
+        Stream* stream = NULL;
+        try {
+            const catalog_entry& entry = catalog.EntryAt(i);
+            stream = catalog.GetStreamAt(uint32(i));
+            PICImage image(stream);
+            Bitmap* bitmap = image.Image();
+            const std::string name = outputDir + "/" + entry.filename + ".bmp";
+            bitmap->Save(name.c_str());
+            bitmap->Release();
+            std::cout << entry.filename << " -> " << name << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "entry " << i << ": " << e.what() << std::endl;
+        }
+        delete stream;
+    }
+}
 
 static Bitmap*
 DecodeImage(const Catalog* catalog, uint32 index)
@@ -36,9 +48,14 @@ DecodeImage(const Catalog* catalog, uint32 index)
 
 int main(int argc, char **argv)
 {
+	if (argc > 3 && std::string(argv[1]) == "--extract") {
+		Catalog catalog(argv[2]);
+		ExtractAll(catalog, argv[3]); // output dir must exist
+		return 0;
+	}
+
 	std::string catalogName;
 	std::string fileName;
-	std::cout << "argc: " << argc << std::endl;
 	if (argc > 1) {
 		catalogName = argv[1];
 	}
@@ -48,17 +65,11 @@ int main(int argc, char **argv)
 	if (!catalogName.empty()) {
 		std::cout << "Requested catalog " << catalogName << std::endl;
 		catalog = new Catalog(catalogName);
-		//catalog->ListEntries();
 	} else {
 		std::cout << "TODO: Usage: " << std::endl;
 		return 1;
 	}
 
-	for (int32 i = 0; i < catalog->CountEntries(); i++) {
-    	Stream* s = catalog->GetStreamAt(i);
-    	std::cerr << s->Size() << "\t" << s->ReadWordLEAt(0x02) << std::endl;
-    	delete s;
-	}
 	if (!GraphicsEngine::Initialize()) {
 		std::cerr << "Cannot initialize graphics engine!" << std::endl;
 		exit(-1);
