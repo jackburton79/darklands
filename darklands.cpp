@@ -10,19 +10,29 @@
 #include "PICImage.h"
 
 
-static
-Bitmap*
-DecodeImage(Catalog* catalog, uint32 index)
+/*static void
+SetBitmap(Bitmap*& oldBitmap, Bitmap* newBitmap)
 {
-	try {
-		Stream* stream = catalog->GetStreamAt(index);
-		PICImage decoder(stream);
-		return decoder.Image();
-	} catch (...) {
-		return NULL;
-	}
-}
+    if (oldBitmap != NULL)
+        oldBitmap->Release();
+    oldBitmap = newBitmap;
+}*/
 
+
+static Bitmap*
+DecodeImage(const Catalog* catalog, uint32 index)
+{
+    Stream* stream = NULL;
+    Bitmap* image = NULL;
+    try {
+        stream = catalog->GetStreamAt(index);
+        image = PICImage::Decode(stream);
+    } catch (const std::exception& e) {
+        std::cerr << "Cannot decode entry " << index << ": " << e.what() << std::endl;
+    }
+    delete stream;	// sub-stream: delete before the Catalog dies
+    return image;
+}
 
 int main(int argc, char **argv)
 {
@@ -38,10 +48,17 @@ int main(int argc, char **argv)
 	if (!catalogName.empty()) {
 		std::cout << "Requested catalog " << catalogName << std::endl;
 		catalog = new Catalog(catalogName);
-		catalog->ListEntries();
-	} else
-		exit(-1);
+		//catalog->ListEntries();
+	} else {
+		std::cout << "TODO: Usage: " << std::endl;
+		return 1;
+	}
 
+	for (int32 i = 0; i < catalog->CountEntries(); i++) {
+    	Stream* s = catalog->GetStreamAt(i);
+    	std::cerr << s->Size() << "\t" << s->ReadWordLEAt(0x02) << std::endl;
+    	delete s;
+	}
 	if (!GraphicsEngine::Initialize()) {
 		std::cerr << "Cannot initialize graphics engine!" << std::endl;
 		exit(-1);
@@ -60,7 +77,7 @@ int main(int argc, char **argv)
 				case SDL_KEYDOWN: {
 					switch (event.key.keysym.sym) {
 						case SDLK_RIGHT:
-							if (i < catalog->CountEntries()) {
+							if (i + 1 < catalog->CountEntries()) {
 								i++;
 								if (bitmap != NULL)
 									bitmap->Release();
@@ -87,13 +104,14 @@ int main(int argc, char **argv)
 					break;
 			}
 
-
-			if (bitmap != NULL) {
-				GFX::rect screenFrame = GraphicsEngine::Get()->ScreenFrame();
-				GFX::rect bitmapFrame = bitmap->Frame();
-				GraphicsEngine::Get()->BlitToScreen(bitmap, &bitmapFrame, &screenFrame);
-			}
 		}
+
+		if (bitmap != NULL) {
+			GFX::rect screenFrame = GraphicsEngine::Get()->ScreenFrame();
+			GFX::rect bitmapFrame = bitmap->Frame();
+			GraphicsEngine::Get()->BlitToScreen(bitmap, &bitmapFrame, &screenFrame);
+		}
+
 		GraphicsEngine::Get()->Update();
 		SDL_Delay(100);
 	}

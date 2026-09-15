@@ -1,8 +1,8 @@
 /*
- * PicDecoder.cpp
- *
- *  Created on: 27 apr 2023
- *      Author: Stefano Ceccherini
+ * PICImage.cpp
+ * Decoder for Darklands .PIC images.
+ * Compression algorithm reference:
+ *   https://github.com/ogamespec/PicDecoder
  */
 
 #include "PICImage.h"
@@ -10,97 +10,103 @@
 #include "Bitmap.h"
 #include "Stream.h"
 
-#include <cassert>
-#include <iostream>
+#include <algorithm>
+#include <stdexcept>
+#include <vector>
 
-// https://github.com/ogamespec/PicDecoder/tree/master/PicDecode
-//
-// PIC file:
-// first 11 bytes are always the same, except for byte at 0x02 and 0x03
-// example E05SWST.PIC:
-// decimal: 88  48 169   0  29   0  30   0  11   0  32
-// E03CLST.PIC:
-// decimal: 88  48 148   0  29   0  30   0  11   0  32
+static const size_t kHeaderSize	= 0x0A;
+static const size_t kStackSize	= 10000;
 
-// 0x00 word, always "X0"
-// 0x02 unsigned, word, size of compressed image
-// 0x04 unsigned word, image width
-// 0x06 unsigned word, image height
-// 0x07 ??? always 0
-// 0x08 ??? always 11
-// 0x09 ??? always 0
-// 0x10 ??? always 32
+static GFX::Palette
+MakeEGAPalette()
+{
+    // https://moddingwiki.shikadi.net/wiki/EGA_Palette
+    static const uint8 kEGA[16][3] = {
+        {   0,   0,   0 }, {   0,   0, 170 }, {   0, 170,   0 }, {   0, 170, 170 },
+        { 170,   0,   0 }, { 170,   0, 170 }, { 170,  85,   0 }, { 170, 170, 170 },
+        {  85,  85,  85 }, {  85,  85, 255 }, {  85, 255,  85 }, {  85, 255, 255 },
+        { 255,  85,  85 }, { 255,  85, 255 }, { 255, 255,  85 }, { 255, 255, 255 }
+    };
+    GFX::Palette palette;
+    for (int i = 0; i < 16; i++)
+        palette.colors[i] = GFX::Color{ kEGA[i][0], kEGA[i][1], kEGA[i][2], 0 };
+    return palette;
+}
 
-
-static GFX::Palette* sEGADefaultPalette;
 
 class DecodingContext {
 public:
-	DecodingContext(Stream* stream);
-	~DecodingContext();
+    DecodingContext(const uint8* data, size_t size, bool bcdPacked,
+        uint16 magicWord);
+    ~DecodingContext();
 
-	uint16 GetLUTIndex(int id);
-	uint8 GetLUTValue(int id);
-	void SetLUTIndex(int id, int newId);
-	void SetLUTValue(int id, uint8 value);
-
-	void DecodeNextBytes(uint8* line, uint16 length);
-	uint8 NextRun();
-
-	void PushValue(uint8 value);
-	uint8 PopValue();
+    void			DecodeNextBytes(uint8* line, uint16 length);
 
 private:
-	void _SetupBuffer();
+    uint16			_NextWord();
+    uint8			NextRun();
+    void			_SetupBuffer();
+    void			PushValue(uint8 value);
+    uint8			PopValue();
+    uint16			GetLUTIndex(int id) const;
+    uint8			GetLUTValue(int id) const;
+    void			SetLUTIndex(int id, int newId);
+    void			SetLUTValue(int id, uint8 value);
 
-	Stream* fStream;
-	bool fBCDPacked;
-	int fRepeatCount;
-	uint8 fRepeatByte;
-	uint8* fBuffer;
-	int fBufferOffset;
-
-	uint16 fMagicWord;
-	uint8 fMagicByte;
-	int fBitPointer;
-	uint8* fLUT;
-
-	int fOnesCounter;
-	uint32 fBitMask;
-	int32 fDWordUnk;
-
-    int fSavedIndex;
-    uint8 fSavedByte;
-
+    const uint8*	fData;
+    size_t			fSize;
+    size_t			fDataOffset;
+    bool			fBCDPacked;
+    int				fRepeatCount;
+    uint8			fRepeatByte;
+    uint8*			fBuffer;
+    int				fBufferOffset;
+    uint16			fMagicWord;
+    uint8			fMagicByte;
+    int				fBitPointer;
+    uint8*			fLUT;
+    int				fOnesCounter;
+    uint32			fBitMask;
+    int32			fDWordUnk;
+    int				fSavedIndex;
+    uint8			fSavedByte;
 };
 
 
-// PicDecoder
+// #pragma mark - PICImage
+
+
 PICImage::PICImage(Stream* stream)
-	:
-	fStream(stream)
+    :
+    fStream(stream),
+    fCompressedSize(0),
+    fWidth(0),
+    fHeight(0),
+    fMagicWord(0),
+    fBCDPacked(false)
 {
-	// EGA palette taken from here:
-	// https://moddingwiki.shikadi.net/wiki/EGA_Palette
-	if (sEGADefaultPalette == NULL) {
-		sEGADefaultPalette = new GFX::Palette;
-		sEGADefaultPalette->colors[0] = GFX::Color{0, 0, 0, 0}; // black
-		sEGADefaultPalette->colors[1] = GFX::Color{0, 0, 170, 0}; // blue
-		sEGADefaultPalette->colors[2] = GFX::Color{0, 170, 0, 0}; // green
-		sEGADefaultPalette->colors[3] = GFX::Color{0, 170, 170, 0}; // cyan
-		sEGADefaultPalette->colors[4] = GFX::Color{170, 0, 0, 0}; // red
-		sEGADefaultPalette->colors[5] = GFX::Color{170, 0, 170, 0}; // magenta
-		sEGADefaultPalette->colors[6] = GFX::Color{170, 85, 0, 0}; // yellow / brown
-		sEGADefaultPalette->colors[7] = GFX::Color{170, 170, 170, 0}; // white / light gray
-		sEGADefaultPalette->colors[8] = GFX::Color{85, 85, 85, 0}; // dark gray / bright black
-		sEGADefaultPalette->colors[9] = GFX::Color{85, 85, 255, 0}; // bright blue
-		sEGADefaultPalette->colors[10] = GFX::Color{85, 255, 85, 0}; // bright green
-		sEGADefaultPalette->colors[11] = GFX::Color{85, 255, 255, 0}; // bright cyan
-		sEGADefaultPalette->colors[12] = GFX::Color{255, 85, 85, 0}; // bright red
-		sEGADefaultPalette->colors[13] = GFX::Color{255, 85, 255, 0}; // bright magenta
-		sEGADefaultPalette->colors[14] = GFX::Color{255, 255, 85, 0}; // bright yellow
-		sEGADefaultPalette->colors[15] = GFX::Color{255, 255, 255, 0}; // bright white
-	}
+    if (stream == NULL)
+        throw std::runtime_error("PICImage: NULL stream");
+
+    uint16 magic = stream->ReadWordLEAt(0x00);
+    if ((magic & 0xFF) != 'X')
+        throw std::runtime_error("PICImage: not a PIC file");
+    fBCDPacked = (magic >> 8) & 1;
+
+    fCompressedSize = stream->ReadWordLEAt(0x02);
+    fWidth			= stream->ReadWordLEAt(0x04);
+    fHeight			= stream->ReadWordLEAt(0x06);
+    fMagicWord		= stream->ReadWordLEAt(0x08);
+
+    if (fWidth == 0 || fHeight == 0 || fCompressedSize == 0)
+        throw std::runtime_error("PICImage: invalid header");
+    if (stream->Size() < kHeaderSize)
+        throw std::runtime_error("PICImage: stream too small for header");
+
+    // Field 0x02 counts all bytes from 0x04 to the end of the image data:
+    // stream size == fCompressedSize + 4 (verified across EINFO.CAT).
+    if (size_t(fCompressedSize) + 4 > stream->Size())
+        throw std::runtime_error("PICImage: declared size exceeds stream size");
 }
 
 
@@ -109,302 +115,265 @@ PICImage::~PICImage()
 }
 
 
-uint16
-PICImage::Width() const
+/* static */
+Bitmap*
+PICImage::Decode(Stream* stream)
 {
-	uint16 width;
-	fStream->ReadAt(0x06, &width, sizeof(width)); // 0x06
-	return width;
-
-}
-
-
-uint16
-PICImage::Height() const
-{
-	// 0x08
-	uint16 height;
-	fStream->ReadAt(0x08, &height, sizeof(height));
-	return height;
+    PICImage image(stream);
+    return image.Image();
 }
 
 
 Bitmap*
-PICImage::Image()
+PICImage::Image() const
 {
-	off_t initialPos = fStream->Position();
-	fStream->Seek(0, SEEK_SET);
+    const size_t streamSize = fStream->Size();
+    if (streamSize < kHeaderSize)
+        throw std::runtime_error("PICImage: stream too small for header");
 
-	// 0x00
-	uint16 header = fStream->ReadWordLEAt(0x00);
-	std::cout << "header: " << char(header & 0xFF) << std::endl;
-	if ((header & 0xFF) == 'X') {
-		std::cout << "PIC IMAGE" << std::endl;
-	} else {
-		std::cerr << "GetImage: wrong format!" << std::endl;
-		return nullptr;
-	}
+    // Compressed data = everything after the 10-byte header. The decoder is
+    // output-driven (it stops after Height() lines), so any bytes between
+    // the declared size and end of stream are simply never read.
+    const size_t dataSize = streamSize - kHeaderSize;
 
-	bool bcdPacked = (header >> 8) & 1;
+    std::vector<uint8> compressed(dataSize);
+    if (fStream->ReadAt(kHeaderSize, compressed.data(), dataSize)
+            != (ssize_t)dataSize) {
+        throw std::runtime_error("PICImage: truncated image data");
+    }
 
-	uint16 compressedSize = fStream->ReadWordLEAt(0x02);
-	uint16 width = fStream->ReadWordLEAt(0x04);
-	uint16 height = fStream->ReadWordLEAt(0x06);
+    DecodingContext context(compressed.data(), dataSize, fBCDPacked, fMagicWord);
 
-	std::cout << std::dec;
-	std::cout << "size: " << width << "x" << height << std::endl;
-	std::cout << "compressed length: " << compressedSize << std::endl;
-	std::cout << "BCD packed: " << (bcdPacked ? "true" : "false") << std::endl;
+    Bitmap* bitmap = new Bitmap(fWidth, fHeight, 8);
+    try {
+        // TODO: use the embedded palette when one is present.
+        const GFX::Palette palette = MakeEGAPalette();
+        bitmap->SetColors(palette.colors, 0, 16);
 
-	// Context
-	DecodingContext* context = new DecodingContext(fStream);
-
-	// TODO: Check if there is an embedded palette,
-	// otherwise use the default
-	Bitmap* bitmap = new Bitmap(width, height, 8);
-	uint8* line = new uint8[width];
-	if (true)
-		bitmap->SetColors(sEGADefaultPalette->colors, 0, 15);
-
-	for (auto y = 0; y < height; y++) {
-		context->DecodeNextBytes(line, width);
-		for (auto x = 0; x < width; x++) {
-			uint8 value = line[x];
-			value = value % 16;
-			if (value > 15)
-				std::cout << "value:" << (int)value << std::endl;
-			bitmap->PutPixel(x, y, value);
-		}
-	}
-
-	delete[] line;
-
-	delete context;
-
-	// Return to previous position
-	fStream->Seek(initialPos, SEEK_SET);
-
-	return bitmap;
+        std::vector<uint8> line(fWidth);
+        for (uint16 y = 0; y < fHeight; y++) {
+            context.DecodeNextBytes(line.data(), fWidth);
+            for (uint16 x = 0; x < fWidth; x++)
+                bitmap->PutPixel(x, y, line[x] % 16);
+        }
+    } catch (...) {
+        bitmap->Release();
+        throw;
+    }
+    return bitmap;
 }
 
 
-// DecodingContext
-DecodingContext::DecodingContext(Stream* stream)
-	:
-	fStream(stream),
-	fBCDPacked(false),
-	fRepeatCount(0),
-	fRepeatByte(0),
-	fBuffer(nullptr),
-	fBufferOffset(0),
-	fMagicWord(0),
-	fMagicByte(0),
-	fBitPointer(8),
-	fLUT(nullptr),
-	fSavedIndex(0),
-	fSavedByte(0)
+// #pragma mark - DecodingContext
+// LZW-like adaptive decoder as reverse-engineered from the original
+// executable. The LUT/bit logic is delicate: change it only with reference
+// images to compare against.
+
+
+DecodingContext::DecodingContext(const uint8* data, size_t size,
+        bool bcdPacked, uint16 magicWord)
+    :
+    fData(data),
+    fSize(size),
+    fDataOffset(0),
+    fBCDPacked(bcdPacked),
+    fRepeatCount(0),
+    fRepeatByte(0),
+    fBuffer(new uint8[kStackSize]),
+    fBufferOffset(-1),			// "stack empty"; was 0: the first NextRun()
+                                // popped uninitialized memory
+    fMagicWord(magicWord),
+    fMagicByte(0),
+    fBitPointer(8),
+    fLUT(NULL),
+    fOnesCounter(9),
+    fBitMask(0x1FF),
+    fDWordUnk(0x100),
+    fSavedIndex(0),
+    fSavedByte(0)
 {
-	fBCDPacked = fStream->ReadByteAt(0x01) & 1;
-	fMagicWord = fStream->ReadWordLEAt(0x08); // 0x08
-	fMagicByte = std::min(uint8(fMagicWord & 0xFF), uint8(11));
-
-	fBuffer = new uint8[10000];
-
-	fMagicWord &= 0xff00;
-    fMagicWord |= fMagicByte;
-	
-	fLUT = new uint8[(1 << fMagicByte) * 3];
-
-	_SetupBuffer();
-
-	fStream->Seek(0x0A, SEEK_SET);
+    fMagicByte = std::min(uint8(fMagicWord & 0xFF), uint8(11));
+    fMagicWord = (fMagicWord & 0xff00) | fMagicByte;
+    fLUT = new uint8[size_t(1 << fMagicByte) * 3];
+    _SetupBuffer();
 }
 
 
 DecodingContext::~DecodingContext()
 {
-	delete[] fBuffer;
-	delete[] fLUT;
+    delete[] fLUT;
+    delete[] fBuffer;
+}
+
+
+uint16
+DecodingContext::_NextWord()
+{
+    if (fDataOffset + 2 > fSize)
+        throw std::runtime_error("PICImage: unexpected end of compressed data");
+    uint16 result = uint16(fData[fDataOffset] | (fData[fDataOffset + 1] << 8));
+    fDataOffset += 2;
+    return result;
 }
 
 
 void
 DecodingContext::_SetupBuffer()
 {
-	fOnesCounter = 9;
-	fBitMask = 0x1FF;
-	fDWordUnk = 0x100;
+    fOnesCounter = 9;
+    fBitMask = 0x1FF;
+    fDWordUnk = 0x100;
 
-	// Fill FF FF 00 pattern
-	for (auto i = 0; i < (1 << fMagicByte); i++) {
-		SetLUTIndex(i, 0xffff);
-	}
+    // Fill FF FF 00 pattern
+    for (int i = 0; i < (1 << fMagicByte); i++)
+        SetLUTIndex(i, 0xffff);
 
-	// Fix first 256 entries by FF FF xx pattern (where xx = 00 ... FF)
-	for (auto i = 0; i < 0x100; i++) {
-		SetLUTValue(i, uint8(i));
-	}
+    // Fix first 256 entries: FF FF xx (xx = 00 ... FF)
+    for (int i = 0; i < 0x100; i++)
+        SetLUTValue(i, uint8(i));
 }
 
 
 uint16
-DecodingContext::GetLUTIndex(int id)
+DecodingContext::GetLUTIndex(int id) const
 {
-	uint16 offset = id * 3;
-	uint16 word = (uint16)((fLUT[offset + 1] << 8) |
-		fLUT[offset]);
-	return word;
+    size_t offset = size_t(id) * 3;
+    return uint16((fLUT[offset + 1] << 8) | fLUT[offset]);
 }
 
 
 uint8
-DecodingContext::GetLUTValue(int id)
+DecodingContext::GetLUTValue(int id) const
 {
-	return fLUT[id * 3 + 2];
+    return fLUT[size_t(id) * 3 + 2];
 }
 
 
 void
 DecodingContext::SetLUTIndex(int id, int newId)
 {
-	uint16 offset = id * 3;
-	uint16 word = uint16(newId);
-	fLUT[offset + 1] = uint8(word >> 8);
-	fLUT[offset] = uint8(word & 0xff);
+    size_t offset = size_t(id) * 3;
+    uint16 word = uint16(newId);
+    fLUT[offset + 1] = uint8(word >> 8);
+    fLUT[offset] = uint8(word & 0xff);
 }
 
 
 void
 DecodingContext::SetLUTValue(int id, uint8 value)
 {
-	fLUT[id * 3 + 2] = value;
+    fLUT[size_t(id) * 3 + 2] = value;
 }
 
 
 void
 DecodingContext::DecodeNextBytes(uint8* line, uint16 length)
 {
-	bool debug = false;
-	int opcount;
-	if (fBCDPacked) {
-		opcount = (length + 1) / 2;
-	} else {
-		opcount = length;
-	}
+    int opCount = fBCDPacked ? (length + 1) / 2 : length;
 
-	for (auto i = 0; i < opcount; i++) {
-		uint8 value;
-		/// Fetch next byte
-		if (fRepeatCount != 0) {
-			value = fRepeatByte;
-			fRepeatCount--;
-		} else {
-			value = NextRun();
+    for (int i = 0; i < opCount; i++) {
+        uint8 value;
+        // Fetch next byte (RLE layer on top of the LZW-like decoder)
+        if (fRepeatCount != 0) {
+            value = fRepeatByte;
+            fRepeatCount--;
+        } else {
+            value = NextRun();
+            if (value == 0x90) {
+                value = NextRun();
+                if (value != 0) {
+                    fRepeatCount = value - 1;
+                    value = fRepeatByte;
+                    fRepeatCount--;
+                } else {
+                    fRepeatByte = value = 0x90;
+                }
+            } else {
+                fRepeatByte = value;
+            }
+        }
 
-			if (value == 0x90) {
-				value = NextRun();
-				if (value != 0) {
-					fRepeatCount = value - 1;
-					value = fRepeatByte;
-					fRepeatCount--;
-				} else {
-					fRepeatByte = value = 0x90;
-				}
-			} else {
-				fRepeatByte = value;
-			}
-		}
-
-		// Output byte
-		if (fBCDPacked) {
-			/// Unpack BCD as uint16
-			uint8 hiPart = uint8(value >> 4);
-			uint8 lowPart = uint8(value & 0xf);
-			line[2 * i + 1] = hiPart;
-			line[2 * i] = lowPart;
-			if (debug) {
-				std::cout << std::hex;
-				std::cout << lowPart << " ";
-				std::cout << hiPart << " ";
-				std::flush(std::cout);
-			}
-		} else {
-			line[i] = value;
-			if (debug) {
-				std::cout << value << " ";
-				std::flush(std::cout);
-			}
-		}
-	}
-	if (debug)
-		std::cout << std::endl;
+        // Output byte
+        if (fBCDPacked) {
+            line[2 * i] = value & 0xf;
+            if (2 * i + 1 < length)		// guard against odd widths
+                line[2 * i + 1] = value >> 4;
+        } else {
+            line[i] = value;
+        }
+    }
 }
 
 
 uint8
 DecodingContext::NextRun()
 {
-	if (fBufferOffset == -1) {
-		int b = fMagicWord >> (16 - fBitPointer);
-		int c = fBitPointer;
-		// Loop 1
-		while (c < fOnesCounter) {
-			fMagicWord = fStream->ReadWordLE();
-			b |= (fMagicWord << c);
-			c += 16;
-		}
+    if (fBufferOffset == -1) {
+        int b = fMagicWord >> (16 - fBitPointer);
+        int c = fBitPointer;
 
-		// After Loop 1
-		fBitPointer = c - fOnesCounter;
-		int oldIndex = int(b & fBitMask);
-		int newIndex = oldIndex;
-		if (oldIndex >= fDWordUnk) {
-			newIndex = fDWordUnk;
-			oldIndex = fSavedIndex;
-			PushValue(fSavedByte);
-		}
+        // Loop 1: refill the bit buffer
+        while (c < fOnesCounter) {
+            fMagicWord = _NextWord();
+            b |= (fMagicWord << c);
+            c += 16;
+        }
 
-		// Loop 2
-		while (true) {
-			int index = GetLUTIndex(oldIndex) + 1;
-			if (index != 0x10000) {
-				PushValue(GetLUTValue(oldIndex));
-				oldIndex = index - 1;
-			} else
-				break;
-		}
-		// After Loop 2
-		fSavedByte = GetLUTValue(oldIndex);
-		PushValue(fSavedByte);
-		SetLUTValue(fDWordUnk, fSavedByte);
-		SetLUTIndex(fDWordUnk, fSavedIndex);
-		fDWordUnk++;
-		if (fDWordUnk > (int)fBitMask) {
-			fOnesCounter++;
-			fBitMask = (fBitMask << 1) | 1;
-		}
-		if (fOnesCounter > fMagicByte) {
-			_SetupBuffer();
-			newIndex = 0;
-		}
-		fSavedIndex = newIndex;
-	}
+        // After loop 1
+        fBitPointer = c - fOnesCounter;
+        int oldIndex = int(b & fBitMask);
+        int newIndex = oldIndex;
+        if (oldIndex >= fDWordUnk) {
+            // KwKwK case
+            newIndex = fDWordUnk;
+            oldIndex = fSavedIndex;
+            PushValue(fSavedByte);
+        }
 
-	return PopValue();
+        // Loop 2: walk the LUT chain
+        while (true) {
+            int index = GetLUTIndex(oldIndex) + 1;
+            if (index != 0x10000) {
+                PushValue(GetLUTValue(oldIndex));
+                oldIndex = index - 1;
+            } else
+                break;
+        }
+
+        // After loop 2
+        fSavedByte = GetLUTValue(oldIndex);
+        PushValue(fSavedByte);
+        SetLUTValue(fDWordUnk, fSavedByte);
+        SetLUTIndex(fDWordUnk, fSavedIndex);
+        fDWordUnk++;
+        if (fDWordUnk > int32(fBitMask)) {
+            fOnesCounter++;
+            fBitMask = (fBitMask << 1) | 1;
+        }
+        if (fOnesCounter > fMagicByte) {
+            _SetupBuffer();
+            newIndex = 0;
+        }
+        fSavedIndex = newIndex;
+    }
+
+    return PopValue();
 }
 
 
 void
 DecodingContext::PushValue(uint8 value)
 {
-	fBufferOffset++;
-	fBuffer[fBufferOffset] = value;
+    if (fBufferOffset + 1 >= int(kStackSize))
+        throw std::runtime_error("PICImage: decoder stack overflow");
+    fBuffer[++fBufferOffset] = value;
 }
 
 
 uint8
 DecodingContext::PopValue()
 {
-	assert(fBufferOffset >= 0);
-	return fBuffer[fBufferOffset--];
+    if (fBufferOffset < 0)
+        throw std::runtime_error("PICImage: decoder stack underflow");
+    return fBuffer[fBufferOffset--];
 }

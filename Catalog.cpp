@@ -1,137 +1,162 @@
-/*
- * Catalog.cpp
- *
- *  Created on: 26 apr 2023
- *      Author: Stefano Ceccherini
- */
-
-/* File format info here
-/ https://wendigo.online-siesta.com/darklands/file_formats/up-to-date/
-*/
-
-/*
- * 0x00 word LE = numentries
- *
- * entry (24 bytes)
- * 0x02 12	string
- * 0x0c 4	timestamp
- * 0x10 4 length
- * 0x14 4 offset
- * Example: EINFO.CAT (catalog of PIC files)
- */
-
 #include "Catalog.h"
 
-#include "MemoryStream.h"
 #include "FileStream.h"
+#include "Stream.h"
 
-#include <iostream>
+#include <cctype>
+#include <ostream>
+#include <stdexcept>
+
+static const uint32 kHeaderSize		= sizeof(uint16);
+static const uint32 kEntryNameLen	= 12;
+static const uint32 kEntrySize		= kEntryNameLen + 3 * sizeof(uint32);
+
+static catalog_entry
+ReadEntry(Stream* stream)
+{
+    char name[kEntryNameLen + 1];
+    if (stream->Read(name, kEntryNameLen) != (ssize_t)kEntryNameLen)
+        throw std::runtime_error("Catalog: unexpected end of file in entry table");
+    name[kEntryNameLen] = '\0';
+
+    catalog_entry entry;
+    entry.filename = name;
+    // strip trailing space padding
+    std::string::size_type last = entry.filename.find_last_not_of(" ");
+    if (last == std::string::npos)
+        entry.filename.clear();
+    else
+        entry.filename.erase(last + 1);
+
+    entry.timestamp = stream->ReadDWordLE();
+    entry.length = stream->ReadDWordLE();
+    entry.offset = stream->ReadDWordLE();
+    return entry;
+}
+
+
+static bool
+EqualsNoCase(const std::string& a, const std::string& b)
+{
+    if (a.size() != b.size())
+        return false;
+    for (size_t i = 0; i < a.size(); i++) {
+        if (std::tolower(uint8(a[i])) != std::tolower(uint8(b[i])))
+            return false;
+    }
+    return true;
+}
+
+
+// #pragma mark - Catalog
+
 
 Catalog::Catalog(const std::string& fileName)
-	:
-	fStream(NULL)
+    :
+    fStream(NULL)
 {
-	if (SetTo(fileName) != 0) {
-		std::string error;
-		error.append("Error opening ").append(fileName);
-		throw std::runtime_error(error);
-	}
+    SetTo(fileName);
 }
 
 
 Catalog::~Catalog()
 {
-	delete fStream;
+    delete fStream;
 }
 
 
-int
+void
 Catalog::SetTo(const std::string& fileName)
 {
-	try {
-		fStream = new FileStream(fileName.c_str(), FileStream::READ_ONLY);
-	} catch (...) {
-		std::cerr << "Cannot open " << fileName << std::endl;
-		return -1;
-	}
+    Stream* stream = NULL;
+    try {
+        stream = new FileStream(fileName.c_str(), FileStream::READ_ONLY);
+    } catch (...) {
+        throw std::runtime_error("Catalog: cannot open " + fileName);
+    }
 
-	uint16 numEntries = fStream->ReadWordLE();
-	for (auto i = 0; i < numEntries;  i++) {
-		catalog_entry entry;
-		char name[16];
-		fStream->Read(name, 12);
-		name[12] = '\0';
-		entry.filename = name;
+    try {
+        uint16 numEntries = stream->ReadWordLEAt(0);
 
-		entry.timestamp = fStream->ReadDWordLE();
-		entry.length = fStream->ReadDWordLE();
-		entry.offset = fStream->ReadDWordLE();
-		fEntries.push_back(entry);
-	}
-	return 0;
+        // Sanity check: the entry table must fit inside the file.
+        if (size_t(kHeaderSize) + size_t(numEntries) * kEntrySize
+                > stream->Size()) {
+            throw std::runtime_error("Catalog: entry table larger than file");
+        }
+
+        EntryList entries;
+        entries.reserve(numEntries);
+        stream->Seek(kHeaderSize, SEEK_SET);
+        for (uint16 i = 0; i < numEntries; i++)
+            entries.push_back(ReadEntry(stream));
+
+        delete fStream;			// commit point: everything succeeded
+        fStream = stream;
+        fEntries.swap(entries);
+    } catch (...) {
+        delete stream;			// previous state survives
+        throw;
+    }
 }
 
 
 int32
 Catalog::CountEntries() const
 {
-	return fEntries.size();
+    return int32(fEntries.size());
 }
 
 
-int
-Catalog::GetEntry(catalog_entry& entry, int32 index)
+const catalog_entry&
+Catalog::EntryAt(int32 index) const
 {
-	if (index < 0 || index > fStream->ReadWordLEAt(0))
-		return -1;
+    if (index < 0 || size_t(index) >= fEntries.size())
+        throw std::out_of_range("Catalog::EntryAt(): invalid index");
+    return fEntries[size_t(index)];
+}
 
-	fStream->Seek(sizeof(uint16) + index * (12 * sizeof(char) + sizeof(uint32) * 3), SEEK_SET);
 
-	char name[16];
-	fStream->Read(name, 12);
-	name[12] = '\0';
-	entry.filename = name;
-	entry.timestamp = fStream->ReadDWordLE();
-	entry.length = fStream->ReadDWordLE();
-	entry.offset = fStream->ReadDWordLE();
+Stream*
+Catalog::GetStreamAt(uint32 index) const
+{
+    if (index >= fEntries.size())
+        throw std::out_of_range("Catalog::GetStreamAt(): invalid index");
+    const catalog_entry& entry = fEntries[index];
 
-	return 0;
+    // SubStreamAdapter only asserts these in debug builds, so validate here:
+    // corrupt catalogs must not produce sub-streams reaching past the file.
+    const size_t fileSize = fStream->Size();
+    if (size_t(entry.offset) >= fileSize
+            || size_t(entry.length) > fileSize - size_t(entry.offset)) {
+        throw std::runtime_error("Catalog: entry \"" + entry.filename
+            + "\" exceeds file size");
+    }
+
+    return fStream->SubStream(entry.offset, entry.length);
+}
+
+
+Stream*
+Catalog::GetStream(const std::string& name) const
+{
+    for (uint32 i = 0; i < fEntries.size(); i++) {
+        if (EqualsNoCase(name, fEntries[i].filename))
+            return GetStreamAt(i);
+    }
+    return NULL;
 }
 
 
 void
-Catalog::ListEntries() const
+Catalog::Dump(std::ostream& output) const
 {
-	entry_list::const_iterator i;
-	for (i = fEntries.begin(); i != fEntries.end(); i++) {
-		std::cout << (*i).filename << std::endl;
-		std::cout << "timestamp:" << (*i).timestamp << std::endl;
-		std::cout << "offset: " << std::dec << (*i).offset << " (" << std::hex << "0x" << (*i).offset << ")" << std::endl;
-		std::cout << "length: " << (*i).length << std::endl;
-		std::cout << "---" << std::endl;
-	}
+    for (uint32 i = 0; i < fEntries.size(); i++) {
+        const catalog_entry& entry = fEntries[i];
+        output << entry.filename
+            << "\toffset: " << entry.offset
+            << " (0x" << std::hex << entry.offset << std::dec << ")"
+            << ", length: " << entry.length
+            << ", timestamp: " << entry.timestamp
+            << std::endl;
+    }
 }
-
-
-Stream*
-Catalog::GetStream(const std::string& name)
-{
-	entry_list::iterator i;
-	for (i = fEntries.begin(); i != fEntries.end(); i++) {
-		if (name == (*i).filename)
-			break;
-	}
-	if (i == fEntries.end())
-		return NULL;
-
-	return fStream->SubStream(i->offset, i->length);
-}
-
-
-Stream*
-Catalog::GetStreamAt(uint32 index)
-{
-	const catalog_entry entry = fEntries.at(index);
-	return fStream->SubStream(entry.offset, entry.length);
-}
-
