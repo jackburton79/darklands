@@ -11,7 +11,9 @@ References:
 
 Conventions:
 
-- All multi-byte integers are **little-endian**.
+- Multi-byte integers are **little-endian**, with the exception of the
+  `DARKLAND.MAP` header, whose dimension words are **big-endian**
+  (see the world map section).
 - Offsets are hexadecimal, relative to the start of the file/resource.
 - Facts marked **verified** were confirmed against original game data
   (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`) and by visual
@@ -203,6 +205,11 @@ The tile's row within the icon sheet comes directly from the byte(bits 3..0). Wh
 - [ ] Palettes: does `BKGNDPAL.DAT` use the same 53-byte chunk layout?
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?
+- [ ] `.MAP`: the tile column-selection rule — how the four bits of"column" derive from
+      neighboring tiles (wendigo's recipe isacknowledged broken; needs systematic
+      experiments againstscreenshots of the original game's map)
+- [ ] `.MAP`: confirm tile size (16 px?) and whether the palette filesused for the map are
+      BKGNDPAL.DAT or something else
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
       `DARKLAND.MSG`, `.MAP`/`.LOC`/`.CTY`, ...
 
