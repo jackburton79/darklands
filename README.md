@@ -103,4 +103,3 @@ affiliated with or endorsed by them.
 - MicroProse, for one of the most atmospheric RPGs ever made
 - The Darklands fan community, for reverse-engineering efforts and
   documentation of the data formats
-````
