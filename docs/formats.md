@@ -205,11 +205,13 @@ The tile's row within the icon sheet comes directly from the byte(bits 3..0). Wh
 - [ ] Palettes: does `BKGNDPAL.DAT` use the same 53-byte chunk layout?
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?
-- [ ] `.MAP`: the tile column-selection rule — how the four bits of"column" derive from
-      neighboring tiles (wendigo's recipe isacknowledged broken; needs systematic
-      experiments againstscreenshots of the original game's map)
-- [ ] `.MAP`: confirm tile size (16 px?) and whether the palette filesused for the map are
-      BKGNDPAL.DAT or something else
+- [ ] `.MAP`: the tile column-selection rule — how the sheet column derives from 
+      neighboring 
+      tiles (wendigo's diagonal-neighbor recipe is acknowledged broken; our renders confirm terrain types need no column data, so it is purely contextual — roads/coasts are the best test cases)
+- [ ] `.MAP`: confirm the icon sheet format ("M0" magic — NOT theregular .PIC format; see 
+      MAPICONS.PIC/MAPICON2.PIC)
+- [ ] `.MAP`: which palette applies to the map tiles (BKGNDPAL.DAT is 2343 bytes = 3 · 781 
+      — not the 53-byte chunk layout of ENEMYPAL.DAT; format unknown)
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
-      `DARKLAND.MSG`, `.MAP`/`.LOC`/`.CTY`, ...
+      `DARKLAND.MSG`, `.LOC`/`.CTY`, ...
 
