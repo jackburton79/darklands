@@ -163,6 +163,31 @@ implementation.
 - `BKGNDPAL.DAT` presumably follows the same layout (*unverified* — if
   its size is not a multiple of 53, it does not).
 
+## World map (DARKLAND.MAP)
+
+The wilderness map of the Holy Roman Empire: a grid of 327 × 931 tiles,stored RLE-compressed, one stream per row. See MapFile.cpp for areference implementation.
+
+Mixed endianness — the trap. The two dimension words at the start ofthe file are big-endian, but the row offset table that follows them islittle-endian. Both differ from the rest of the game's formats(catalogs and PIC images are little-endian throughout). Getting this wrongproduces offsets that look almost plausible and then dissolve into garbage;validate rows[0] == end of table before trusting anything else.
+
+offset  size       description0x00    2          max_x = 0x0147 (327), word, **big-endian**0x02    2          max_y = 0x03A3 (931), word, **big-endian**0x04    4 · max_y  row_offsets[max_y], dwords, **little-endian**:                   file offset of each row's RLE data0x0E90  ...        row data; the first row begins immediately after                   the table (**verified**: rows[0] == 0x04 + 4 · max_y)
+
+Row sizes vary (observed: 60..210 bytes, average ~155; the theoreticalRLE bounds for a 327-tile row are 47..327). The last row's length isimplicit: it extends to the end of the file.
+Row encoding (RLE)
+
+Each row is a stream of bytes:
+
+bit:   7 6 5   4   3 2 1 0       R R R   P   T T T T
+
+    bits 7..5 (R): repeat count, values 1..7 — a count of 0 is invalid(verified: not a single such byte occurs in the entire file)
+    bit 4 (P): palette set: 0 = MAPICONS.PIC, 1 = MAPICON2.PIC
+    bits 3..0 (T): tile row within that icon sheet
+
+Each byte expands to repeat identical tiles. Every row decodes toexactly max_x = 327 tiles (verified for all 931 rows; 304,437 tilestotal, exactly max_x · max_y).
+Tile geometry and appearance
+
+Tiles are 16 px wide; rows are vertically offset by half a tile(hexagonal-style layout): odd rows are drawn shifted right by 8 px, andeach row is vertically half a tile below the previous one.
+
+The tile's row within the icon sheet comes directly from the byte(bits 3..0). Which column of the sheet to use is derived from thesurrounding tiles: the wendigo reference describes a recipe based on thefour diagonally adjacent tiles (with odd/even row coordinate shifts), butnotes themselves that it does not produce correct results ("The bitsseems to be set by adjacent tile similarity ... river binds to bridgetile, wet tiles bind together, etc."). This remains unresolved —see open questions.
 ## Open questions
 
 - [ ] `.CAT`: timestamp encoding — DOS FAT date/time? (decode a few and
@@ -178,5 +203,4 @@ implementation.
       types?
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
       `DARKLAND.MSG`, `.MAP`/`.LOC`/`.CTY`, ...
-
 
