@@ -28,7 +28,7 @@ implemented yet. See the roadmap below.
 ## Roadmap
 
 - [ ] Command-line tools: list catalog contents, extract entries to disk
-- [ ] Export decoded `.PIC` images to PNG (useful for testing and reference)
+- [X] Export decoded `.PIC` images to PNG (useful for testing and reference)
 - [ ] Decode more resource types found in the catalogs (fonts, palettes, ...)
 - [ ] Parse map and location data (`DARKLAND.MAP`, `DARKLAND.LOC`, `DARKLAND.CTY`)
 - [ ] Render the main map / city screens
