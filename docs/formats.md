@@ -16,9 +16,9 @@ Conventions:
   (see the world map section).
 - Offsets are hexadecimal, relative to the start of the file/resource.
 - Facts marked **verified** were confirmed against original game data
-  (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`) and by visual
-  comparison with rendered output. Anything else is marked *inferred*
-  or *unverified*.
+  (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`, all 931 rows of
+  `DARKLAND.MAP`) and by visual comparison with rendered output.
+  Anything else is marked *inferred* or *unverified*.
 
 ## Catalog archives (`.CAT`)
 
@@ -135,7 +135,7 @@ been found yet.
   *inferred*
 - Whether any PIC files embed a palette is an open question.
 
-## Palette chunk files (`ENEMYPAL.DAT`, probably `BKGNDPAL.DAT`)
+## Palette chunk files (`ENEMYPAL.DAT`)
 
 Arrays of small palette chunks, each patching a 16-entry slice of a
 shared 256-color palette. See `Palette.cpp` for a reference
@@ -162,35 +162,82 @@ implementation.
   graphics for the whole bestiary catalog; multiple chunks may claim the
   same palette range with different colors, so per-enemy chunk selection
   must happen elsewhere — probably the `.ENM` enemy files. *unresolved*
-- `BKGNDPAL.DAT` presumably follows the same layout (*unverified* — if
-  its size is not a multiple of 53, it does not).
+- `BKGNDPAL.DAT` does **not** follow this layout: 2343 bytes = 3 · 781,
+  not a multiple of 53 (**verified**). Consistent with a plain array of
+  781 RGB triplets (25 more than a 256-color palette needs — purpose
+  unknown), but the actual structure is unresolved.
 
-## World map (DARKLAND.MAP)
+## World map (`DARKLAND.MAP`)
 
-The wilderness map of the Holy Roman Empire: a grid of 327 × 931 tiles,stored RLE-compressed, one stream per row. See MapFile.cpp for areference implementation.
+The wilderness map of the Holy Roman Empire: a grid of 327 × 931 tiles,
+stored RLE-compressed, one stream per row. See `MapFile.cpp` for a
+reference implementation.
 
-Mixed endianness — the trap. The two dimension words at the start ofthe file are big-endian, but the row offset table that follows them islittle-endian. Both differ from the rest of the game's formats(catalogs and PIC images are little-endian throughout). Getting this wrongproduces offsets that look almost plausible and then dissolve into garbage;validate rows[0] == end of table before trusting anything else.
+**Mixed endianness — the trap.** The two dimension words at the start of
+the file are **big-endian**, but the row offset table that follows them is
+**little-endian**. Both differ from the rest of the game's formats
+(catalogs and PIC images are little-endian throughout). Getting this wrong
+produces offsets that look almost plausible and then dissolve into garbage;
+validate `rows[0] == end of table` before trusting anything else.
 
-offset  size       description0x00    2          max_x = 0x0147 (327), word, **big-endian**0x02    2          max_y = 0x03A3 (931), word, **big-endian**0x04    4 · max_y  row_offsets[max_y], dwords, **little-endian**:                   file offset of each row's RLE data0x0E90  ...        row data; the first row begins immediately after                   the table (**verified**: rows[0] == 0x04 + 4 · max_y)
+    offset  size       description
+    0x00    2          max_x = 0x0147 (327), word, **big-endian**
+    0x02    2          max_y = 0x03A3 (931), word, **big-endian**
+    0x04    4 · max_y  row_offsets[max_y], dwords, **little-endian**:
+                       file offset of each row's RLE data
+    0x0E90  ...        row data; the first row begins immediately after
+                       the table (**verified**: rows[0] == 0x04 + 4 · max_y)
 
-Row sizes vary (observed: 60..210 bytes, average ~155; the theoreticalRLE bounds for a 327-tile row are 47..327). The last row's length isimplicit: it extends to the end of the file.
-Row encoding (RLE)
+Row sizes vary (observed: 60..210 bytes, average ~155; the theoretical
+RLE bounds for a 327-tile row are 47..327). The last row's length is
+implicit: it extends to the end of the file.
+
+### Row encoding (RLE)
 
 Each row is a stream of bytes:
 
-bit:   7 6 5   4   3 2 1 0       R R R   P   T T T T
+    bit:   7 6 5   4   3 2 1 0
+           R R R   P   T T T T
 
-    bits 7..5 (R): repeat count, values 1..7 — a count of 0 is invalid(verified: not a single such byte occurs in the entire file)
-    bit 4 (P): palette set: 0 = MAPICONS.PIC, 1 = MAPICON2.PIC
-    bits 3..0 (T): tile row within that icon sheet
+- bits 7..5 (`R`): repeat count, values 1..7 — a count of 0 is invalid
+  (**verified**: not a single such byte occurs in the entire file)
+- bit 4 (`P`): palette set: 0 = `MAPICONS.PIC`, 1 = `MAPICON2.PIC`
+- bits 3..0 (`T`): tile row within that icon sheet
 
-Each byte expands to repeat identical tiles. Every row decodes toexactly max_x = 327 tiles (verified for all 931 rows; 304,437 tilestotal, exactly max_x · max_y).
-Tile geometry and appearance
+Each byte expands to `repeat` identical tiles. **Every row decodes to
+exactly max_x = 327 tiles** (**verified** for all 931 rows; 304,437 tiles
+total, exactly max_x · max_y).
 
-Tiles are 16 px wide; rows are vertically offset by half a tile(hexagonal-style layout): odd rows are drawn shifted right by 8 px, andeach row is vertically half a tile below the previous one.
+### Tile geometry — **verified by rendering**
 
-The tile's row within the icon sheet comes directly from the byte(bits 3..0). Which column of the sheet to use is derived from thesurrounding tiles: the wendigo reference describes a recipe based on thefour diagonally adjacent tiles (with odd/even row coordinate shifts), butnotes themselves that it does not produce correct results ("The bitsseems to be set by adjacent tile similarity ... river binds to bridgetile, wet tiles bind together, etc."). This remains unresolved —see open questions.
-=======
+- Tiles are 16 × 16 pixels.
+- Rows are vertically offset by half a tile (hexagonal-style layout):
+  odd rows are drawn shifted right by 8 px, and each row sits half a
+  tile (8 px) below the previous one.
+- **A full-map render using only sheet column 0 produces a coherent,
+  recognizable map of central Europe** (coastlines, terrain regions,
+  road networks): every tile is geometrically correct at 16×16 with the
+  half-tile offset. (Rendered by `darklands --map`, synthetic colors.)
+
+### What the tile byte means — structural finding
+
+Since column-0 rendering yields sensible terrain regions and continuous
+road networks, the byte's palette bit and tile-row nibble must encode the
+tile **type** (ocean, plain, forest, road, ...), while the sheet
+**column** — which does *not* come from the map file at all — selects the
+connection/transition variant of that type (e.g. which diagonals a road
+piece links, which side of a coast tile is water).
+
+### Tile column rule — **unresolved**
+
+Which column of the icon sheet to use is derived from neighboring tiles.
+The wendigo reference describes a recipe using the four diagonal
+neighbors' tile-row bits (with odd/even row coordinate shifts), but notes
+itself that it does not produce correct results. Our rendering confirms
+terrain *types* are right without any column logic, so all column
+information must come from context. This remains the main open problem
+for map rendering; roads and coastlines are the best test cases (their
+correct connectivity is visually unambiguous).
 
 ## Open questions
 
@@ -202,16 +249,19 @@ The tile's row within the icon sheet comes directly from the byte(bits 3..0). Wh
 - [ ] `.PIC`: is the high byte of the magic word at 0x08 always 0x00?
 - [ ] Palettes: which palette chunk(s) apply to a given enemy, and where
       is that mapping stored? (probably `.ENM`)
-- [ ] Palettes: does `BKGNDPAL.DAT` use the same 53-byte chunk layout?
+- [ ] Palettes: the actual format of `BKGNDPAL.DAT` (2343 bytes — not
+      the 53-byte chunk layout; consistent with 781 plain RGB triplets,
+      but why 781?)
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?
-- [ ] `.MAP`: the tile column-selection rule — how the sheet column derives from 
-      neighboring 
-      tiles (wendigo's diagonal-neighbor recipe is acknowledged broken; our renders confirm terrain types need no column data, so it is purely contextual — roads/coasts are the best test cases)
-- [ ] `.MAP`: confirm the icon sheet format ("M0" magic — NOT theregular .PIC format; see 
-      MAPICONS.PIC/MAPICON2.PIC)
-- [ ] `.MAP`: which palette applies to the map tiles (BKGNDPAL.DAT is 2343 bytes = 3 · 781 
-      — not the 53-byte chunk layout of ENEMYPAL.DAT; format unknown)
+- [ ] `.MAP`: the tile column-selection rule — how the sheet column
+      derives from neighboring tiles (wendigo's diagonal-neighbor recipe
+      is acknowledged broken; our renders confirm terrain *types* need no
+      column data, so it is purely contextual — roads and coasts are the
+      best test cases)
+- [ ] `.MAP`: the icon sheet format ("M0" magic — NOT the regular .PIC
+      format; see `MAPICONS.PIC`/`MAPICON2.PIC`)
+- [ ] `.MAP`: which palette applies to the map tiles (`BKGNDPAL.DAT` is
+      2343 bytes — not the 53-byte chunk layout of `ENEMYPAL.DAT`)
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
       `DARKLAND.MSG`, `.LOC`/`.CTY`, ...
-
