@@ -27,12 +27,18 @@ implemented yet. See the roadmap below.
 
 ## Roadmap
 
-- [ ] Command-line tools: list catalog contents, extract entries to disk
-- [X] Export decoded `.PIC` images to PNG (useful for testing and reference)
-- [ ] Decode more resource types found in the catalogs (fonts, palettes, ...)
-- [ ] Parse map and location data (`DARKLAND.MAP`, `DARKLAND.LOC`, `DARKLAND.CTY`)
-- [ ] Render the main map / city screens
-- [ ] Text and dialogue display
+- [x] Parse `.CAT` catalogs and decode `.PIC` images
+- [x] Export decoded images (`--extract`)
+- [x] Decode enemy palette files (`ENEMYPAL.DAT`)
+- [x] Parse and render the world map (`DARKLAND.MAP`) — synthetic colors
+- [ ] Decode the map icon sheets (`MAPICONS.PIC` / `MAPICON2.PIC`,
+      "M0" format) for real map graphics
+- [ ] Solve the map tile column rule (transition/connection variants)
+- [ ] Parse `DARKLAND.LOC` and label cities on the map
+- [ ] Command-line map export at full resolution (`--map`, done;
+      zoomable/pannable viewer)
+- [ ] Decode more resource types (fonts, text, sound archives)
+- [ ] City screens, text and dialogue display
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 
