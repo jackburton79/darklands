@@ -43,6 +43,10 @@ public:
 
     Bitmap*			Image(const GFX::Palette* palette = nullptr) const;
 
+    // Decodes and returns the raw 8-bit pixel data, row-major,
+    // Width() * Height() bytes. No Bitmap, no palette involved.
+    std::vector<uint8>	RawBytes() const;
+
     // Convenience: parse + decode in one call.
     static Bitmap*	Decode(Stream* stream,
                         const GFX::Palette* palette = nullptr);

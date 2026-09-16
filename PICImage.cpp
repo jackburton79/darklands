@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string.h>
 #include <vector>
 
 static const size_t kHeaderSize	= 0x0A;
@@ -127,12 +128,35 @@ PICImage::Decode(Stream* stream, const GFX::Palette* palette)
 Bitmap*
 PICImage::Image(const GFX::Palette* palette) const
 {
+    const std::vector<uint8> pixels = RawBytes();
+
+    Bitmap* bitmap = new Bitmap(fWidth, fHeight, 8);
+    try {
+        GFX::Palette fallback;
+        if (palette == NULL) {
+            fallback = EGAPalette();	// your existing EGA helper
+            palette = &fallback;
+        }
+        bitmap->SetColors(palette->colors, 0, 256);
+        for (uint16 y = 0; y < fHeight; y++)
+            for (uint16 x = 0; x < fWidth; x++)
+                bitmap->PutPixel(x, y, pixels[size_t(y) * fWidth + x]);
+    } catch (...) {
+        bitmap->Release();
+        throw;
+    }
+    return bitmap;
+}
+
+
+std::vector<uint8>
+PICImage::RawBytes() const
+{
     const size_t streamSize = fStream->Size();
     if (streamSize < kHeaderSize)
         throw std::runtime_error("PICImage: stream too small for header");
 
     const size_t dataSize = streamSize - kHeaderSize;
-
     std::vector<uint8> compressed(dataSize);
     if (fStream->ReadAt(kHeaderSize, compressed.data(), dataSize)
             != (ssize_t)dataSize) {
@@ -141,29 +165,13 @@ PICImage::Image(const GFX::Palette* palette) const
 
     DecodingContext context(compressed.data(), dataSize, fBCDPacked, fMagicWord);
 
-    Bitmap* bitmap = new Bitmap(fWidth, fHeight, 8);
-    try {
-        // Fallback for images without an external palette (EGA-era UI art?):
-        // the standard 16-color EGA palette.
-        GFX::Palette fallback;
-        if (palette == NULL) {
-            fallback = EGAPalette();
-            palette = &fallback;
-        }
-        bitmap->SetColors(palette->colors, 0, 256);
-
-        std::vector<uint8> line(fWidth);
-        for (uint16 y = 0; y < fHeight; y++) {
-            context.DecodeNextBytes(line.data(), fWidth);
-            for (uint16 x = 0; x < fWidth; x++)
-                bitmap->PutPixel(x, y, line[x]);	// NO % 16 — indices are
-                                                    // true palette indices!
-        }
-    } catch (...) {
-        bitmap->Release();
-        throw;
+    std::vector<uint8> pixels(size_t(fWidth) * fHeight);
+    std::vector<uint8> line(fWidth);
+    for (uint16 y = 0; y < fHeight; y++) {
+        context.DecodeNextBytes(line.data(), fWidth);
+        ::memcpy(&pixels[size_t(y) * fWidth], line.data(), fWidth);
     }
-    return bitmap;
+    return pixels;
 }
 
 
