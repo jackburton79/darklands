@@ -188,6 +188,8 @@ Tile geometry and appearance
 Tiles are 16 px wide; rows are vertically offset by half a tile(hexagonal-style layout): odd rows are drawn shifted right by 8 px, andeach row is vertically half a tile below the previous one.
 
 The tile's row within the icon sheet comes directly from the byte(bits 3..0). Which column of the sheet to use is derived from thesurrounding tiles: the wendigo reference describes a recipe based on thefour diagonally adjacent tiles (with odd/even row coordinate shifts), butnotes themselves that it does not produce correct results ("The bitsseems to be set by adjacent tile similarity ... river binds to bridgetile, wet tiles bind together, etc."). This remains unresolved —see open questions.
+=======
+
 ## Open questions
 
 - [ ] `.CAT`: timestamp encoding — DOS FAT date/time? (decode a few and
