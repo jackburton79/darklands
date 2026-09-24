@@ -20,8 +20,7 @@ The goal is twofold:
   export them as BMP files
 - Decode the enemy palette file (`ENEMYPAL.DAT`)
 - Parse the world map (`DARKLAND.MAP`) and render it to a BMP file with
-  the game's own map tiles and palette (tile transition variants are
-  not solved yet)
+  the game's own map tiles and palette
 
 Everything else — locations, sound, text, the game
 itself — is not implemented yet. See the roadmap below.
@@ -38,7 +37,7 @@ itself — is not implemented yet. See the roadmap below.
 - [x] Parse and render the world map (`DARKLAND.MAP`)
 - [x] Decode the map icon sheets (`MAPICONS.PIC` / `MAPICON2.PIC`,
       PIC files with an embedded palette) for real map graphics
-- [ ] Solve the map tile column rule (transition/connection variants)
+- [x] Solve the map tile column rule (transition/connection variants)
 - [ ] Parse `DARKLAND.LOC` and label cities on the map
 - [ ] Command-line map export at full resolution (`--map`, done;
       zoomable/pannable viewer)
@@ -90,7 +89,7 @@ at startup):
 # Export every image of a catalog as BMP (the output directory must exist)
 ./darklands --extract data/DARKLAND/PICS/EINFO.CAT out/
 
-# Render the world map to <prefix>_plain.bmp and <prefix>_recipe.bmp
+# Render the world map to <prefix>.bmp (default prefix: map)
 ./darklands --map data/DARKLAND/DARKLAND.MAP [data dir] [output prefix]
 ```
 

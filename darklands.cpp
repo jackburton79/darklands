@@ -25,44 +25,74 @@ static const uint16 kTileW		= 16;
 static const uint16 kTileH		= 12;
 static const uint16 kRowStep	= 4;
 
-// The documented wendigo recipe (known imperfect — that's what we're testing).
-// Column bits come from the tile-ROW values of the four diagonal neighbors:
-//   col bit 0 (1) = NW neighbor row bit 3 (8)
-//   col bit 1 (2) = NE neighbor row bit 2 (4)
-//   col bit 2 (4) = SW neighbor row bit 1 (2)
-//   col bit 3 (8) = SE neighbor row bit 0 (1)
-// Even rows: NW=(x-1,y-1) NE=(x,y-1); odd rows shifted: NW=(x,y-1) NE=(x+1,y-1).
+// Tile types: sheet 0 rows are types 0..15, sheet 1 rows types 16..31.
+enum {
+    kTileOcean		= 1,
+    kTileMajorRiver	= 2,
+    kTileMinorRiver	= 3,
+    kTileRoad		= 24,
+    kTileFord		= 25,
+    kTileBridge		= 27,
+    kTileCity		= 29
+};
+
+
+static int
+TileType(const map_tile& tile)
+{
+    return (tile.secondPalette ? 16 : 0) + tile.row;
+}
+
+
+// Whether a tile of type `type` joins its diagonal neighbor of type
+// `neighbor`: tiles of the same type join; roads also join fords,
+// bridges and cities, rivers also join fords, bridges and the sea.
+static bool
+Connects(int type, int neighbor)
+{
+    if (neighbor == type)
+        return true;
+    switch (type) {
+        case kTileRoad:
+            return neighbor == kTileFord || neighbor == kTileBridge
+                || neighbor == kTileCity;
+        case kTileMajorRiver:
+        case kTileMinorRiver:
+            return neighbor == kTileMajorRiver || neighbor == kTileMinorRiver
+                || neighbor == kTileFord || neighbor == kTileBridge
+                || neighbor == kTileOcean;
+        default:
+            return false;
+    }
+}
+
+
+// Sheet column of tile (x, y): a bit mask of the diagonal neighbors it
+// joins -- NW = 1, NE = 2, SW = 4, SE = 8 (see docs/formats.md).
+// Odd rows are shifted right by half a tile, so the diagonal neighbors'
+// x depends on the row parity. Off-map neighbors count as joined.
 static int
 ColumnFor(const std::vector<std::vector<map_tile> >& rows, int x, int y)
 {
     const int mw = (int)rows[0].size();
     const int mh = (int)rows.size();
+    const int type = TileType(rows[y][x]);
 
-    auto rowAt = [&](int ny) -> const std::vector<map_tile>& {
-        static const std::vector<map_tile> kEmpty;
-        return (ny < 0 || ny >= mh) ? kEmpty : rows[(size_t)ny];
+    const int west = (y & 1) ? x : x - 1;
+    const int neighbors[4][2] = {
+        { west, y - 1 }, { west + 1, y - 1 },	// NW, NE
+        { west, y + 1 }, { west + 1, y + 1 }	// SW, SE
     };
-    auto tileAt = [&](int nx, int ny) -> uint8 {
-        if (nx < 0 || nx >= mw)
-            return 0;
-        const std::vector<map_tile>& r = rowAt(ny);
-        return r.empty() ? 0 : r[(size_t)nx].row;
-    };
-
-    int nwx, nex, swx, sex;
-    if ((y & 1) == 0) { nwx = x - 1; nex = x;     swx = x - 1; sex = x;     }
-    else              { nwx = x;     nex = x + 1; swx = x;     sex = x + 1; }
-
-    const uint8 nw = tileAt(nwx, y - 1);
-    const uint8 ne = tileAt(nex, y - 1);
-    const uint8 sw = tileAt(swx, y + 1);
-    const uint8 se = tileAt(sex, y + 1);
 
     int col = 0;
-    col |= ((nw >> 3) & 1) << 0;
-    col |= ((ne >> 2) & 1) << 1;
-    col |= ((sw >> 1) & 1) << 2;
-    col |= ((se     ) & 1) << 3;
+    for (int i = 0; i < 4; i++) {
+        const int nx = neighbors[i][0];
+        const int ny = neighbors[i][1];
+        if (nx < 0 || nx >= mw || ny < 0 || ny >= mh
+                || Connects(type, TileType(rows[ny][nx]))) {
+            col |= 1 << i;
+        }
+    }
     return col;
 }
 
@@ -71,7 +101,7 @@ static Bitmap*
 RenderMap(const MapFile& map,
     const std::vector<std::vector<map_tile> >& rows,
     const std::vector<uint8> sheets[2], uint16 sheetW,
-    const GFX::Palette& palette, bool useRecipe, bool synthetic)
+    const GFX::Palette& palette, bool synthetic)
 {
     const uint16 mw = map.Width();
     const uint16 mh = map.Height();
@@ -91,11 +121,11 @@ RenderMap(const MapFile& map,
             const int yoff = y * kRowStep;
             for (uint16 x = 0; x < mw; x++) {
                 const map_tile& t = rows[y][x];
-                const int col = useRecipe ? ColumnFor(rows, x, y) : 0;
+                const int col = ColumnFor(rows, x, y);
 
                 if (synthetic) {
                     // no sheets available: color by palette set + tile row,
-                    // so geometry and recipe artifacts are still visible
+                    // so geometry and column artifacts are still visible
                     const uint8 value = t.secondPalette
                         ? uint8(128 + t.row * 8)
                         : uint8(16 + t.row * 8);
@@ -171,7 +201,7 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
             palette.colors[i] = GFX::Color{ uint8(i), uint8(i), uint8(i), 0 };
     }
 
-    // --- decode all rows once, render twice ---
+    // --- decode all rows, render ---
     MapFile map(mapPath);
     std::cerr << "map: " << map.Width() << " x " << map.Height() << std::endl;
 
@@ -181,15 +211,10 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
 
     const bool synthetic = !haveSheets;
 
-    Bitmap* plain = RenderMap(map, rows, sheets, sheetW, palette, /*useRecipe*/ false, synthetic);
-    plain->Save((outPrefix + "_plain.bmp").c_str());
-    plain->Release();
-    std::cerr << "wrote " << outPrefix << "_plain.bmp" << std::endl;
-
-    Bitmap* recipe = RenderMap(map, rows, sheets, sheetW, palette, /*useRecipe*/ true, synthetic);
-    recipe->Save((outPrefix + "_recipe.bmp").c_str());
-    recipe->Release();
-    std::cerr << "wrote " << outPrefix << "_recipe.bmp" << std::endl;
+    Bitmap* bitmap = RenderMap(map, rows, sheets, sheetW, palette, synthetic);
+    bitmap->Save((outPrefix + ".bmp").c_str());
+    bitmap->Release();
+    std::cerr << "wrote " << outPrefix << ".bmp" << std::endl;
 
     return 0;
 }

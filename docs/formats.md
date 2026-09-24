@@ -320,16 +320,52 @@ tile **type** (ocean, plain, forest, road, ...), while the sheet
 connection/transition variant of that type (e.g. which diagonals a road
 piece links, which side of a coast tile is water).
 
-### Tile column rule — **unresolved**
+### Tile column rule — **solved**
 
-Which column of the icon sheet to use is derived from neighboring tiles.
-The wendigo reference describes a recipe using the four diagonal
-neighbors' tile-row bits (with odd/even row coordinate shifts), but notes
-itself that it does not produce correct results. Our rendering confirms
-terrain *types* are right without any column logic, so all column
-information must come from context. This remains the main open problem
-for map rendering; roads and coastlines are the best test cases (their
-correct connectivity is visually unambiguous).
+The sheet column is a **4-bit mask of the diagonal neighbors the tile
+joins**:
+
+    bit 0 (1)  NW neighbor      even row y: (x−1, y−1)   odd row y: (x,   y−1)
+    bit 1 (2)  NE neighbor      even row y: (x,   y−1)   odd row y: (x+1, y−1)
+    bit 2 (4)  SW neighbor      even row y: (x−1, y+1)   odd row y: (x,   y+1)
+    bit 3 (8)  SE neighbor      even row y: (x,   y+1)   odd row y: (x+1, y+1)
+
+(odd rows are the ones shifted right by half a tile). Horizontal and
+vertical neighbors play no part.
+
+How it was found: the road row of `MAPICON2.PIC` (type 24) shows, for
+each column, which cell edges the road leaves from. Every multi-exit
+column matches the mask exactly (3 = NW+NE, 5 = NW+SW, 6 = NE+SW,
+9 = NW+SE, 10 = NE+SE, 12 = SW+SE, 7 = NW+NE+SW, 11 = NW+NE+SE,
+13 = NW+SW+SE, 14 = NE+SW+SE, 15 = all four). **verified** by pixel
+inspection of the sheet. The remaining columns are the horizontal
+cases: 0 is a straight W–E road, and 1/2/4/8 join their single diagonal
+to the opposite horizontal side (1 = NW+E, 2 = NE+W, 4 = SW+E,
+8 = SE+W): a horizontal run of road tiles has no diagonal road
+neighbors. The map data agrees: road and river tiles have on average
+~1.6–1.9 same-type diagonal neighbors but only ~0.2–0.4 same-type
+horizontal ones, i.e. they form diagonal chains.
+
+What "joins" means:
+
+- tiles of the **same type** always join (**verified** visually: with
+  this rule coastlines, lakes and terrain regions get smooth outlines);
+- roads (24) also join fords (25), bridges (27) and cities (29);
+  rivers (2, 3) also join each other, fords, bridges and the ocean (1).
+  Fords and bridges never have a same-type neighbor, so without these
+  groups roads and rivers would break at every crossing. *inferred*
+  (the render shows continuous roads and rivers, but the exact groups
+  are not proven: e.g. whether roads join castles or rivers join tidal
+  marshes);
+- off-map neighbors are treated as joined. *inferred*
+
+wendigo's recipe used the same bit positions but derived each bit from
+bits of the neighbor's *row number* instead of from its type, which is
+why it produced broken rivers and roads.
+
+Rows never used by the map data: 26, 28, 30, 31 (and 0, "plains", only 5
+tiles). Castles, flags and the like are presumably drawn by the game on
+top of the map from other data (e.g. `DARKLAND.LOC`).
 
 ## Open questions
 
@@ -346,11 +382,12 @@ correct connectivity is visually unambiguous).
 - [ ] `.PIC`: are there chunk types other than `M0` and `X0`/`X1`?
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?
-- [ ] `.MAP`: the tile column-selection rule — how the sheet column
-      derives from neighboring tiles (wendigo's diagonal-neighbor recipe
-      is acknowledged broken; our renders confirm terrain *types* need no
-      column data, so it is purely contextual — roads and coasts are the
-      best test cases)
+- [x] `.MAP`: the tile column-selection rule — diagonal-neighbor mask
+- [ ] `.MAP`: the exact "joins" groups for roads and rivers (castles?
+      tidal marshes?)
+- [ ] `.MAP`: what is drawn under tiles whose cells are partly empty
+      (index 0) — e.g. the sparse `F/W` rows render over black; the game
+      probably fills a background color first
 - [x] `.MAP`: the icon sheet format — regular PIC with an `M0` chunk
 - [x] `.MAP`: which palette applies to the map tiles — the one embedded
       in the icon sheets
