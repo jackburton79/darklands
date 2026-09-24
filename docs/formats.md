@@ -16,8 +16,9 @@ Conventions:
   (see the world map section).
 - Offsets are hexadecimal, relative to the start of the file/resource.
 - Facts marked **verified** were confirmed against original game data
-  (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`, all 931 rows of
-  `DARKLAND.MAP`) and by visual comparison with rendered output.
+  (all 60 entries of `EINFO.CAT`, `ENEMYPAL.DAT`, `BKGNDPAL.DAT`,
+  `MAPICONS.PIC`/`MAPICON2.PIC`, all 931 rows of `DARKLAND.MAP`) and by
+  visual comparison with rendered output.
   Anything else is marked *inferred* or *unverified*.
 
 ## Catalog archives (`.CAT`)
@@ -32,11 +33,15 @@ Catalogs bundle related resources (images, sounds, text) into one file.
     entry (relative offsets):
     +0x00   12    resource name: DOS 8.3 style, up to 12 characters,
                   padded with spaces (strip trailing spaces)
-    +0x0C   4     timestamp (uint32; encoding unverified,
-                  probably DOS FAT packed date/time)
+    +0x0C   4     timestamp (uint32): DOS FAT packed date/time,
+                  date in the high word, time in the low word
     +0x10   4     data length in bytes (uint32)
     +0x14   4     data offset (uint32; absolute, from start of the .CAT file)
 
+- Timestamp: date = `(year − 1980) << 9 | month << 5 | day`,
+  time = `hour << 11 | minute << 5 | second / 2`. **verified**: all 60
+  entries of `EINFO.CAT` decode to plausible dates between 1992-05-14
+  and 1992-07-09 (e.g. `0x18AEA417` = 1992-05-14 20:32:46).
 - Resource data follows the entry table; each blob is located with its
   entry's offset/length pair.
 - Offsets and lengths must be validated against the file size before use:
@@ -49,15 +54,42 @@ an LZW-like adaptive code followed by run-length encoding.
 Decoding is *output-driven*: exactly `width × height` bytes are produced;
 any unread bytes after the declared data end are ignored.
 
-### Header (10 bytes)
+### Chunk structure
+
+A PIC file is a **sequence of chunks**, each one:
+
+    offset  size  description
+    0x00    2     tag: two ASCII characters
+    0x02    2     length (uint16): number of data bytes that follow
+    0x04    ...   data
+
+Known chunks (**verified** on `MAPICONS.PIC`/`MAPICON2.PIC` and on all
+60 entries of `EINFO.CAT`):
+
+- `M0` — **palette** (optional; precedes the image chunk):
+
+      +0x04   1     first palette index
+      +0x05   1     last palette index
+      +0x06   3·n   n = last − first + 1 RGB triplets, 6-bit components
+
+  Both map icon sheets carry a full palette (`00`..`FF`, length
+  770 = 2 + 768). The bestiary portraits in `EINFO.CAT` have none.
+- `X0` / `X1` — **image**, described below. The "M0 format" previously
+  listed as an open question for the map icon sheets is just an `M0`
+  chunk followed by an ordinary `X0` image chunk.
+
+### Image chunk header (10 bytes)
+
+Offsets relative to the start of the chunk.
 
     offset  size  description
     0x00    2     magic: low byte always 'X' (0x58);
                   high byte '0' (0x30) or '1' (0x31) — see "BCD packing"
-    0x02    2     size (uint16): number of bytes from 0x04 to the end of
-                  the image data. Equivalently: file size == this value + 4.
+    0x02    2     chunk length (uint16): number of bytes from 0x04 to the
+                  end of the image data. For a file holding only the image
+                  chunk, file size == this value + 4.
                   **verified** across all 60 entries of EINFO.CAT.
-                  (A uint16 implies PIC resources are at most 65539 bytes.)
+                  (A uint16 implies an image chunk is at most 65539 bytes.)
     0x04    2     width in pixels (uint16)
     0x06    2     height in pixels (uint16)
     0x08    2     "magic word" (uint16): low byte = maximum LZW code length
@@ -65,7 +97,7 @@ any unread bytes after the declared data end are ignored.
                   content (always 0x00 in the files seen so far)
 
 The compressed bitstream starts at `0x0A` and is
-`size − 6` bytes long (everything up to the end of the resource).
+`length − 6` bytes long (everything up to the end of the chunk).
 
 ### Stage 1 — LZW-like adaptive compression
 
@@ -125,15 +157,16 @@ been found yet.
   original viewer, whose `% 16` masked the problem — incorrectly assumed
   16-color EGA indexing; the wrong assumption produces plausible-looking
   but wrongly colored images.)
-- The actual colors come from **external palette files** — e.g. enemy
+- The colors come either from the file's own `M0` chunk (see "Chunk
+  structure") or from **external palette files** — e.g. enemy
   graphics index into the 256-color palette assembled from
   `ENEMYPAL.DAT` (see next section). Observed index ranges in one
   sprite: 0, 33–44, 72–73; each range falls inside a palette chunk's
   16-entry slice.
 - Index 0 is most likely the **transparency/color key**: it typically
   accounts for ~2/3 of a sprite's pixels (the uniform background).
-  *inferred*
-- Whether any PIC files embed a palette is an open question.
+  *inferred* for sprites; **verified** for the map icon sheets (drawing
+  tiles with index 0 transparent produces a seamless map).
 
 ## Palette chunk files (`ENEMYPAL.DAT`)
 
@@ -162,10 +195,27 @@ implementation.
   graphics for the whole bestiary catalog; multiple chunks may claim the
   same palette range with different colors, so per-enemy chunk selection
   must happen elsewhere — probably the `.ENM` enemy files. *unresolved*
-- `BKGNDPAL.DAT` does **not** follow this layout: 2343 bytes = 3 · 781,
-  not a multiple of 53 (**verified**). Consistent with a plain array of
-  781 RGB triplets (25 more than a 256-color palette needs — purpose
-  unknown), but the actual structure is unresolved.
+- `BKGNDPAL.DAT` does **not** follow this layout — see next section.
+
+## Background palettes (`BKGNDPAL.DAT`)
+
+2343 bytes = 3 · 11 · 71: **11 palettes of 71 colors each**, plain RGB
+triplets with 6-bit components, no header and no index byte.
+
+    palette k (k = 0..10) at offset 213 · k:
+    +0x00   3·71  71 RGB triplets, 6-bit components
+
+- **verified**: every byte is ≤ 0x3F (so there are no offset/index
+  bytes); the same color sequences recur at a 213-byte (71-color) period,
+  and most entries are identical or near-identical across the 11 palettes.
+- Entries 12..59 hold six 8-step color ramps (yellow, green, red,
+  blue-grey, grey, brown); entry 60 (`00 00 0B`) is the same in all 11.
+- `3F 00 3F` (magenta) and runs of `3F 3F 3F` (white) look like
+  placeholders for slots a given palette leaves unused. *inferred*
+- Not the map palette: no palette matches any 71-entry range of the
+  palette embedded in the map icon sheets. Which palette indices the
+  71 entries patch, and what selects one of the 11 (location type? time
+  of day?) is unresolved.
 
 ## World map (`DARKLAND.MAP`)
 
@@ -208,16 +258,58 @@ Each byte expands to `repeat` identical tiles. **Every row decodes to
 exactly max_x = 327 tiles** (**verified** for all 931 rows; 304,437 tiles
 total, exactly max_x · max_y).
 
+### Icon sheets (`PICS/MAPICONS.PIC`, `PICS/MAPICON2.PIC`)
+
+Regular PIC files: an `M0` chunk with the full 256-color map palette,
+then a 320 × 200 `X0` image (**verified**; the two palettes are
+identical). They are developer atlases:
+
+- a grid of 16 columns × 16 rows of **16 × 12 pixel cells** in the
+  top-left 256 × 192 pixels;
+- text labels to the right of the grid (terrain name per row) and column
+  numbers 0..15 below it — not tile data.
+
+Row labels as written on the sheets (sheet 1 numbers its rows 16..31):
+
+| Row | Sheet 0 (`P` = 0)       | Row | Sheet 1 (`P` = 1)                  |
+|-----|-------------------------|-----|------------------------------------|
+| 0   | `plains` (empty cells)  | 16  | `Frst2`                            |
+| 1   | `ocean`                 | 17  | `Frst3`                            |
+| 2   | `MjRvr` (major river)   | 18  | `Rck0`                             |
+| 3   | `MnRvr` (minor river)   | 19  | `Rck1`                             |
+| 4   | `TdlMrs` (tidal marsh)  | 20  | `Rck2`                             |
+| 5   | `Marsh`                 | 21  | `Rck3`                             |
+| 6   | `Geest`                 | 22  | `Alp4`                             |
+| 7   | `Gst1`                  | 23  | `Alp5`                             |
+| 8   | `Farm0`                 | 24  | *(unlabeled; road pieces)*         |
+| 9   | `Farm1`                 | 25  | `Ford`                             |
+| 10  | `F/W0`                  | 26  | *(unlabeled; river pieces)*        |
+| 11  | `F/W1`                  | 27  | `Brdge`                            |
+| 12  | `LtW1`                  | 28  | `Cstle` (castles, other landmarks) |
+| 13  | `LtW2`                  | 29  | `Cty`                              |
+| 14  | `Frst0`                 | 30  | *(unlabeled; blue flags)*          |
+| 15  | `Frst1`                 | 31  | *(unlabeled; red flags)*           |
+
+Within a cell, ground tiles are "lens" shapes about 16 × 8 pixels in the
+lower part of the cell; tall features (trees, mountains, buildings) rise
+into the upper part.
+
 ### Tile geometry — **verified by rendering**
 
-- Tiles are 16 × 16 pixels.
-- Rows are vertically offset by half a tile (hexagonal-style layout):
-  odd rows are drawn shifted right by 8 px, and each row sits half a
-  tile (8 px) below the previous one.
-- **A full-map render using only sheet column 0 produces a coherent,
-  recognizable map of central Europe** (coastlines, terrain regions,
-  road networks): every tile is geometrically correct at 16×16 with the
-  half-tile offset. (Rendered by `darklands --map`, synthetic colors.)
+- Cells are **16 × 12** pixels; pixel value 0 is transparent.
+- Odd rows are drawn shifted right by 8 px (half a tile).
+- Consecutive rows are only **4 px** apart, so tiles overlap: draw rows
+  top to bottom so that lower rows cover the upper parts of the rows
+  behind them.
+- With this geometry the 16 × 8 ground lenses tile seamlessly. Rendered
+  map: `327 · 16 + 8` × `930 · 4 + 12` = 5240 × 3732 pixels.
+- **A full-map render using only sheet column 0 produces a correct map of
+  the Holy Roman Empire with real graphics**: North Sea, Baltic, Jutland,
+  the Rhine and Elbe, the Alps, all with plausible proportions.
+  (Rendered by `darklands --map`.)
+- An earlier revision of this document stated 16 × 16 tiles and an 8 px
+  row step; that was inferred from a synthetic-color render and produces
+  a map stretched vertically by 2×.
 
 ### What the tile byte means — structural finding
 
@@ -241,17 +333,17 @@ correct connectivity is visually unambiguous).
 
 ## Open questions
 
-- [ ] `.CAT`: timestamp encoding — DOS FAT date/time? (decode a few and
-      check for plausible 1992–1995 dates)
+- [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
 - [ ] `.PIC`: does the BCD-packed variant (`'X1'` magic) occur anywhere
       in the game data? In which files?
-- [ ] `.PIC`: do any images embed a palette? If so, where in the file?
+- [x] `.PIC`: do any images embed a palette? Yes: the `M0` chunk
 - [ ] `.PIC`: is the high byte of the magic word at 0x08 always 0x00?
 - [ ] Palettes: which palette chunk(s) apply to a given enemy, and where
       is that mapping stored? (probably `.ENM`)
-- [ ] Palettes: the actual format of `BKGNDPAL.DAT` (2343 bytes — not
-      the 53-byte chunk layout; consistent with 781 plain RGB triplets,
-      but why 781?)
+- [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
+- [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects
+      one of its 11 palettes
+- [ ] `.PIC`: are there chunk types other than `M0` and `X0`/`X1`?
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?
 - [ ] `.MAP`: the tile column-selection rule — how the sheet column
@@ -259,9 +351,8 @@ correct connectivity is visually unambiguous).
       is acknowledged broken; our renders confirm terrain *types* need no
       column data, so it is purely contextual — roads and coasts are the
       best test cases)
-- [ ] `.MAP`: the icon sheet format ("M0" magic — NOT the regular .PIC
-      format; see `MAPICONS.PIC`/`MAPICON2.PIC`)
-- [ ] `.MAP`: which palette applies to the map tiles (`BKGNDPAL.DAT` is
-      2343 bytes — not the 53-byte chunk layout of `ENEMYPAL.DAT`)
+- [x] `.MAP`: the icon sheet format — regular PIC with an `M0` chunk
+- [x] `.MAP`: which palette applies to the map tiles — the one embedded
+      in the icon sheets
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
       `DARKLAND.MSG`, `.LOC`/`.CTY`, ...

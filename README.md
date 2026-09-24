@@ -19,10 +19,11 @@ The goal is twofold:
 - Decode the game's custom `.PIC` image format, display the images and
   export them as BMP files
 - Decode the enemy palette file (`ENEMYPAL.DAT`)
-- Parse the world map (`DARKLAND.MAP`) and render it to a BMP file,
-  currently with synthetic colors
+- Parse the world map (`DARKLAND.MAP`) and render it to a BMP file with
+  the game's own map tiles and palette (tile transition variants are
+  not solved yet)
 
-Everything else — real map graphics, locations, sound, text, the game
+Everything else — locations, sound, text, the game
 itself — is not implemented yet. See the roadmap below.
 
 ## Screenshots
@@ -34,9 +35,9 @@ itself — is not implemented yet. See the roadmap below.
 - [x] Parse `.CAT` catalogs and decode `.PIC` images
 - [x] Export decoded images (`--extract`)
 - [x] Decode enemy palette files (`ENEMYPAL.DAT`)
-- [x] Parse and render the world map (`DARKLAND.MAP`) — synthetic colors
-- [ ] Decode the map icon sheets (`MAPICONS.PIC` / `MAPICON2.PIC`,
-      "M0" format) for real map graphics
+- [x] Parse and render the world map (`DARKLAND.MAP`)
+- [x] Decode the map icon sheets (`MAPICONS.PIC` / `MAPICON2.PIC`,
+      PIC files with an embedded palette) for real map graphics
 - [ ] Solve the map tile column rule (transition/connection variants)
 - [ ] Parse `DARKLAND.LOC` and label cities on the map
 - [ ] Command-line map export at full resolution (`--map`, done;
