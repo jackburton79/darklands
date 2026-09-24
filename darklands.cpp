@@ -18,6 +18,13 @@
 
 static const char* kSheetNames[2] = { "MAPICONS.PIC", "MAPICON2.PIC" };
 
+// Map tile geometry (see docs/formats.md): the icon sheets are grids of
+// 16 x 12 pixel cells; map rows are staggered by half a tile horizontally
+// and are 4 pixels apart, so tiles overlap. Index 0 is transparent.
+static const uint16 kTileW		= 16;
+static const uint16 kTileH		= 12;
+static const uint16 kRowStep	= 4;
+
 // The documented wendigo recipe (known imperfect — that's what we're testing).
 // Column bits come from the tile-ROW values of the four diagonal neighbors:
 //   col bit 0 (1) = NW neighbor row bit 3 (8)
@@ -64,15 +71,15 @@ static Bitmap*
 RenderMap(const MapFile& map,
     const std::vector<std::vector<map_tile> >& rows,
     const std::vector<uint8> sheets[2], uint16 sheetW,
-    uint16 tileW, uint16 tileH,
     const GFX::Palette& palette, bool useRecipe, bool synthetic)
 {
     const uint16 mw = map.Width();
     const uint16 mh = map.Height();
+    const uint16 tileW = kTileW;
+    const uint16 tileH = kTileH;
     const uint16 halfW = tileW / 2;
-    const uint16 halfH = tileH / 2;
     const uint32 outW = uint32(mw) * tileW + halfW;
-    const uint32 outH = uint32(mh - 1) * halfH + tileH;
+    const uint32 outH = uint32(mh - 1) * kRowStep + tileH;
 
     std::cerr << "rendering " << outW << " x " << outH << " px..." << std::endl;
 
@@ -81,7 +88,7 @@ RenderMap(const MapFile& map,
         out->SetColors(palette.colors, 0, 256);
         for (uint16 y = 0; y < mh; y++) {
             const int xoff = (y & 1) ? halfW : 0;
-            const int yoff = y * halfH;
+            const int yoff = y * kRowStep;
             for (uint16 x = 0; x < mw; x++) {
                 const map_tile& t = rows[y][x];
                 const int col = useRecipe ? ColumnFor(rows, x, y) : 0;
@@ -104,8 +111,12 @@ RenderMap(const MapFile& map,
                 const int sy = t.row * tileH;
                 for (uint16 py = 0; py < tileH; py++) {
                     const uint8* src = &sheet[(size_t)(sy + py) * sheetW + sx];
-                    for (uint16 px = 0; px < tileW; px++)
-                        out->PutPixel(xoff + x * tileW + px, yoff + py, src[px]);
+                    for (uint16 px = 0; px < tileW; px++) {
+                        // later (lower) rows overlap earlier ones
+                        if (src[px] != 0)
+                            out->PutPixel(xoff + x * tileW + px, yoff + py,
+                                src[px]);
+                    }
                 }
             }
         }
@@ -121,28 +132,9 @@ static int
 DoMapMode(const std::string& mapPath, const std::string& dataDir,
     const std::string& outPrefix)
 {
-    // --- palette: try BKGNDPAL.DAT (same chunk format? unverified!) ---
+    // --- icon sheets: PIC files with an embedded "M0" palette chunk,
+    //     which also provides the map palette ---
     GFX::Palette palette = {};
-    bool havePalette = false;
-    try {
-        PaletteFile background(dataDir + "/BKGNDPAL.DAT");
-        background.ApplyAll(palette);
-        havePalette = true;
-        std::cerr << "palette: BKGNDPAL.DAT, " << background.CountChunks()
-            << " chunks" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "note: BKGNDPAL.DAT unusable (" << e.what() << ")"
-            << std::endl;
-    }
-    if (!havePalette) {
-        // grayscale ramp, so the output is visible even without a
-        // real palette (essential for the synthetic render below)
-        for (int i = 0; i < 256; i++)
-            palette.colors[i] = GFX::Color{ uint8(i), uint8(i), uint8(i), 0 };
-    }
-
-    // --- icon sheets (optional for now: the "M0" format is not yet
-    //     supported -- MAPICONS.PIC/MAPICON2.PIC are NOT PIC files) ---
     std::vector<uint8> sheets[2];
     uint16 sheetW = 0, sheetH = 0;
     bool haveSheets = true;
@@ -158,6 +150,10 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
             } else if (image.Width() != sheetW || image.Height() != sheetH) {
                 throw std::runtime_error("sheet size mismatch");
             }
+            if (sheetW < 16 * kTileW || sheetH < 16 * kTileH)
+                throw std::runtime_error("sheet too small");
+            if (i == 0)
+                image.ApplyPalette(palette);
             sheets[i] = image.RawBytes();
             std::cerr << kSheetNames[i] << ": " << image.Width() << "x"
                 << image.Height() << std::endl;
@@ -169,23 +165,11 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
         }
         delete stream;
     }
-
-    uint16 tileW, tileH;
-    if (haveSheets) {
-        if (sheetW % 16 != 0 || sheetH % 16 != 0) {
-            std::cerr << "sheet " << sheetW << "x" << sheetH
-                << " is not 16 tiles wide/high -- tile size unknown!"
-                << std::endl;
-            return 1;
-        }
-        tileW = sheetW / 16;
-        tileH = sheetH / 16;
-    } else {
-        tileW = 16;		// assumed; verify once the sheet format is cracked
-        tileH = 16;
+    if (!haveSheets) {
+        // grayscale ramp, so the synthetic render is visible
+        for (int i = 0; i < 256; i++)
+            palette.colors[i] = GFX::Color{ uint8(i), uint8(i), uint8(i), 0 };
     }
-    std::cerr << "tile size: " << tileW << "x" << tileH
-        << (haveSheets ? "" : " (assumed)") << std::endl;
 
     // --- decode all rows once, render twice ---
     MapFile map(mapPath);
@@ -197,14 +181,12 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
 
     const bool synthetic = !haveSheets;
 
-    Bitmap* plain = RenderMap(map, rows, sheets, sheetW, tileW, tileH,
-        palette, /*useRecipe*/ false, synthetic);
+    Bitmap* plain = RenderMap(map, rows, sheets, sheetW, palette, /*useRecipe*/ false, synthetic);
     plain->Save((outPrefix + "_plain.bmp").c_str());
     plain->Release();
     std::cerr << "wrote " << outPrefix << "_plain.bmp" << std::endl;
 
-    Bitmap* recipe = RenderMap(map, rows, sheets, sheetW, tileW, tileH,
-        palette, /*useRecipe*/ true, synthetic);
+    Bitmap* recipe = RenderMap(map, rows, sheets, sheetW, palette, /*useRecipe*/ true, synthetic);
     recipe->Save((outPrefix + "_recipe.bmp").c_str());
     recipe->Release();
     std::cerr << "wrote " << outPrefix << "_recipe.bmp" << std::endl;

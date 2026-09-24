@@ -2,3 +2,4 @@
 darklands
 *.o
 data
+*.d

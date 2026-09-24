@@ -18,6 +18,14 @@
 static const size_t kHeaderSize	= 0x0A;
 static const size_t kStackSize	= 10000;
 
+// Scale a 6-bit VGA DAC value to 8 bits: 0 -> 0, 63 -> 255.
+static inline uint8
+Scale6To8(uint8 value)
+{
+    return uint8((value << 2) | (value >> 4));
+}
+
+
 static GFX::Palette
 EGAPalette()
 {
@@ -80,34 +88,81 @@ private:
 PICImage::PICImage(Stream* stream)
     :
     fStream(stream),
+    fImageOffset(0),
     fCompressedSize(0),
     fWidth(0),
     fHeight(0),
     fMagicWord(0),
-    fBCDPacked(false)
+    fBCDPacked(false),
+    fPaletteFirst(0)
 {
     if (stream == NULL)
         throw std::runtime_error("PICImage: NULL stream");
 
-    uint16 magic = stream->ReadWordLEAt(0x00);
-    if ((magic & 0xFF) != 'X')
-        throw std::runtime_error("PICImage: not a PIC file");
+    // A PIC file is a sequence of chunks: uint16 tag, uint16 length,
+    // then `length` bytes of data. "M0" is an optional palette chunk,
+    // "X0"/"X1" the image chunk (see docs/formats.md).
+    const size_t streamSize = stream->Size();
+    size_t offset = 0;
+    for (;;) {
+        if (offset + kHeaderSize > streamSize)
+            throw std::runtime_error("PICImage: no image chunk");
+        const uint16 tag = stream->ReadWordLEAt(offset);
+        const uint16 length = stream->ReadWordLEAt(offset + 2);
+        if (offset + 4 + length > streamSize)
+            throw std::runtime_error("PICImage: chunk exceeds stream size");
+        if ((tag & 0xFF) == 'X')
+            break;
+        if (tag != ('M' | ('0' << 8)))
+            throw std::runtime_error("PICImage: not a PIC file");
+
+        // palette chunk: first index, last index, 6-bit RGB triplets
+        uint8 range[2];
+        if (length < 2 || stream->ReadAt(offset + 4, range, 2) != 2)
+            throw std::runtime_error("PICImage: truncated palette chunk");
+        const size_t count = size_t(range[1]) - range[0] + 1;
+        if (range[1] < range[0] || length < 2 + 3 * count)
+            throw std::runtime_error("PICImage: invalid palette chunk");
+        fPaletteFirst = range[0];
+        fPalette.resize(3 * count);
+        if (stream->ReadAt(offset + 6, fPalette.data(), fPalette.size())
+                != (ssize_t)fPalette.size()) {
+            throw std::runtime_error("PICImage: truncated palette chunk");
+        }
+        offset += 4 + length;
+    }
+    fImageOffset = offset;
+
+    const uint16 magic = stream->ReadWordLEAt(offset + 0x00);
     fBCDPacked = (magic >> 8) & 1;
 
-    fCompressedSize = stream->ReadWordLEAt(0x02);
-    fWidth			= stream->ReadWordLEAt(0x04);
-    fHeight			= stream->ReadWordLEAt(0x06);
-    fMagicWord		= stream->ReadWordLEAt(0x08);
+    fCompressedSize = stream->ReadWordLEAt(offset + 0x02);
+    fWidth			= stream->ReadWordLEAt(offset + 0x04);
+    fHeight			= stream->ReadWordLEAt(offset + 0x06);
+    fMagicWord		= stream->ReadWordLEAt(offset + 0x08);
 
-    if (fWidth == 0 || fHeight == 0 || fCompressedSize == 0)
+    // The length field counts all bytes from 0x04 to the end of the image
+    // data (verified across EINFO.CAT); 6 of them are the rest of the header.
+    if (fWidth == 0 || fHeight == 0 || fCompressedSize <= kHeaderSize - 4)
         throw std::runtime_error("PICImage: invalid header");
-    if (stream->Size() < kHeaderSize)
-        throw std::runtime_error("PICImage: stream too small for header");
+}
 
-    // Field 0x02 counts all bytes from 0x04 to the end of the image data:
-    // stream size == fCompressedSize + 4 (verified across EINFO.CAT).
-    if (size_t(fCompressedSize) + 4 > stream->Size())
-        throw std::runtime_error("PICImage: declared size exceeds stream size");
+
+bool
+PICImage::HasPalette() const
+{
+    return !fPalette.empty();
+}
+
+
+void
+PICImage::ApplyPalette(GFX::Palette& palette) const
+{
+    for (size_t i = 0; i < fPalette.size() / 3; i++) {
+        const uint8* rgb = &fPalette[i * 3];
+        palette.colors[fPaletteFirst + i] = GFX::Color{
+            Scale6To8(rgb[0]), Scale6To8(rgb[1]), Scale6To8(rgb[2]), 0 };
+    }
 }
 
 
@@ -134,7 +189,8 @@ PICImage::Image(const GFX::Palette* palette) const
     try {
         GFX::Palette fallback;
         if (palette == NULL) {
-            fallback = EGAPalette();	// your existing EGA helper
+            fallback = EGAPalette();
+            ApplyPalette(fallback);		// embedded palette, if any
             palette = &fallback;
         }
         bitmap->SetColors(palette->colors, 0, 256);
@@ -152,13 +208,9 @@ PICImage::Image(const GFX::Palette* palette) const
 std::vector<uint8>
 PICImage::RawBytes() const
 {
-    const size_t streamSize = fStream->Size();
-    if (streamSize < kHeaderSize)
-        throw std::runtime_error("PICImage: stream too small for header");
-
-    const size_t dataSize = streamSize - kHeaderSize;
+    const size_t dataSize = size_t(fCompressedSize) - (kHeaderSize - 4);
     std::vector<uint8> compressed(dataSize);
-    if (fStream->ReadAt(kHeaderSize, compressed.data(), dataSize)
+    if (fStream->ReadAt(fImageOffset + kHeaderSize, compressed.data(), dataSize)
             != (ssize_t)dataSize) {
         throw std::runtime_error("PICImage: truncated image data");
     }
