@@ -16,10 +16,14 @@ The goal is twofold:
 **Very early in development.** So far, the project can:
 
 - Open the game's `.CAT` catalog (archive) files and list their contents
-- Decode the game's custom `.PIC` image format and display the images
+- Decode the game's custom `.PIC` image format, display the images and
+  export them as BMP files
+- Decode the enemy palette file (`ENEMYPAL.DAT`)
+- Parse the world map (`DARKLAND.MAP`) and render it to a BMP file,
+  currently with synthetic colors
 
-Everything else — maps, locations, sound, text, the game itself — is not
-implemented yet. See the roadmap below.
+Everything else — real map graphics, locations, sound, text, the game
+itself — is not implemented yet. See the roadmap below.
 
 ## Screenshots
 
@@ -44,26 +48,29 @@ implemented yet. See the roadmap below.
 
 ## Building
 
-The only external dependency is **zlib** (plus a C++ compiler and `make`).
+The external dependencies are **SDL2** and **zlib** (the latter is used by
+libjgame), plus a C++11 compiler, `make` and `pkg-config`.
 
 ```sh
 git clone --recurse-submodules https://github.com/jackburton79/darklands.git
-git 
 cd darklands
 make
 ```
 
-Installing zlib, per platform:
+If you already cloned without `--recurse-submodules`, fetch libjgame with
+`git submodule update --init`.
+
+Installing the dependencies, per platform:
 
 ```sh
 # Debian/Ubuntu
-sudo apt install build-essential zlib1g-dev
+sudo apt install build-essential pkg-config libsdl2-dev zlib1g-dev
 
 # Fedora
-sudo dnf install gcc-c++ make zlib-devel
+sudo dnf install gcc-c++ make pkgconf-pkg-config SDL2-devel zlib-devel
 
 # Haiku
-pkgman install zlib_devel
+pkgman install libsdl2_devel zlib_devel
 ```
 
 ## Running
@@ -71,25 +78,39 @@ pkgman install zlib_devel
 You must supply your own copy of the original game data — this repository
 contains none. *Darklands* is available for purchase on GOG.com.
 
+The program currently expects the game data under `data/DARKLAND/`,
+relative to the working directory (it loads `data/DARKLAND/ENEMYPAL.DAT`
+at startup):
+
 ```sh
-./darklands /path/to/DARKLAND/
+# Browse the images of a catalog (left/right arrow keys)
+./darklands data/DARKLAND/PICS/EINFO.CAT
+
+# Export every image of a catalog as BMP (the output directory must exist)
+./darklands --extract data/DARKLAND/PICS/EINFO.CAT out/
+
+# Render the world map to <prefix>_plain.bmp and <prefix>_recipe.bmp
+./darklands --map data/DARKLAND/DARKLAND.MAP [data dir] [output prefix]
 ```
 
 ## Project layout
 
 ```
-darklands.cpp     Program entry point
+darklands.cpp     Program entry point: image viewer, --extract, --map
 Catalog.*         Reader for the game's .CAT archive/catalog files
 PICImage.*        Decoder for the game's .PIC image format
+Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
+MapFile.*         Reader for the world map (DARKLAND.MAP)
+docs/formats.md   Reverse-engineered data format notes
 ```
 
-The repository also use, as a git submodule, [libjgame](https://github.com/jackburton79/libjgame), a game library by the same author
+The repository also uses, as a git submodule, [libjgame](https://github.com/jackburton79/libjgame), a game library by the same author
 that provides streams, graphics, and audio support (it has its own README
 and license). It is built automatically by the top-level Makefile.
 
 ## Documentation
 
-Reverse-engineered data format notes live in docs/formats.md.
+Reverse-engineered data format notes live in [docs/formats.md](docs/formats.md).
 
 ## Legal
 
