@@ -367,6 +367,109 @@ Rows never used by the map data: 26, 28, 30, 31 (and 0, "plains", only 5
 tiles). Castles, flags and the like are presumably drawn by the game on
 top of the map from other data (e.g. `DARKLAND.LOC`).
 
+## Locations (`DARKLAND.LOC`)
+
+The places on the world map: cities, castles, villages, monasteries,
+caves, shrines, lairs... See `LocationFile.cpp` for a reference
+implementation.
+
+    offset  size    description
+    0x00    2       location count N (uint16) — 414 in the game data
+    0x02    58·N    records, 58 bytes each
+
+- **File size: 24014 = 2 + 414 · 58** (**verified**).
+
+Record (relative offsets, little-endian):
+
+    +0x00   2     type (uint16), see below
+    +0x02   2     unknown (uint16; 0 for cities, 8..14 for most others —
+                  perhaps a map icon)
+    +0x04   2     x: map tile column (DARKLAND.MAP coordinates)
+    +0x06   2     y: map tile row
+    +0x08   2     unknown (uint16; values 1, 5, 9, 10)
+    +0x0A   7     unknown, varies
+    +0x11   1     cities: size, 3..8; other locations: 1 (see below)
+    +0x12   20    unknown; constant in the game data except +0x1C
+                  (0x19 0x19 0x19 at +0x15, 0xFF 0xFF at +0x18)
+    +0x26   20    name, NUL-padded
+
+- **Coordinates** — **verified**: 86 of the 92 cities (type 0) sit
+  exactly on a city map tile (type 29); the other 6 (e.g. Berlin,
+  Kassel, Frankfurt) are right next to one — large cities span several
+  tiles. One cave has y = 931, one past the last map row.
+- **Types**, from the names (*inferred*): 0 city (92), 1 and 8 mostly
+  villages/castles (73 and 112), 2 and 3 monasteries/abbeys?,
+  5 and 19 "Cave", 13 "Tomb", 15 "Lair", 16 "Spring", 17 "Lake",
+  18 "Shrine", 20 "Pagan Altar", 21 and up named special sites
+  (e.g. "Brocken", "Hochk{nig"). The exact meaning of types 1..4, 6
+  and 8 is unresolved.
+- **City size** at +0x11 — *inferred*: Köln is the only 8; Hamburg,
+  Lübeck, Nürnberg, Ulm, Strassburg and Danzig are 7; small towns such
+  as Groningen and Flensburg are 3. Every non-city has 1.
+- **Name character set**: the game's character set (see "Character
+  set" below): `L|beck` = Lübeck, `K{ln` = Köln, `J\x1Fgerndorf` =
+  Jägerndorf.
+
+## Fonts (`FONTS.FNT`, `FONTS.UTL`)
+
+Bitmap fonts, 1 bit per pixel. `FONTS.FNT` holds 3 fonts, `FONTS.UTL` 4
+(its first three are the same fonts with small differences — see
+"Character set" — the fourth is a plain ASCII font). See `FontFile.cpp` for a reference
+implementation.
+
+    offset  size    description
+    0x00    2       font count N (uint16)
+    0x02    2·N     offsets (uint16) of each font's glyph bitmap
+
+Each font is stored as a width table, a header, then the bitmap; the
+offset in the file header points at the **bitmap**, so the other two
+parts are found *before* it:
+
+    offset − 8 − G   G     glyph widths, one byte per glyph
+    offset − 8       8     header:
+                             +0  first character code
+                             +1  last character code
+                                 (G = last − first + 1 glyphs)
+                             +2  bytes per glyph row (1 or 2)
+                             +3  0
+                             +4  height
+                             +5  1 in every font — most likely the gap
+                                 between glyphs in pixels *(inferred)*
+                             +6  1 (0 in the ASCII font of FONTS.UTL)
+                             +7  0
+    offset           ...   bitmap, G · bytes-per-row · rows bytes
+
+- **Rows = byte +4 + byte +6** — *inferred*, but the only rule that
+  makes the bitmap size match the data for all 7 fonts (e.g. the
+  first font of `FONTS.FNT`: 128 glyphs · 2 bytes · 7 rows = 1792 bytes,
+  exactly the space up to the next font's width table). The meaning of
+  +6 (an extra row? a descender?) is unknown.
+- The bitmap is **row-major**: all glyphs' row 0, then all glyphs'
+  row 1, ...; each glyph row is `bytes per row` bytes, most significant
+  bit = leftmost pixel. **verified** by rendering all glyphs.
+- Widths are **ink widths**: in almost every glyph the rightmost pixel
+  column is set. Text therefore needs a gap between glyphs, presumably
+  header byte +5 (1 pixel). Space is 1 pixel wide.
+- Fonts in `FONTS.FNT`: 0 = characters 0x00..0x7F, 2 bytes/row, 7 rows;
+  1 = 0x1F..0x7F, 1 byte/row, 9 rows; 2 = 0x1F..0x7F, 2 bytes/row,
+  8 rows.
+
+### Character set
+
+ASCII, with German letters replacing a few codes. **verified** from the
+glyphs in the fonts and consistent with the location names:
+
+| Code | 0x1F | `[` 0x5B | `\` 0x5C | `]` 0x5D | `_` 0x5F | `{` 0x7B | `\|` 0x7C |
+|------|------|----------|-----------|----------|----------|----------|------------|
+| Char | ä    | Ä        | Ö         | Ü        | ß        | ö        | ü          |
+
+Exception: in the first three fonts of `FONTS.UTL`, `_` is **ë**
+instead of ß (the other substitutions are the same). `}` is a closing
+parenthesis-like glyph, `~` a dash, 0x7F a checkered block. The ASCII
+font of `FONTS.UTL` keeps the standard ASCII glyphs. Apart from these,
+the first three fonts of the two files differ only in a few glyph
+shapes (e.g. `I`, `O`, `F`, `+`).
+
 ## Open questions
 
 - [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
@@ -391,5 +494,9 @@ top of the map from other data (e.g. `DARKLAND.LOC`).
 - [x] `.MAP`: the icon sheet format — regular PIC with an `M0` chunk
 - [x] `.MAP`: which palette applies to the map tiles — the one embedded
       in the icon sheets
-- [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
-      `DARKLAND.MSG`, `.LOC`/`.CTY`, ...
+- [ ] `.LOC`: the meaning of location types 1..4, 6, 8 and of the
+      unknown record fields
+- [ ] Fonts: meaning of header bytes +5 and +6 (glyph gap and extra
+      row are inferred from data sizes and glyph shapes)
+- [ ] Other resource formats: `.DLB`/`.DLC` sound archives,
+      `DARKLAND.MSG`, `.CTY`, ...

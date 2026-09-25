@@ -20,7 +20,10 @@ The goal is twofold:
   export them as BMP files
 - Decode the enemy palette file (`ENEMYPAL.DAT`)
 - Parse the world map (`DARKLAND.MAP`) and render it to a BMP file with
-  the game's own map tiles and palette
+  the game's own map tiles and palette, with the city names written in
+  the game's font
+- List the map locations (`DARKLAND.LOC`): cities, castles, villages,
+  caves... with their map coordinates
 
 Everything else — locations, sound, text, the game
 itself — is not implemented yet. See the roadmap below.
@@ -38,10 +41,11 @@ itself — is not implemented yet. See the roadmap below.
 - [x] Decode the map icon sheets (`MAPICONS.PIC` / `MAPICON2.PIC`,
       PIC files with an embedded palette) for real map graphics
 - [x] Solve the map tile column rule (transition/connection variants)
-- [ ] Parse `DARKLAND.LOC` and label cities on the map
+- [x] Parse `DARKLAND.LOC` (`--locations`)
+- [x] Decode the game fonts (`FONTS.FNT`) and label cities on the map
 - [ ] Command-line map export at full resolution (`--map`, done;
       zoomable/pannable viewer)
-- [ ] Decode more resource types (fonts, text, sound archives)
+- [ ] Decode more resource types (text, sound archives)
 - [ ] City screens, text and dialogue display
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
@@ -91,16 +95,23 @@ at startup):
 
 # Render the world map to <prefix>.bmp (default prefix: map)
 ./darklands --map data/DARKLAND/DARKLAND.MAP [data dir] [output prefix]
+
+# List the map locations (cities, castles, caves...) with coordinates
+./darklands --locations data/DARKLAND/DARKLAND.LOC
 ```
 
 ## Project layout
 
 ```
-darklands.cpp     Program entry point: image viewer, --extract, --map
+darklands.cpp     Program entry point: image viewer, --extract, --map,
+                  --locations
 Catalog.*         Reader for the game's .CAT archive/catalog files
 PICImage.*        Decoder for the game's .PIC image format
 Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
 MapFile.*         Reader for the world map (DARKLAND.MAP)
+LocationFile.*    Reader for the map locations (DARKLAND.LOC)
+FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
+TextSupport.*     Text rendering with the game fonts
 docs/formats.md   Reverse-engineered data format notes
 ```
 
