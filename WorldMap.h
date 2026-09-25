@@ -44,6 +44,11 @@ public:
     // Top-left pixel of tile (x, y)'s cell, and the center of its ground.
     GFX::point		TileOrigin(uint16 x, uint16 y) const;
     GFX::point		TileCenter(uint16 x, uint16 y) const;
+    // The tile whose ground contains map pixel `point` (the nearest
+    // ground center, in the diamond metric of the staggered grid).
+    // Returns false if the point is off the map.
+    bool			TileAtPixel(const GFX::point& point, uint16& x,
+                        uint16& y) const;
 
     bool			HasSheets() const	{ return fHaveSheets; }
     const GFX::Palette& Palette() const	{ return fPalette; }

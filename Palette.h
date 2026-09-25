@@ -26,6 +26,10 @@ struct palette_chunk {
     GFX::Color	colors[16];		// scaled to 0..255
 };
 
+// Index of the palette color closest to (r, g, b), components 0..255.
+uint8 NearestColor(const GFX::Palette& palette, int r, int g, int b);
+
+
 class PaletteFile {
 public:
     explicit		PaletteFile(const std::string& fileName);

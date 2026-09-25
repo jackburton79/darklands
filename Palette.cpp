@@ -4,6 +4,7 @@
 #include "GraphicsDefs.h"
 #include "Stream.h"
 
+#include <climits>
 #include <ostream>
 #include <stdexcept>
 
@@ -16,6 +17,24 @@ static inline uint8
 Scale6To8(uint8 value)
 {
     return uint8((value << 2) | (value >> 4));
+}
+
+
+uint8
+NearestColor(const GFX::Palette& palette, int r, int g, int b)
+{
+    int best = 0;
+    int bestDistance = INT_MAX;
+    for (int i = 0; i < 256; i++) {
+        const GFX::Color& c = palette.colors[i];
+        const int distance = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g)
+            + (c.b - b) * (c.b - b);
+        if (distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+    return uint8(best);
 }
 
 

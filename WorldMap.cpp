@@ -6,6 +6,7 @@
 #include "Stream.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -157,6 +158,37 @@ WorldMap::TileCenter(uint16 x, uint16 y) const
     // ground tiles occupy the lower two thirds of the cell
     const GFX::point origin = TileOrigin(x, y);
     return GFX::point(origin.x + kTileWidth / 2, origin.y + 8);
+}
+
+
+bool
+WorldMap::TileAtPixel(const GFX::point& point, uint16& tileX,
+    uint16& tileY) const
+{
+    // Ground lenses are 16 x 8 diamonds: a point belongs to the tile with
+    // the smallest |dx| / 8 + |dy| / 4 (scaled by 8 to stay in integers).
+    int bestDistance = -1;
+    const int centerRow = (point.y - 8) / kRowStep;
+    for (int y = centerRow - 2; y <= centerRow + 2; y++) {
+        if (y < 0 || y >= fHeight)
+            continue;
+        const int shift = (y & 1) ? kTileWidth / 2 : 0;
+        const int centerColumn = (point.x - shift) / kTileWidth;
+        for (int x = centerColumn - 1; x <= centerColumn + 1; x++) {
+            if (x < 0 || x >= fWidth)
+                continue;
+            const GFX::point center = TileCenter(x, y);
+            const int distance = std::abs(point.x - center.x)
+                + 2 * std::abs(point.y - center.y);
+            if (bestDistance < 0 || distance < bestDistance) {
+                bestDistance = distance;
+                tileX = x;
+                tileY = y;
+            }
+        }
+    }
+    // farther than half a tile from any center: off the map
+    return bestDistance >= 0 && bestDistance <= kTileWidth;
 }
 
 
