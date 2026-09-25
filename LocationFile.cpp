@@ -69,9 +69,13 @@ LocationFile::DecodeName(const char* name, size_t length)
     std::string result;
     for (size_t i = 0; i < length; i++) {
         switch (name[i]) {
-            case '|':	result += "\xC3\xBC"; break;	// ü
-            case '{':	result += "\xC3\xB6"; break;	// ö
             case 0x1F:	result += "\xC3\xA4"; break;	// ä
+            case '{':	result += "\xC3\xB6"; break;	// ö
+            case '|':	result += "\xC3\xBC"; break;	// ü
+            case '[':	result += "\xC3\x84"; break;	// Ä
+            case '\\':	result += "\xC3\x96"; break;	// Ö
+            case ']':	result += "\xC3\x9C"; break;	// Ü
+            case '_':	result += "\xC3\x9F"; break;	// ß
             default:	result += name[i]; break;
         }
     }

@@ -20,7 +20,8 @@ The goal is twofold:
   export them as BMP files
 - Decode the enemy palette file (`ENEMYPAL.DAT`)
 - Parse the world map (`DARKLAND.MAP`) and render it to a BMP file with
-  the game's own map tiles and palette
+  the game's own map tiles and palette, with the city names written in
+  the game's font
 - List the map locations (`DARKLAND.LOC`): cities, castles, villages,
   caves... with their map coordinates
 
@@ -41,10 +42,10 @@ itself — is not implemented yet. See the roadmap below.
       PIC files with an embedded palette) for real map graphics
 - [x] Solve the map tile column rule (transition/connection variants)
 - [x] Parse `DARKLAND.LOC` (`--locations`)
-- [ ] Label cities on the map (needs the game font, `FONTS.FNT`)
+- [x] Decode the game fonts (`FONTS.FNT`) and label cities on the map
 - [ ] Command-line map export at full resolution (`--map`, done;
       zoomable/pannable viewer)
-- [ ] Decode more resource types (fonts, text, sound archives)
+- [ ] Decode more resource types (text, sound archives)
 - [ ] City screens, text and dialogue display
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
@@ -109,6 +110,8 @@ PICImage.*        Decoder for the game's .PIC image format
 Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
 MapFile.*         Reader for the world map (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
+FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
+TextSupport.*     Text rendering with the game fonts
 docs/formats.md   Reverse-engineered data format notes
 ```
 

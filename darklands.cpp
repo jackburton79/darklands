@@ -6,8 +6,10 @@
 #include "FileStream.h"
 #include "Palette.h"
 #include "PICImage.h"
+#include "TextSupport.h"
 #include "Stream.h"
 
+#include <climits>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -26,6 +28,9 @@ static const char* kSheetNames[2] = { "MAPICONS.PIC", "MAPICON2.PIC" };
 static const uint16 kTileW		= 16;
 static const uint16 kTileH		= 12;
 static const uint16 kRowStep	= 4;
+
+// Font used for the city names: index into FONTS.FNT
+static const uint32 kLabelFont	= 2;
 
 // Tile types: sheet 0 rows are types 0..15, sheet 1 rows types 16..31.
 enum {
@@ -160,6 +165,56 @@ RenderMap(const MapFile& map,
 }
 
 
+// Index of the palette color closest to (r, g, b).
+static uint8
+NearestColor(const GFX::Palette& palette, int r, int g, int b)
+{
+    int best = 0;
+    int bestDistance = INT_MAX;
+    for (int i = 0; i < 256; i++) {
+        const GFX::Color& c = palette.colors[i];
+        const int distance = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g)
+            + (c.b - b) * (c.b - b);
+        if (distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+    return uint8(best);
+}
+
+
+// Writes the name of every city (location type 0) centered above its
+// tile, in white with a black outline.
+static void
+LabelCities(Bitmap* bitmap, const LocationFile& locations, const Font& font,
+    const GFX::Palette& palette)
+{
+    const uint8 white = NearestColor(palette, 255, 255, 255);
+    const uint8 black = NearestColor(palette, 0, 0, 0);
+    for (uint32 i = 0; i < locations.CountLocations(); i++) {
+        const location& loc = locations.LocationAt(i);
+        if (loc.type != 0)
+            continue;
+        const std::string name = Font::ToGameCharset(loc.name);
+        // tile center: see RenderMap() for the geometry
+        const int centerX = loc.x * kTileW + ((loc.y & 1) ? kTileW / 2 : 0)
+            + kTileW / 2;
+        const int top = loc.y * kRowStep - font.Height();
+        const int left = centerX - font.StringWidth(name) / 2;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (dx != 0 || dy != 0) {
+                    font.RenderString(name, bitmap,
+                        GFX::point(left + dx, top + dy), black);
+                }
+            }
+        }
+        font.RenderString(name, bitmap, GFX::point(left, top), white);
+    }
+}
+
+
 static int
 DoMapMode(const std::string& mapPath, const std::string& dataDir,
     const std::string& outPrefix)
@@ -215,6 +270,13 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
     const bool synthetic = !haveSheets;
 
     Bitmap* bitmap = RenderMap(map, rows, sheets, sheetW, palette, synthetic);
+    try {
+        const LocationFile locations(dataDir + "/DARKLAND.LOC");
+        const FontFile fonts(dataDir + "/FONTS.FNT");
+        LabelCities(bitmap, locations, Font(fonts, kLabelFont), palette);
+    } catch (const std::exception& e) {
+        std::cerr << "note: no city labels (" << e.what() << ")" << std::endl;
+    }
     bitmap->Save((outPrefix + ".bmp").c_str());
     bitmap->Release();
     std::cerr << "wrote " << outPrefix << ".bmp" << std::endl;
