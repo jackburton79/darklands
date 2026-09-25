@@ -36,7 +36,8 @@ EGAPalette()
         {  85,  85,  85 }, {  85,  85, 255 }, {  85, 255,  85 }, {  85, 255, 255 },
         { 255,  85,  85 }, { 255,  85, 255 }, { 255, 255,  85 }, { 255, 255, 255 }
     };
-    GFX::Palette palette;
+    GFX::Palette palette;	// its constructor leaves colors uninitialized
+    memset(palette.colors, 0, sizeof(palette.colors));
     for (int i = 0; i < 16; i++)
         palette.colors[i] = GFX::Color{ kEGA[i][0], kEGA[i][1], kEGA[i][2], 0 };
     return palette;

@@ -164,7 +164,8 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
 {
     // --- icon sheets: PIC files with an embedded "M0" palette chunk,
     //     which also provides the map palette ---
-    GFX::Palette palette = {};
+    GFX::Palette palette;	// its constructor leaves colors uninitialized
+    memset(palette.colors, 0, sizeof(palette.colors));
     std::vector<uint8> sheets[2];
     uint16 sheetW = 0, sheetH = 0;
     bool haveSheets = true;
@@ -261,9 +262,10 @@ DecodeImage(const Catalog* catalog, uint32 index, const GFX::Palette& palette)
 
 int main(int argc, char **argv)
 {
-    GFX::Palette palette = {};
-    //memset(&palette, 0, sizeof(palette));	// black base; chunk files only
-                                            // patch some ranges
+    // black base; chunk files only patch some ranges. GFX::Palette's
+    // constructor leaves colors uninitialized, so "= {}" does not clear it.
+    GFX::Palette palette;
+    memset(palette.colors, 0, sizeof(palette.colors));
     PaletteFile paletteFile("data/DARKLAND/ENEMYPAL.DAT");
     paletteFile.ApplyAll(palette);
 
