@@ -24,6 +24,8 @@ The goal is twofold:
   the game's font
 - List the map locations (`DARKLAND.LOC`): cities, castles, villages,
   caves... with their map coordinates
+- List the cities (`DARKLAND.CTY`) with their rulers, neighboring
+  cities, ports and named places
 
 Everything else — locations, sound, text, the game
 itself — is not implemented yet. See the roadmap below.
@@ -43,6 +45,7 @@ itself — is not implemented yet. See the roadmap below.
 - [x] Solve the map tile column rule (transition/connection variants)
 - [x] Parse `DARKLAND.LOC` (`--locations`)
 - [x] Decode the game fonts (`FONTS.FNT`) and label cities on the map
+- [x] Parse the city descriptions (`DARKLAND.CTY`, `--cities`)
 - [ ] Command-line map export at full resolution (`--map`, done;
       zoomable/pannable viewer)
 - [ ] Decode more resource types (text, sound archives)
@@ -98,18 +101,22 @@ at startup):
 
 # List the map locations (cities, castles, caves...) with coordinates
 ./darklands --locations data/DARKLAND/DARKLAND.LOC
+
+# List the cities with their rulers, neighbors and places
+./darklands --cities data/DARKLAND/DARKLAND.CTY
 ```
 
 ## Project layout
 
 ```
 darklands.cpp     Program entry point: image viewer, --extract, --map,
-                  --locations
+                  --locations, --cities
 Catalog.*         Reader for the game's .CAT archive/catalog files
 PICImage.*        Decoder for the game's .PIC image format
 Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
 MapFile.*         Reader for the world map (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
+CityFile.*        Reader for the city descriptions (DARKLAND.CTY)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
 TextSupport.*     Text rendering with the game fonts
 docs/formats.md   Reverse-engineered data format notes

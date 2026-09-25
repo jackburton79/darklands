@@ -13,7 +13,7 @@ SDL_CFLAGS := $(shell pkg-config --cflags sdl2)
 SDL_LIBS := $(shell pkg-config --libs sdl2)
 
 # Source files
-SOURCES = darklands.cpp Catalog.cpp FontFile.cpp LocationFile.cpp MapFile.cpp Palette.cpp PICImage.cpp TextSupport.cpp
+SOURCES = darklands.cpp Catalog.cpp CityFile.cpp FontFile.cpp LocationFile.cpp MapFile.cpp Palette.cpp PICImage.cpp TextSupport.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 DEPS = $(SOURCES:.cpp=.d)
 TARGET = darklands

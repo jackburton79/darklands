@@ -1,5 +1,6 @@
 #include "Bitmap.h"
 #include "Catalog.h"
+#include "CityFile.h"
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
 #include "LocationFile.h"
@@ -286,6 +287,36 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
 
 
 static void
+DumpCities(const CityFile& cities)
+{
+    static const char* kPlaceNames[CITY_PLACE_COUNT] = {
+        "ruler", "second power", "famous place", "square", "town hall",
+        "castle", "cathedral", "church", "market", "mint square", "slums",
+        "armory", "pawnshop", "monastery", "inn", "university"
+    };
+    for (uint32 i = 0; i < cities.CountCities(); i++) {
+        const city& c = cities.CityAt(i);
+        std::cout << std::setw(2) << i << "  " << c.fullName
+            << "  size " << int(c.size) << "  x " << c.x << "  y " << c.y;
+        if (c.harbor == CITY_HARBOR_NORTH_SEA)
+            std::cout << "  port (North Sea)";
+        else if (c.harbor == CITY_HARBOR_BALTIC)
+            std::cout << "  port (Baltic)";
+        std::cout << std::endl << "    neighbors:";
+        for (uint16 n : c.neighbors) {
+            std::cout << " " << (n < cities.CountCities()
+                ? cities.CityAt(n).shortName : std::to_string(n));
+        }
+        std::cout << std::endl;
+        for (int p = 0; p < CITY_PLACE_COUNT; p++) {
+            if (!c.places[p].empty())
+                std::cout << "    " << kPlaceNames[p] << ": " << c.places[p] << std::endl;
+        }
+    }
+}
+
+
+static void
 DumpLocations(const LocationFile& locations)
 {
     for (uint32 i = 0; i < locations.CountLocations(); i++) {
@@ -354,6 +385,15 @@ int main(int argc, char **argv)
             std::cerr << "map error: " << e.what() << std::endl;
             return 1;
         }
+    }
+    if (argc > 2 && std::string(argv[1]) == "--cities") {
+        try {
+            DumpCities(CityFile(argv[2]));
+        } catch (const std::exception& e) {
+            std::cerr << "cities error: " << e.what() << std::endl;
+            return 1;
+        }
+        return 0;
     }
     if (argc > 2 && std::string(argv[1]) == "--locations") {
         try {
