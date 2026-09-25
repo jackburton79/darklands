@@ -85,25 +85,26 @@ pkgman install libsdl2_devel zlib_devel
 You must supply your own copy of the original game data — this repository
 contains none. *Darklands* is available for purchase on GOG.com.
 
-The program currently expects the game data under `data/DARKLAND/`,
-relative to the working directory (it loads `data/DARKLAND/ENEMYPAL.DAT`
-at startup):
+Point the program at the game's data directory (the one containing
+`DARKLAND.MAP`, `DARKLAND.LOC`, ... and the `PICS` subdirectory) with
+`--data`; the default is `data/DARKLAND` under the working directory.
+Game files are looked up by name, in that directory and then in `PICS`:
 
 ```sh
 # Browse the images of a catalog (left/right arrow keys)
-./darklands data/DARKLAND/PICS/EINFO.CAT
+./darklands --data /path/to/DARKLAND EINFO.CAT
 
 # Export every image of a catalog as BMP (the output directory must exist)
-./darklands --extract data/DARKLAND/PICS/EINFO.CAT out/
+./darklands --extract EINFO.CAT out/
 
-# Render the world map to <prefix>.bmp (default prefix: map)
-./darklands --map data/DARKLAND/DARKLAND.MAP [data dir] [output prefix]
+# Render the world map, with city names, to <prefix>.bmp (default: map)
+./darklands --map [output prefix]
 
 # List the map locations (cities, castles, caves...) with coordinates
-./darklands --locations data/DARKLAND/DARKLAND.LOC
+./darklands --locations
 
 # List the cities with their rulers, neighbors and places
-./darklands --cities data/DARKLAND/DARKLAND.CTY
+./darklands --cities
 ```
 
 ## Project layout
@@ -111,10 +112,13 @@ at startup):
 ```
 darklands.cpp     Program entry point: image viewer, --extract, --map,
                   --locations, --cities
+GameData.*        Access to the game's data files from one data directory
+WorldMap.*        The world map: tiles, column rule, drawing any part of it
+CityLabels.*      City names drawn over the map
 Catalog.*         Reader for the game's .CAT archive/catalog files
 PICImage.*        Decoder for the game's .PIC image format
 Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
-MapFile.*         Reader for the world map (DARKLAND.MAP)
+MapFile.*         Reader for the world map file (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
 CityFile.*        Reader for the city descriptions (DARKLAND.CTY)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
