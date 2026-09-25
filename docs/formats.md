@@ -367,6 +367,51 @@ Rows never used by the map data: 26, 28, 30, 31 (and 0, "plains", only 5
 tiles). Castles, flags and the like are presumably drawn by the game on
 top of the map from other data (e.g. `DARKLAND.LOC`).
 
+## Locations (`DARKLAND.LOC`)
+
+The places on the world map: cities, castles, villages, monasteries,
+caves, shrines, lairs... See `LocationFile.cpp` for a reference
+implementation.
+
+    offset  size    description
+    0x00    2       location count N (uint16) — 414 in the game data
+    0x02    58·N    records, 58 bytes each
+
+- **File size: 24014 = 2 + 414 · 58** (**verified**).
+
+Record (relative offsets, little-endian):
+
+    +0x00   2     type (uint16), see below
+    +0x02   2     unknown (uint16; 0 for cities, 8..14 for most others —
+                  perhaps a map icon)
+    +0x04   2     x: map tile column (DARKLAND.MAP coordinates)
+    +0x06   2     y: map tile row
+    +0x08   2     unknown (uint16; values 1, 5, 9, 10)
+    +0x0A   7     unknown, varies
+    +0x11   1     cities: size, 3..8; other locations: 1 (see below)
+    +0x12   20    unknown; constant in the game data except +0x1C
+                  (0x19 0x19 0x19 at +0x15, 0xFF 0xFF at +0x18)
+    +0x26   20    name, NUL-padded
+
+- **Coordinates** — **verified**: 86 of the 92 cities (type 0) sit
+  exactly on a city map tile (type 29); the other 6 (e.g. Berlin,
+  Kassel, Frankfurt) are right next to one — large cities span several
+  tiles. One cave has y = 931, one past the last map row.
+- **Types**, from the names (*inferred*): 0 city (92), 1 and 8 mostly
+  villages/castles (73 and 112), 2 and 3 monasteries/abbeys?,
+  5 and 19 "Cave", 13 "Tomb", 15 "Lair", 16 "Spring", 17 "Lake",
+  18 "Shrine", 20 "Pagan Altar", 21 and up named special sites
+  (e.g. "Brocken", "Hochk{nig"). The exact meaning of types 1..4, 6
+  and 8 is unresolved.
+- **City size** at +0x11 — *inferred*: Köln is the only 8; Hamburg,
+  Lübeck, Nürnberg, Ulm, Strassburg and Danzig are 7; small towns such
+  as Groningen and Flensburg are 3. Every non-city has 1.
+- **Name character set**: plain ASCII except `|` = ü, `{` = ö and
+  byte 0x1F = ä (`L|beck`, `K{ln`, `J\x1Fgerndorf`). Deduced from
+  the names (e.g. Köln, Görlitz, Jägerndorf); no other non-ASCII
+  substitutes occur in `DARKLAND.LOC`. Whether other files use the same
+  mapping (and how Ä/Ö/Ü/ß are encoded) is unverified.
+
 ## Open questions
 
 - [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
@@ -391,5 +436,7 @@ top of the map from other data (e.g. `DARKLAND.LOC`).
 - [x] `.MAP`: the icon sheet format — regular PIC with an `M0` chunk
 - [x] `.MAP`: which palette applies to the map tiles — the one embedded
       in the icon sheets
+- [ ] `.LOC`: the meaning of location types 1..4, 6, 8 and of the
+      unknown record fields
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, `FONTS.FNT`,
-      `DARKLAND.MSG`, `.LOC`/`.CTY`, ...
+      `DARKLAND.MSG`, `.CTY`, ...

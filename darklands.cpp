@@ -2,12 +2,14 @@
 #include "Catalog.h"
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
+#include "LocationFile.h"
 #include "FileStream.h"
 #include "Palette.h"
 #include "PICImage.h"
 #include "Stream.h"
 
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -222,6 +224,18 @@ DoMapMode(const std::string& mapPath, const std::string& dataDir,
 
 
 static void
+DumpLocations(const LocationFile& locations)
+{
+    for (uint32 i = 0; i < locations.CountLocations(); i++) {
+        const location& loc = locations.LocationAt(i);
+        std::cout << std::setw(3) << i << "  type " << std::setw(2) << loc.type
+            << "  x " << std::setw(3) << loc.x << "  y " << std::setw(3) << loc.y
+            << "  size " << int(loc.size) << "  " << loc.name << std::endl;
+    }
+}
+
+
+static void
 ExtractAll(const Catalog& catalog, const std::string& outputDir,
     const GFX::Palette& palette)
 {
@@ -278,6 +292,15 @@ int main(int argc, char **argv)
             std::cerr << "map error: " << e.what() << std::endl;
             return 1;
         }
+    }
+    if (argc > 2 && std::string(argv[1]) == "--locations") {
+        try {
+            DumpLocations(LocationFile(argv[2]));
+        } catch (const std::exception& e) {
+            std::cerr << "locations error: " << e.what() << std::endl;
+            return 1;
+        }
+        return 0;
     }
     if (argc > 3 && std::string(argv[1]) == "--extract") {
         Catalog catalog(argv[2]);
