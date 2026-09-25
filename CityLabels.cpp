@@ -2,29 +2,9 @@
 
 #include "Bitmap.h"
 #include "LocationFile.h"
+#include "Palette.h"
 #include "TextSupport.h"
 #include "WorldMap.h"
-
-#include <climits>
-
-
-// Index of the palette color closest to (r, g, b).
-static uint8
-NearestColor(const GFX::Palette& palette, int r, int g, int b)
-{
-    int best = 0;
-    int bestDistance = INT_MAX;
-    for (int i = 0; i < 256; i++) {
-        const GFX::Color& c = palette.colors[i];
-        const int distance = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g)
-            + (c.b - b) * (c.b - b);
-        if (distance < bestDistance) {
-            best = i;
-            bestDistance = distance;
-        }
-    }
-    return uint8(best);
-}
 
 
 void

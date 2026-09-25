@@ -6,6 +6,7 @@
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
 #include "LocationFile.h"
+#include "MapViewer.h"
 #include "PICImage.h"
 #include "Stream.h"
 #include "TextSupport.h"
@@ -131,7 +132,8 @@ DecodeImage(const Catalog* catalog, uint32 index, const GFX::Palette& palette)
 static void
 Usage()
 {
-    std::cerr << "usage: darklands [--data <dir>] <command>\n"
+    std::cerr << "usage: darklands [--data <dir>] [<command>]\n"
+        "  (no command)                  explore the world map\n"
         "  <catalog>                     browse a catalog's images\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
@@ -150,13 +152,19 @@ int main(int argc, char **argv)
         dataDir = argv[arg + 1];
         arg += 2;
     }
+    GameData data(dataDir);
     if (arg >= argc) {
-        Usage();
-        return 1;
+        try {
+            MapViewer(data).Run();
+        } catch (const std::exception& e) {
+            std::cerr << "map viewer: " << e.what() << std::endl;
+            Usage();
+            return 1;
+        }
+        return 0;
     }
     const std::string command = argv[arg];
     const int extra = argc - arg - 1;	// arguments after the command
-    GameData data(dataDir);
 
     try {
         if (command == "--map")
