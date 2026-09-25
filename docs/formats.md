@@ -410,6 +410,74 @@ Record (relative offsets, little-endian):
   set" below): `L|beck` = Lübeck, `K{ln` = Köln, `J\x1Fgerndorf` =
   Jägerndorf.
 
+## Cities (`DARKLAND.CTY`)
+
+Details of the 92 cities. See `CityFile.cpp` for a reference
+implementation.
+
+    offset  size     description
+    0x00    1        city count N (byte) — 92
+    0x01    622·N    records, 622 bytes each
+
+- **File size: 57225 = 1 + 92 · 622** (**verified**).
+- **Record i describes location i of `DARKLAND.LOC`** (the cities are
+  its first 92 entries): **verified** — the size matches for all 92
+  and the coordinates for 91 (Strassburg is one tile off).
+- All strings are **32-byte fields**, NUL-terminated, in the game's
+  character set. The bytes after the NUL are garbage (fragments of x86
+  code: leftover memory from the tool that wrote the file). A lone
+  space means "none".
+
+Record (relative offsets, little-endian):
+
+    +0x00   32    short name, e.g. "Frankfurt"
+    +0x20   32    full name, e.g. "Frankfurt am Main" (DARKLAND.LOC
+                  abbreviates long names to fit 20 bytes: "Frankfurt M")
+    +0x40   2     size, 3..8 (same as DARKLAND.LOC +0x11)
+    +0x42   2     x: map tile column (same as DARKLAND.LOC)
+    +0x44   2     y: map tile row
+    +0x46   2     x2 \  a map tile close to the city (at most 3 columns
+    +0x48   2     y2 /   and 8 rows away — rows are only 4 px apart);
+                         purpose unknown — entrance? docks?
+    +0x4A   2·4   neighboring cities: indices into this file,
+                  0xFFFF = unused
+    +0x52   2     harbor: 0 = North Sea port, 1 = Baltic port,
+                  0xFFFF = inland
+    +0x54   2     4 in every record
+    +0x56   2     unknown; equals the record index or index + 1
+    +0x58   ...   unknown (small values, then larger words)
+    +0x6E   32·16 names of the city's places, by slot (see below)
+
+- **Neighbors** — **verified** as a network of nearby cities: of 186
+  links, 176 are symmetric; linked cities are a median 42 tiles apart,
+  against 189 for arbitrary pairs (e.g. Hamburg: Lüneburg, Brandenburg,
+  Magdeburg, Bremen; Köln: Duisburg, Koblenz). Some cities have none.
+- **Harbor** — **verified** from the names: 0 = Groningen, Hamburg,
+  Bremen, Leer, Zwolle, Elburg; 1 = Flensburg, Vordingborg, Nakskov,
+  Schleswig, Lübeck, Wismar, Rostock, Stralsund, Stettin, Danzig.
+
+Place slots (roles inferred from the names across all 92 cities; the
+counts say how many cities leave the slot empty):
+
+| Slot | Role | Examples | Empty |
+|------|------|----------|-------|
+| 0 | ruler / overlord | Rat of the Reichstädte, King of Dänemark, Teutonic Knights | 0 |
+| 1 | second authority | Archbishop of Köln, Hanseatic League, Duke of Burgundy | 10 |
+| 2 | always "Famous Place" | | 0 |
+| 3 | main square | Stadtplatz, Domplatz, Rathausmarkt | 0 |
+| 4 | town hall | Rathaus, Stadthaus | 26 |
+| 5 | castle | Burg, Schloss | 20 |
+| 6 | cathedral | Dom, Minster | 44 |
+| 7 | church | Kirche, St.Marienkirche | 0 |
+| 8 | market | Markt, Marktplatz, Neumarkt | 0 |
+| 9 | mint square | Munzenplatz | 86 |
+| 10 | slums | Elendsviertel | 32 |
+| 11 | armory, or a gate/tower | Zeughaus, Hahnentor | 61 |
+| 12 | pawnshop | Leihhaus | 34 |
+| 13 | monastery | Kloster, Deutschherrenhaus | 2 |
+| 14 | inn | Gasthaus, Goldener Löwe, Drei Raben | 0 |
+| 15 | university | Universitat, Berg-Akademie | 78 |
+
 ## Fonts (`FONTS.FNT`, `FONTS.UTL`)
 
 Bitmap fonts, 1 bit per pixel. `FONTS.FNT` holds 3 fonts, `FONTS.UTL` 4
@@ -498,5 +566,7 @@ shapes (e.g. `I`, `O`, `F`, `+`).
       unknown record fields
 - [ ] Fonts: meaning of header bytes +5 and +6 (glyph gap and extra
       row are inferred from data sizes and glyph shapes)
+- [ ] `.CTY`: the second map tile (+0x46), the fields from +0x54 to
+      +0x6D
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives,
-      `DARKLAND.MSG`, `.CTY`, ...
+      `DARKLAND.MSG`, ...
