@@ -1,24 +1,32 @@
 #include "Game.h"
 
+#include "CharacterFile.h"
 #include "CityFile.h"
 #include "CityVisit.h"
 #include "GameData.h"
 #include "MapViewer.h"
+#include "SaveFile.h"
 #include "ScreenSupport.h"
 
 #include <random>
 #include <stdexcept>
+#include <sys/stat.h>
 
 
 Game::Game(GameData& data)
     :
-    fData(data)
+    fData(data),
+    fCity(-1),
+    fScreen(CityVisit::SCREEN_START),
+    fPosition{ 0, 0 }
 {
+    fParty.leader = 0;
+    fParty.cash = money{ 0, 0, 0 };
 }
 
 
 void
-Game::Run(int startCity)
+Game::NewGame(int startCity)
 {
     const CityFile& cities = fData.Cities();
     if (cities.CountCities() == 0)
@@ -28,19 +36,60 @@ Game::Run(int startCity)
         std::uniform_int_distribution<int> pick(0, int(cities.CountCities()) - 1);
         startCity = pick(seed);
     }
+    // CHARACTR.TMP has no money: the characters' funds are pooled at the
+    // start of the game (manual p. 15), where from is unknown
+    fParty = CharacterFile(fData.PathFor("CHARACTR.TMP")).Party();
+    fCity = startCity;
+    fScreen = CityVisit::SCREEN_START;
+}
+
+
+void
+Game::LoadGame(const std::string& fileName)
+{
+    struct stat st;
+    const std::string path = ::stat(fileName.c_str(), &st) == 0
+        ? fileName : fData.PathFor("SAVES/" + fileName);
+    const SaveFile save(path);
+    if (save.Party().members.empty())
+        throw std::runtime_error("Game: no party in " + fileName);
+    fParty = save.Party();
+    // the cities are the first locations of DARKLAND.LOC; in a city the
+    // game goes on in the main street (the saved screen is not decoded)
+    if (save.Location() >= 0
+            && save.Location() < int(fData.Cities().CountCities())) {
+        fCity = save.Location();
+        fScreen = CityVisit::SCREEN_MAIN_STREET;
+    } else {
+        fCity = -1;
+        fPosition = map_position{ save.X(), save.Y() };
+    }
+}
+
+
+void
+Game::Run()
+{
+    if (fParty.members.empty())
+        NewGame();
 
     // load everything before opening the window
     CityVisit visit(fData);
+    visit.SetParty(&fParty);
     MapViewer map(fData);
 
     GameWindow window("Darklands");
-    int cityIndex = startCity;
-    int screen = CityVisit::SCREEN_START;
+    int cityIndex = fCity;
+    int screen = fScreen;
+    map_position position = fPosition;
     for (;;) {
-        if (visit.Run(window, cityIndex, screen) == CityVisit::QUIT)
-            return;
-        const city& c = cities.CityAt(uint32(cityIndex));
-        map.SetPartyPosition(map_position{ c.x, c.y });
+        if (cityIndex >= 0) {
+            if (visit.Run(window, cityIndex, screen) == CityVisit::QUIT)
+                return;
+            const city& c = fData.Cities().CityAt(uint32(cityIndex));
+            position = map_position{ c.x, c.y };
+        }
+        map.SetPartyPosition(position);
         cityIndex = map.Run(window);
         if (cityIndex < 0)
             return;

@@ -41,6 +41,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 
 ```sh
 ./darklands [--start Köln]           # the game (Game): city cards + map
+./darklands --load DKSAVE1.SAV       # the game, from a saved game
 ./darklands EINFO.CAT                # browse a catalog's images
 ./darklands --extract EINFO.CAT out/ # export them as BMP (out/ must exist)
 ./darklands --map [prefix]           # full map render, with city names
@@ -56,7 +57,9 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `M0` palette + `X0` image), `Palette` (ENEMYPAL.DAT, `NearestColor()`),
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),
-  `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city).
+  `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
+  `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
+  of `Character` records (554 bytes) and giving a `party`.
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
   rule, `Draw(bitmap, origin)` for any part of the map, `TileAtPixel()`.
 - `GameData`: lazy access to all game files. `TextSupport` (`Font`): text

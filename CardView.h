@@ -25,6 +25,7 @@ class Font;
 class GameData;
 class GameWindow;
 struct msg_card;
+struct party;
 
 // Values of the card variables, without the '$': "PlaceName" -> "Köln".
 // UTF-8.
@@ -44,9 +45,12 @@ public:
     void			SetCard(const msg_card& card,
                         const card_variables& variables,
                         const std::vector<int>& hidden = std::vector<int>());
-    // A scene picture (e.g. "MAIN-ST.PIC") shown before the card, until
-    // a click or a key; empty for none. Throws if it cannot be loaded.
+    // A scene picture (e.g. "MAIN-ST.PIC"), the background of the card,
+    // under the text; empty for none. Throws if it cannot be loaded.
     void			SetScene(const std::string& pictureName);
+    // The party shown in the sidebar (not owned; NULL: none). Throws if
+    // a character's picture cannot be loaded.
+    void			SetParty(const party* members);
 
     // Runs until an option is chosen: returns its number, or -1 if the
     // user quit. A card without options is left with a click or a key
@@ -62,10 +66,9 @@ public:
     // Moves the highlight to the next/previous option.
     void			SelectNext();
     void			SelectPrevious();
-    // Chooses the highlighted option (or leaves the scene picture).
+    // Chooses the highlighted option.
     int				Choose();
 
-    bool			ShowingScene() const	{ return fShowingScene; }
     // Options shown, and the number of the highlighted one (-1: none).
     int				CountOptions() const	{ return int(fOptions.size()); }
     int				SelectedOption() const;
@@ -102,10 +105,12 @@ private:
     int				_OptionAt(const GFX::point& point) const;
     void			_DrawFrame();
     void			_DrawCard();
+    void			_DrawSidebar();
 
     GameData&		fData;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fFont;
+    std::unique_ptr<Font>	fNumberFont;
 
     // Frame pictures, decoded once. The capitals sheet (ILLMCAPS.PIC)
     // also carries the palette range of the card (128..159).
@@ -113,10 +118,11 @@ private:
     raw_picture		fSidebar;
     raw_picture		fCapitals;
     GFX::Palette	fCardPalette;
-    GFX::Palette	fScenePalette;
+    GFX::Palette	fPalette;		// with the scene's colors, if any
 
     raw_picture		fScene;			// width 0 if none
-    bool			fShowingScene;
+    const party*	fParty;
+    std::map<std::string, raw_picture> fPictures;	// by image code
 
     uint8			fCapital;		// letter of the capital, 0 if none
     GFX::point		fCapitalPosition;

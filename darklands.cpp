@@ -1,5 +1,6 @@
 #include "Bitmap.h"
 #include "CardView.h"
+#include "CharacterFile.h"
 #include "Catalog.h"
 #include "CityFile.h"
 #include "CityLabels.h"
@@ -183,12 +184,14 @@ ShowCard(GameData& data, const std::string& deck, uint32 cardIndex,
         throw std::runtime_error("no city " + cityName);
 
     card_variables variables;
+    const CharacterFile characters(data.PathFor("CHARACTR.TMP"));
     CityVisit::AddCityVariables(data, cityIndex, variables);
-    CityVisit::AddPartyVariables(variables);
+    CityVisit::AddPartyVariables(characters.Party(), variables);
 
     CardView view(data);
     view.SetCard(messages.CardAt(cardIndex), variables);
     view.SetScene(scene);
+    view.SetParty(&characters.Party());
     const int option = view.Run();
     if (option >= 0)
         std::cout << "chosen option: " << option << std::endl;
@@ -241,6 +244,7 @@ Usage()
     std::cerr << "usage: darklands [--data <dir>] [<command>]\n"
         "  (no command)                  play, from a random city\n"
         "  --start <city>                play, from a city (name or index)\n"
+        "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
         "  <catalog>                     browse a catalog's images\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
@@ -251,7 +255,7 @@ Usage()
         "  --card <name> [card] [city] [picture]\n"
         "                                show a card (default: card 0, in "
         << kDefaultCardCity << "),\n"
-        "                                after a scene picture (e.g. MAIN-ST.PIC)\n"
+        "                                on a scene picture (e.g. MAIN-ST.PIC)\n"
         "<dir> is the game's data directory (default: " << kDefaultDataDir
         << ")" << std::endl;
 }
@@ -268,7 +272,9 @@ int main(int argc, char **argv)
     GameData data(dataDir);
     if (arg >= argc) {
         try {
-            Game(data).Run();
+            Game game(data);
+            game.NewGame();
+            game.Run();
         } catch (const std::exception& e) {
             std::cerr << "game: " << e.what() << std::endl;
             Usage();
@@ -307,7 +313,19 @@ int main(int argc, char **argv)
             const int city = FindCity(data.Cities(), argv[arg + 1]);
             if (city < 0)
                 throw std::runtime_error(std::string("no city ") + argv[arg + 1]);
-            Game(data).Run(city);
+            Game game(data);
+            game.NewGame(city);
+            game.Run();
+            return 0;
+        }
+        if (command == "--load") {
+            if (extra < 1) {
+                Usage();
+                return 1;
+            }
+            Game game(data);
+            game.LoadGame(argv[arg + 1]);
+            game.Run();
             return 0;
         }
         if (command == "--card") {

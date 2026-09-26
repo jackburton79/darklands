@@ -20,6 +20,7 @@
 
 class GameData;
 class GameWindow;
+struct party;
 
 class CityVisit {
 public:
@@ -41,6 +42,9 @@ public:
 
     explicit		CityVisit(GameData& data);	// throws if data is missing
 
+    // The party in the city (not owned). Set it before Enter() or Run().
+    void			SetParty(const party* members);
+
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits.
     result			Run(GameWindow& window, int cityIndex, int screen);
@@ -56,9 +60,11 @@ public:
     // $citySquare...
     static void		AddCityVariables(GameData& data, int cityIndex,
                         card_variables& variables);
-    // Stand-in for the party until there is character creation: the
-    // Quickstart party of the manual (p. 11), Gretchen as the leader.
-    static void		AddPartyVariables(card_variables& variables);
+    // The card variables of a party: $LeaderName, $ChosenOneName... (the
+    // leader first, then the others in walking order) and the pronouns
+    // of the first one ($he, $his...).
+    static void		AddPartyVariables(const party& members,
+                        card_variables& variables);
 
 private:
     void			_Show(int screen, bool withScene = true);
@@ -68,6 +74,7 @@ private:
     CardView		fView;
     msg_card		fNotImplementedCard;
     card_variables	fVariables;
+    const party*	fParty;
     int				fCity;
     int				fScreen;
     int				fPreviousScreen;	// where "not implemented" goes back

@@ -29,7 +29,10 @@ The goal is twofold:
 - Read the game's menu cards (`MSGFILES`), the text of nearly every
   menu and encounter in the game, and show them as the game does: frame,
   illuminated capital, text, options to choose
-- Play the first steps: the party starts at the inn of a city, walks
+- Read the characters (`CHARACTR.TMP`) and the saved games (`.SAV`):
+  the party, its money, where it is
+- Play the first steps, with the Quickstart party or from a saved game,
+  shown in the sidebar as in the game: the party starts at the inn of a city, walks
   between the inn, the main street, the side streets and the city gate,
   leaves for the world map, travels and arrives at other cities. The
   other places (market, churches, guilds...) and the options' effects
@@ -63,6 +66,7 @@ implemented yet. See the roadmap below.
 - [ ] Decode more resource types (sound archives, ...)
 - [x] Show a menu card with its options (`--card`)
 - [x] The flow between the city cards (inn, streets, gate) and the map
+- [x] The party: characters and saved games, the sidebar
 - [ ] The city places (market, churches, guilds...), money, time
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
@@ -113,6 +117,7 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # to scroll, space to center on the party, Esc to go back or quit
 ./darklands --data /path/to/DARKLAND
 ./darklands --start Hamburg
+./darklands --load DKSAVE0.SAV
 
 # Browse the images of a catalog (left/right arrow keys)
 ./darklands EINFO.CAT
@@ -144,7 +149,10 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ```
 darklands.cpp     Program entry point: the game, image viewer, --extract,
                   --map, --locations, --cities, --messages, --card
-Game.*            The game: cities and the world map in turn
+Game.*            The game: new or loaded, cities and the world map in turn
+Character.*       A character (554-byte records) and the party
+CharacterFile.*   Reader for the new game's characters (CHARACTR.TMP)
+SaveFile.*        Reader for the saved games (SAVES/*.SAV)
 CityVisit.*       The party in a city: which card follows which
 GameData.*        Access to the game's data files from one data directory
 MapViewer.*       Interactive world map (scrolling, travel, city details)

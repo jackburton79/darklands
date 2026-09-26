@@ -1,5 +1,6 @@
 #include "CityVisit.h"
 
+#include "Character.h"
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "GameData.h"
@@ -132,6 +133,7 @@ CityVisit::CityVisit(GameData& data)
     :
     fData(data),
     fView(data),
+    fParty(NULL),
     fCity(-1),
     fScreen(SCREEN_START),
     fPreviousScreen(SCREEN_START)
@@ -152,6 +154,14 @@ CityVisit::CityVisit(GameData& data)
         + char(MSG_CODE_PARAGRAPH) + char(MSG_CODE_PARAGRAPH)
         + char(MSG_CODE_OPTION) + "..." + char(MSG_CODE_OPTION_TEXT)
         + "go back.\n";
+}
+
+
+void
+CityVisit::SetParty(const party* members)
+{
+    fParty = members;
+    fView.SetParty(members);
 }
 
 
@@ -177,7 +187,8 @@ CityVisit::Enter(int cityIndex, int screen)
     fCity = cityIndex;
     fVariables.clear();
     AddCityVariables(fData, cityIndex, fVariables);
-    AddPartyVariables(fVariables);
+    if (fParty != NULL)
+        AddPartyVariables(*fParty, fVariables);
     fPreviousScreen = screen;
     _Show(screen);
 }
@@ -239,19 +250,31 @@ CityVisit::AddCityVariables(GameData& data, int cityIndex,
 
 /* static */
 void
-CityVisit::AddPartyVariables(card_variables& variables)
+CityVisit::AddPartyVariables(const party& members, card_variables& variables)
 {
-    static const char* kNames[] = { "Gretchen", "Gunther", "Hans", "Ebhard" };
-    static const char* kOrdinals[] = { "One", "Two", "Three", "Four" };
-    for (int i = 0; i < 4; i++)
-        variables[std::string("Chosen") + kOrdinals[i] + "Name"] = kNames[i];
-    variables["LeaderName"] = kNames[0];
-    variables["he"] = "she";
-    variables["He"] = "She";
-    variables["his"] = "her";
-    variables["His"] = "Her";
-    variables["him"] = "her";
-    variables["himself"] = "herself";
+    if (members.members.empty())
+        return;
+    static const char* kOrdinals[kMaxPartySize] = {
+        "One", "Two", "Three", "Four", "Five"
+    };
+    // who the game "chooses" for a scene is unknown: the leader first
+    std::vector<const character*> chosen;
+    chosen.push_back(&members.members[members.leader]);
+    for (size_t i = 0; i < members.members.size(); i++) {
+        if (int(i) != members.leader)
+            chosen.push_back(&members.members[i]);
+    }
+    for (size_t i = 0; i < chosen.size() && i < size_t(kMaxPartySize); i++)
+        variables[std::string("Chosen") + kOrdinals[i] + "Name"] = chosen[i]->shortName;
+    variables["LeaderName"] = chosen[0]->shortName;
+
+    const bool female = chosen[0]->female;
+    variables["he"] = female ? "she" : "he";
+    variables["He"] = female ? "She" : "He";
+    variables["his"] = female ? "her" : "his";
+    variables["His"] = female ? "Her" : "His";
+    variables["him"] = female ? "her" : "him";
+    variables["himself"] = female ? "herself" : "himself";
 }
 
 

@@ -648,9 +648,11 @@ characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
 
 ### Card screen
 
-The manual (p. 28, "Interaction Menus") has a screenshot of a card, the
-city gate card `$SELEC00.MSG` card 0. Measured on it and on the pictures
-(see `CardView.cpp` for a reference implementation):
+The manual has two screenshots of cards: p. 28 ("Interaction Menus"),
+the city gate card `$SELEC00.MSG` card 0, and p. 17 ("Character Boxes
+and Universal Controls"), the main street card over its scene. Measured
+on them and on the pictures (see `CardView.cpp` for a reference
+implementation):
 
 - **Layout**: a 60-pixel party sidebar on the left, the card on the
   right, from x = 60 to the right edge, full height. The frame is made
@@ -676,17 +678,107 @@ city gate card `$SELEC00.MSG` card 0. Measured on it and on the pictures
   examined never use 128..159 (the exception: `XMS024.PIC`). The same
   32 colors are entries 24..55 of `COMNCLRS.DAT` (72 colors), except
   the first (128). **verified**
-- **Colors**, *inferred* from the screenshot, which is almost black and
-  white: white paper, white border dots (index 255), dark text, a dark
-  capital box with a light letter (index 140). Index 5, the capitals'
-  lattice, prints as dark as the box: the EGA magenta of the default VGA
-  palette fits, the gold of `COMNCLRS.DAT` entry 5 does not.
+- **Paper**: index 255. It is the blank background of the scene
+  pictures (e.g. 21953 of the 64000 pixels of `MAIN-ST.PIC`) and the
+  border dots; the scene palettes set it to (63, 57, 54), a warm white,
+  in 356 of the 389 that cover it. **verified** (pictures and palettes)
+- **Other colors**, *inferred* from the screenshots, which are almost
+  black and white: dark text, a dark capital box with a light letter
+  (index 140). Index 5, the capitals' lattice, prints as dark as the
+  box: the EGA magenta of the default VGA palette fits, the gold of
+  `COMNCLRS.DAT` entry 5 does not.
 - **Scene pictures** (e.g. `MAIN-ST.PIC`, `XMS001.PIC`) are 320 × 200
-  with a palette for 16..255, and draw only in the card area: the left
-  60 or so columns are a flat color. So the scene shows in the card's
-  place, presumably before it. *inferred*
+  with a palette for 16..255, painted on the paper (index 255) inside
+  the card's interior only: the left 60 or so columns and the edges
+  are blank. The p. 17 screenshot shows the main street picture *under*
+  the card text, very faded: the game presumably lightens the scene's
+  palette while a card is on it. **verified** that the scene is behind
+  the text; the fading is *inferred*.
+- **Character boxes** (the sidebar, manual p. 17): one box per party
+  member, about 39 pixels apart: the nickname at the top (the leader
+  "in special colored text"), the character's picture on the left,
+  three bars and their values beneath: current endurance, strength and
+  divine favor, the bar showing the current value as a share of the
+  maximum. *measured* on the screenshot, ±1 pixel. The picture is
+  `<image>STAT.PIC` (10 × 19, e.g. `F60STAT.PIC`; the image code comes
+  from the party table, see "Characters"): it uses the card palette
+  range and the EGA colors, index 0 transparent. **verified** (indices);
+  the name pattern `F??stat.PIC` is in `DARKLAND.EXE`.
 - `TEXTBACK.PIC` (158 × 50) is not the card background: it is a small
   framed panel, used elsewhere.
+
+## Characters (`CHARACTR.TMP`, character records)
+
+`CHARACTR.TMP` holds the characters of a new game: in the game data,
+the Quickstart party of the manual (p. 11): Gretchen Wilburg ("Gretch"),
+Gunther Langer, Hans Muller, Ebhard of Achdorf. See `CharacterFile.cpp`
+and `Character.cpp` for a reference implementation.
+
+    offset  size       description
+    0x00    2          character count N
+    0x02    2·5        party: character indices, walking order (0xFFFF: none)
+    0x0C    4·5        party: image codes, e.g. "F60\0" (picks F60STAT.PIC,
+                       F60C.CAT...), per party slot
+    0x20    554·N      character records
+
+- **File size: 2248 = 32 + 4 · 554** (**verified**). The party table is
+  the one of the saved games (0xF3 and 0xFD there), without the colors.
+
+Character record, 554 (0x22A) bytes, the same in the saved games. The
+layout is wendigo's; checked on the four characters:
+
+    +0x12   2     age (35, 40, 40, 45)
+    +0x15   1     heraldic shield, 'A'..'O' (A, B, C, D)
+    +0x17   1     sex: 1 = female (inferred: 1 for Gretchen only)
+    +0x25   25    full name, NUL-terminated
+    +0x3E   11    nickname ("Gretch"), NUL-terminated
+    +0x5D   7     current attributes: END STR AGL PER INT CHR DF
+    +0x64   7     maximum attributes
+    +0x6B   19    skills
+    +0x7E   2     item count (at most 64)
+    +0x80   20    saints known, 160 bits
+    +0x94   22    alchemical formulae known
+    +0xAA   6·64  items: code (word), type, quality, quantity, weight
+
+- **verified**: names, nicknames and ages are right for all four; the
+  attributes are plausible (divine favor 99 for all) and the current
+  ones fall below the maximum after fights in the saved games; the
+  item count matches the non-empty item records.
+- No money: the characters' funds are pooled when the adventure begins
+  (manual p. 15). Where they come from is unknown.
+
+## Saved games (`SAVES/DKSAVEn.SAV`, `SAVES/DEFAULT`)
+
+The layout is wendigo's; only the fields the game uses so far, checked
+on `DEFAULT` and two saved games (see `SaveFile.cpp`):
+
+    0x00    12    location name ("Olm|tz", "Wilderness")
+    0x15    23    label ("Darklands"; "new default" in DEFAULT)
+    0x68    8     date: year, month, day, hour (words)
+    0x70    6     money: florins, groschen, pfennigs (words)
+    0x7C    2     location: index into DARKLAND.LOC, 0xFFFF = wilderness
+    0x7E    4     map tile: x, y (words)
+    0xA1    1     party leader: party slot
+    0xEF    2     characters in the party
+    0xF1    2     character count N
+    0xF3    2·5   party: character indices (as in CHARACTR.TMP)
+    0xFD    4·5   party: image codes
+    0x111   24·5  party: colors
+    0x189   554·N character records
+
+- **Date**: the words are year, month, day, hour (1401, 0, 13, 6 in
+  `DKSAVE1.SAV`), the reverse of the order given by wendigo. **verified**
+  (plausible values in three files); month 0 = January is *inferred*.
+- **Location** — **verified**: `DKSAVE1.SAV` is at location 73, Olmütz,
+  tile 295,659; `DARKLAND.LOC` puts Olmütz at 296,659, the next tile.
+  `DKSAVE0.SAV` is in the wilderness nearby (289,654).
+- **Money** — plausible: 70 fl 18 gr 10 pf, then 70 fl 18 gr 2 pf two
+  days later.
+- **Leader**: 1 with the party order Hans, Gretchen, Gunther, Ebhard:
+  a party slot, Gretchen, as in the new game. *inferred*
+- `DEFAULT` is the new game template: the four Quickstart characters,
+  no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
+  10 pf.
 
 ## City descriptions (`DARKLAND.DSC`)
 
@@ -749,6 +841,10 @@ land).
       how options that do not apply to a city are hidden; how the game
       chooses between cards (day/night, fair, war...)
 - [ ] `.DSC`: the meaning of byte 0 (0x5E)
+- [ ] Characters: the unknown fields of the record (0x00..0x11, 0x49:
+      grows during the game), the sex byte (one female sample), where
+      the starting money comes from
+- [ ] Saved games: the current screen (0x82) and everything else
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

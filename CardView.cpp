@@ -1,6 +1,7 @@
 #include "CardView.h"
 
 #include "Bitmap.h"
+#include "Character.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "MsgFile.h"
@@ -16,15 +17,31 @@
 const uint16 CardView::kScreenWidth;
 const uint16 CardView::kScreenHeight;
 
-// Font of the card text: index into FONTS.FNT (verified on the manual's
-// screenshot: same glyphs and line widths)
+// Fonts of FONTS.FNT: the card text (verified on the manual's
+// screenshot: same glyphs and line widths), the sidebar numbers
 static const uint32 kTextFontIndex	= 2;
+static const uint32 kNumberFontIndex = 0;
 
 // Screen layout: the party sidebar on the left, the card on the right.
 // The frame is 7 + 245 + 8 pixels wide, the width of its pictures.
 static const int kCardLeft			= 60;
 static const int kSidebarLeft		= 3;	// SIDEBAR.PIC, 54 x 198
 static const int kSidebarTop		= 1;
+
+// Character boxes in the sidebar, one per party member (measured on the
+// manual's screenshots, p. 17 and 28, about +-1 pixel): the nickname,
+// the character's picture (<image>STAT.PIC, 10 x 19) and three bars with
+// their values beneath: endurance, strength, divine favor
+static const int kBoxTop			= 1;
+static const int kBoxHeight			= 39;
+static const int kNameLeft			= 5;
+static const int kPictureLeft		= 5;
+static const int kPictureTop		= 9;	// relative to the box
+static const int kBarsTop			= 10;
+static const int kBarHeight			= 16;
+static const int kBarWidth			= 2;
+static const int kNumbersTop		= 28;
+static const int kBarCenters[3]		= { 23, 40, 53 };
 
 // Card text position relative to the header values (measured on the
 // manual's screenshot, about +-1 pixel)
@@ -42,15 +59,29 @@ static const int kCapitalPitch		= 21;
 static const int kCapitalsPerRow	= 15;
 static const int kCapitalGap		= 2;
 
-// Colors (inferred from the manual's screenshot, which is almost black
-// and white): white paper and border dots (index 255), text in the
-// darkest brown of the card range 128..159, a dark capital box: its
-// lattice (index 5, the EGA magenta) is as dark as its background
-static const uint8 kWhite			= 255;
-static const uint8 kPaperColor		= kWhite;
+// Colors. Index 255 is the paper: the blank background of the scene
+// pictures, (63, 57, 54) in 356 of the 389 palettes that set it, and the
+// border dots. The rest is inferred from the manual's screenshots, which
+// are almost black and white: text in the darkest brown of the card
+// range 128..159, a dark capital box (its lattice, index 5, the EGA
+// magenta, prints as dark as its background), white sidebar text and
+// divine favor bar, darker endurance and strength bars.
+static const uint8 kPaperColor		= 255;
+static const GFX::Color kPaperRGB	= { 252, 228, 216, 0 };	// (63, 57, 54)
 static const uint8 kTextColor		= 137;
 static const uint8 kHighlightColor	= 140;
 static const uint8 kSidebarColor	= 159;
+static const uint8 kNameColor		= 15;	// EGA white
+static const uint8 kLeaderColor		= 14;	// EGA yellow
+static const uint8 kNumberColor		= 15;
+static const uint8 kBarTrackColor	= 8;	// EGA dark gray
+static const uint8 kBarColors[3]	= { 12, 10, 15 };	// light red, light
+                                                        // green, white
+
+// Under the text, the scene is faded toward the paper, as on the
+// manual's screenshot (p. 17), where it is barely visible behind the
+// text: the share of paper in its colors (inferred)
+static const int kSceneFadePercent	= 70;
 
 
 static const char*
@@ -133,7 +164,7 @@ CardView::CardView(GameData& data)
     :
     fData(data),
     fBuffer(NULL),
-    fShowingScene(false),
+    fParty(NULL),
     fCapital(0),
     fCapitalPosition(0, 0),
     fSelected(-1),
@@ -141,12 +172,13 @@ CardView::CardView(GameData& data)
     fCursorVisible(false)
 {
     fFont.reset(new Font(fData.Fonts(), kTextFontIndex));
+    fNumberFont.reset(new Font(fData.Fonts(), kNumberFontIndex));
 
-    // card palette: the EGA colors (0..15), the capitals' range, white
+    // card palette: the EGA colors (0..15), the capitals' range, paper
     fCardPalette = PICImage::EGAPalette();
     fCapitals = _LoadPicture("ILLMCAPS.PIC", &fCardPalette);
-    fCardPalette.colors[kWhite] = GFX::Color{ 255, 255, 255, 0 };
-    fScenePalette = fCardPalette;
+    fCardPalette.colors[kPaperColor] = kPaperRGB;
+    fPalette = fCardPalette;
 
     for (int i = 0; i < 4; i++)
         fBorders[i] = _LoadPicture(kBorderNames[i]);
@@ -181,16 +213,38 @@ CardView::SetScene(const std::string& pictureName)
 {
     fScene.width = fScene.height = 0;
     fScene.pixels.clear();
-    fShowingScene = false;
+    fPalette = fCardPalette;
     if (pictureName.empty())
         return;
-    // the scene sets 16..255; the card range is put back for the sidebar
+    // the scene sets 16..255: its colors are faded, the card range is
+    // put back
     GFX::Palette palette = fCardPalette;
     fScene = _LoadPicture(pictureName, &palette);
-    for (int i = 128; i < 160; i++)
-        palette.colors[i] = fCardPalette.colors[i];
-    fScenePalette = palette;
-    fShowingScene = true;
+    for (int i = 16; i < 256; i++) {
+        if (i >= 128 && i < 160) {
+            palette.colors[i] = fCardPalette.colors[i];
+            continue;
+        }
+        GFX::Color& color = palette.colors[i];
+        color.r = uint8(color.r + (kPaperRGB.r - color.r) * kSceneFadePercent / 100);
+        color.g = uint8(color.g + (kPaperRGB.g - color.g) * kSceneFadePercent / 100);
+        color.b = uint8(color.b + (kPaperRGB.b - color.b) * kSceneFadePercent / 100);
+    }
+    fPalette = palette;
+}
+
+
+void
+CardView::SetParty(const party* members)
+{
+    fParty = members;
+    fPictures.clear();
+    if (fParty == NULL)
+        return;
+    for (const std::string& image : fParty->images) {
+        if (fPictures.find(image) == fPictures.end())
+            fPictures[image] = _LoadPicture(image + "STAT.PIC");
+    }
 }
 
 
@@ -234,7 +288,7 @@ CardView::Run(GameWindow& window)
                         chosen = Choose();
                         break;
                     default:
-                        if (fShowingScene || fOptions.empty())
+                        if (fOptions.empty())
                             chosen = Choose();
                         break;
                 }
@@ -296,10 +350,6 @@ int
 CardView::Clicked(const GFX::point& point)
 {
     MouseMoved(point);
-    if (fShowingScene) {
-        fShowingScene = false;
-        return -1;
-    }
     if (fOptions.empty())
         return point.x >= kCardLeft ? 0 : -1;
     const int option = _OptionAt(point);
@@ -326,10 +376,6 @@ CardView::SelectPrevious()
 int
 CardView::Choose()
 {
-    if (fShowingScene) {
-        fShowingScene = false;
-        return -1;
-    }
     if (fOptions.empty())
         return 0;
     return SelectedOption();
@@ -339,22 +385,14 @@ CardView::Choose()
 Bitmap*
 CardView::Draw()
 {
-    const GFX::Palette& palette = fShowingScene ? fScenePalette : fCardPalette;
-    fBuffer->SetColors(palette.colors, 0, 256);
+    fBuffer->SetColors(fPalette.colors, 0, 256);
     fBuffer->Clear(kSidebarColor);
-    if (fShowingScene)
-        _DrawPicture(fScene, 0, 0);
-    else {
-        _DrawFrame();
-        _DrawCard();
-    }
-    // the sidebar will show the party; the picture alone for now
-    fBuffer->FillRect(GFX::rect(0, 0, kCardLeft, kScreenHeight), kSidebarColor);
-    _DrawPicture(fSidebar, kSidebarLeft, kSidebarTop);
-
+    _DrawFrame();
+    _DrawCard();
+    _DrawSidebar();
     if (fCursorVisible) {
-        DrawMouseCursor(fBuffer, fMouse, NearestColor(palette, 0, 0, 0),
-            NearestColor(palette, 255, 255, 255));
+        DrawMouseCursor(fBuffer, fMouse, NearestColor(fPalette, 0, 0, 0),
+            NearestColor(fPalette, 255, 255, 255));
     }
     return fBuffer;
 }
@@ -480,7 +518,7 @@ CardView::_Layout(const msg_card& card, const std::string& text,
 int
 CardView::_OptionAt(const GFX::point& point) const
 {
-    if (fShowingScene || point.x < kCardLeft)
+    if (point.x < kCardLeft)
         return -1;
     for (size_t i = 0; i < fOptions.size(); i++) {
         if (point.y >= fOptions[i].top && point.y < fOptions[i].bottom)
@@ -497,8 +535,19 @@ CardView::_DrawFrame()
     const raw_picture& bottom = fBorders[BORDER_BOTTOM];
     const raw_picture& leftBorder = fBorders[BORDER_LEFT];
     const int interiorLeft = kCardLeft + leftBorder.width;
+    const int interiorBottom = kScreenHeight - bottom.height;
     fBuffer->FillRect(GFX::rect(interiorLeft, top.height, top.width,
-        kScreenHeight - top.height - bottom.height), kPaperColor);
+        interiorBottom - top.height), kPaperColor);
+    // the scene is painted on the paper, under the text: its pictures
+    // are blank (paper) outside the card's interior
+    if (fScene.width > 0) {
+        const int right = std::min<int>(interiorLeft + top.width, fScene.width);
+        const int bottomRow = std::min<int>(interiorBottom, fScene.height);
+        for (int y = top.height; y < bottomRow; y++) {
+            for (int x = interiorLeft; x < right; x++)
+                fBuffer->PutPixel(x, y, fScene.pixels[size_t(y) * fScene.width + x]);
+        }
+    }
     _DrawPicture(top, interiorLeft, 0);
     _DrawPicture(bottom, interiorLeft, kScreenHeight - bottom.height);
     _DrawPicture(leftBorder, kCardLeft, 0);
@@ -531,5 +580,52 @@ CardView::_DrawCard()
     for (const text_line& line : fLines) {
         fFont->RenderString(line.text, fBuffer, GFX::point(line.x, line.y),
             kTextColor);
+    }
+}
+
+
+void
+CardView::_DrawSidebar()
+{
+    fBuffer->FillRect(GFX::rect(0, 0, kCardLeft, kScreenHeight), kSidebarColor);
+    _DrawPicture(fSidebar, kSidebarLeft, kSidebarTop);
+    if (fParty == NULL)
+        return;
+
+    static const int kBarAttributes[3] = { ATTRIBUTE_ENDURANCE,
+        ATTRIBUTE_STRENGTH, ATTRIBUTE_DIVINE_FAVOR };
+    for (size_t i = 0; i < fParty->members.size() && i < size_t(kMaxPartySize);
+            i++) {
+        const character& member = fParty->members[i];
+        const int top = kBoxTop + int(i) * kBoxHeight;
+        fFont->RenderString(Font::ToGameCharset(member.shortName), fBuffer,
+            GFX::point(kNameLeft, top), int(i) == fParty->leader
+                ? kLeaderColor : kNameColor, kCardLeft - kNameLeft);
+
+        const std::map<std::string, raw_picture>::const_iterator picture
+            = fPictures.find(fParty->images[i]);
+        if (picture != fPictures.end())
+            _DrawPicture(picture->second, kPictureLeft, top + kPictureTop, 0);
+
+        // bars: the current value as a share of the maximum
+        for (int bar = 0; bar < 3; bar++) {
+            const int attribute = kBarAttributes[bar];
+            const int value = member.attributes[attribute];
+            const int maximum = std::max<int>(member.maxAttributes[attribute], 1);
+            const int height = std::min(kBarHeight, value * kBarHeight / maximum);
+            const int x = kBarCenters[bar] - kBarWidth / 2;
+            const int bottom = top + kBarsTop + kBarHeight;
+            fBuffer->FillRect(GFX::rect(x, top + kBarsTop, kBarWidth,
+                kBarHeight), kBarTrackColor);
+            if (height > 0) {
+                fBuffer->FillRect(GFX::rect(x, bottom - height, kBarWidth,
+                    height), kBarColors[bar]);
+            }
+            const std::string number = std::to_string(value);
+            const int width = fNumberFont->StringWidth(number);
+            fNumberFont->RenderString(number, fBuffer,
+                GFX::point(kBarCenters[bar] - width / 2, top + kNumbersTop),
+                kNumberColor);
+        }
     }
 }
