@@ -538,6 +538,92 @@ font of `FONTS.UTL` keeps the standard ASCII glyphs. Apart from these,
 the first three fonts of the two files differ only in a few glyph
 shapes (e.g. `I`, `O`, `F`, `+`).
 
+## Menu cards (`MSGFILES`, `.MSG`)
+
+Almost all of the game's narrative text: the menus of city places,
+encounters, quests... See `MsgFile.cpp` for a reference implementation
+(`darklands --messages` lists them, `--messages PARTY02` dumps one).
+
+`MSGFILES` is an ordinary catalog (see "Catalog archives") of 419 `.MSG`
+files, 3756 cards in all. Entry names are `$` + a five-letter topic + a
+two-digit number + `.MSG`, e.g. `$PARTY02.MSG`, `$MAINS01.MSG`,
+`$CITYG00.MSG` (the name field of `$NOGO00.MSG` has a NUL, then a space,
+before the padding).
+
+A `.MSG` file is a deck of **cards**, each a text box with options:
+
+    offset  size  description
+    0x00    1     card count N
+    0x01    ...   N cards, one after the other:
+
+    card (relative offsets):
+    +0x00   1     text top
+    +0x01   1     text left
+    +0x02   1     unknown, 0
+    +0x03   1     text right limit
+    +0x04   1     unknown, 0
+    +0x05   ...   text, NUL-terminated (game character set + control codes)
+
+- **verified**: all 419 files parse to exactly their last byte.
+- Header meaning from the wendigo reference (top/left relative to the
+  inner edge of the card frame, the column is `right − left` wide):
+  *unverified* until cards are rendered. 3248 of the 3756 cards have
+  `0A 0A 00 F0 00` (10, 10, 240); 3344 have a right limit of 240, the
+  others range from 3 to 255.
+- Bytes +2 and +4 are 0 in every card except the 76 of `$MCGUF07.MSG`
+  (placeholders: header bytes that look like garbage, text `16 0A 0A`)
+  and card 7 of `$RAUBI05.MSG` (`02 00 00 03 01`).
+
+### Text control codes
+
+| Code | Meaning |
+|------|---------|
+| `0x0A` | line break |
+| `0x14` | paragraph: follows a `0x0A`; two in a row before the options |
+| `0x15` | starts an option: `0x15 "..." 0x1D` option text `0x0A` |
+| `0x16` | same, an option that opens the saint list (wendigo) |
+| `0x10` | same, an option that opens the potion list (wendigo) |
+| `0x06` | same, an option that starts a battle at once (wendigo) |
+| `0x1D` | ends the option's `...` prefix |
+| `0x13`, `0x01` | *inferred*: delimit alternative sentences that the game shows or hides (42 of each, almost all in `$REVOL03`/`04` and `$SITUA00`, around one sentence per guild or faction, e.g. "The armorers $Support1 change.") |
+| `0x19` | only in `$MONAS00`/`01`, in place of the `Y` of "You decide": most likely a typo in the data |
+
+`0x1F` is not a code: it is `ä` (see "Character set").
+
+### Variables
+
+The text contains 67 distinct `$Name` variables that the game replaces,
+e.g. `$PlaceName` (the current city), `$ChosenOneName` ...
+`$ChosenFiveName` and `$NamedOneName` ... (party members and other
+characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
+`$Number1`, `$Text1`, `$CityLordName`. The ones named after a place
+match the place slots of `DARKLAND.CTY` (*inferred* from the names and
+the texts): `$citySquare` 3, `$councilHall` 4, `$fortress` 5,
+`$cathedral` 6, `$cityChurch` 7, `$marketplace` 8, `$slum` 10,
+`$pawnshop` 12, `$monastery` 13, `$Inn` 14, `$university` 15.
+
+### Where the cards are used
+
+- Which card is shown, with which picture, and what an option does is
+  decided by `DARKLAND.EXE`: the card file names do not appear in it as
+  plain text. Only the texts tell what a card is for.
+- The game starts with `$PARTY02.MSG`: card 0 for a party ("You gather
+  around the comfortable fire at the $Inn...", with a leftover "test
+  mines" option), card 1 for a single character. `$MAINS01.MSG` is the
+  main street menu. *inferred* from the texts and the manual.
+- Card frame pictures named in `DARKLAND.EXE`: `TEXTBACK.PIC` (158 × 50,
+  text background), `RPBDRTOP`/`RPBDRBTM` (245 × 6), `RPBDRLFT` (7 × 200),
+  `RPBDRRGT` (8 × 200) and `ILLMCAPS.PIC` (320 × 200 with a palette,
+  presumably the illuminated capitals). *inferred*
+
+## Messages (`DARKLAND.MSG`)
+
+Not a card deck: **4001 = 1 + 10 · 400** (**verified**). Byte 0 is the
+record count (10), then 10 records of 400 bytes, each a NUL-padded text
+in the game character set. Only three are used: "Error Message" and
+two travel messages (entering a robber knight's territory, a blighted
+land).
+
 ## Open questions
 
 - [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
@@ -568,5 +654,7 @@ shapes (e.g. `I`, `O`, `F`, `+`).
       row are inferred from data sizes and glyph shapes)
 - [ ] `.CTY`: the second map tile (+0x46), the fields from +0x54 to
       +0x6D
-- [ ] Other resource formats: `.DLB`/`.DLC` sound archives,
-      `DARKLAND.MSG`, ...
+- [x] `.MSG`: the card format (`MSGFILES`) and `DARKLAND.MSG`
+- [ ] `.MSG`: the card header bytes (check by rendering), codes `0x13`
+      and `0x01`, which picture goes with a card
+- [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

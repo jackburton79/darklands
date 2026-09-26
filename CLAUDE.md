@@ -46,13 +46,15 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --map [prefix]           # full map render, with city names
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
+./darklands --messages [PARTY02]     # list MSGFILES / dump a card deck
 ```
 
 ## Code layout
 
 - Readers, one per format: `Catalog` (.CAT), `PICImage` (.PIC, chunked:
   `M0` palette + `X0` image), `Palette` (ENEMYPAL.DAT, `NearestColor()`),
-  `MapFile`, `LocationFile`, `CityFile`, `FontFile`.
+  `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
+  card decks, read from the MSGFILES catalog via `GameData::Messages()`).
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
   rule, `Draw(bitmap, origin)` for any part of the map, `TileAtPixel()`.
 - `GameData`: lazy access to all game files. `TextSupport` (`Font`): text
@@ -105,8 +107,8 @@ Follow the existing files (Haiku-like style):
 There are no unit tests yet; verify by comparing outputs.
 
 - Before a refactor, save the current outputs (`--map`, `--locations`,
-  `--cities`, `--extract EINFO.CAT`) and `cmp` them afterwards: they
-  should be byte-identical unless the change is meant to alter them.
+  `--cities`, `--messages <name>`, `--extract EINFO.CAT`) and `cmp` them
+  afterwards: they should be byte-identical unless the change is meant to alter them.
 - `einfo_cat_reference.md5`: `md5sum -c` over the `--extract EINFO.CAT`
   output must pass (60/60).
 - There is no display in the cloud container. Test `MapViewer` by driving

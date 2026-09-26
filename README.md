@@ -29,6 +29,8 @@ The goal is twofold:
 - Explore the world map interactively: travel with the party, enter
   cities and pick a place from their menu (the places themselves are
   not implemented yet), see each city's details
+- Read the game's menu cards (`MSGFILES`), the text of nearly every
+  menu and encounter in the game
 
 Everything else — city screens, sound, text, the game itself — is not
 implemented yet. See the roadmap below.
@@ -53,7 +55,8 @@ implemented yet. See the roadmap below.
 - [x] Interactive world map viewer: scrolling, city names, city details
 - [x] Party travel on the map (pathfinding, no travel time yet) and a
       city menu
-- [ ] Decode more resource types (text, sound archives)
+- [x] Parse the menu cards (`MSGFILES`, `--messages`)
+- [ ] Decode more resource types (sound archives, ...)
 - [ ] City screens, text and dialogue display
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
@@ -115,13 +118,16 @@ Game files are looked up by name, in that directory and then in `PICS`:
 
 # List the cities with their rulers, neighbors and places
 ./darklands --cities
+
+# List the menu card files, or dump the cards of one (e.g. PARTY02)
+./darklands --messages [name]
 ```
 
 ## Project layout
 
 ```
 darklands.cpp     Program entry point: image viewer, --extract, --map,
-                  --locations, --cities
+                  --locations, --cities, --messages
 GameData.*        Access to the game's data files from one data directory
 MapViewer.*       Interactive world map (scrolling, travel, city menu)
 Travel.*          Paths across the world map
@@ -133,6 +139,7 @@ Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
 MapFile.*         Reader for the world map file (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
 CityFile.*        Reader for the city descriptions (DARKLAND.CTY)
+MsgFile.*         Reader for the menu cards (.MSG files in MSGFILES)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
 TextSupport.*     Text rendering with the game fonts
 docs/formats.md   Reverse-engineered data format notes

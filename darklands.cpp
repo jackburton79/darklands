@@ -7,11 +7,13 @@
 #include "GraphicsEngine.h"
 #include "LocationFile.h"
 #include "MapViewer.h"
+#include "MsgFile.h"
 #include "PICImage.h"
 #include "Stream.h"
 #include "TextSupport.h"
 #include "WorldMap.h"
 
+#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -90,6 +92,63 @@ DumpLocations(const LocationFile& locations)
 }
 
 
+// Card text as UTF-8, with the control codes written as tags.
+static std::string
+DescribeCardText(const std::string& text)
+{
+    std::string result;
+    for (char c : text) {
+        switch (uint8(c)) {
+            case MSG_CODE_NEWLINE:			result += "\n"; break;
+            case MSG_CODE_PARAGRAPH:		result += "<p>"; break;
+            case MSG_CODE_OPTION:			result += "<option>"; break;
+            case MSG_CODE_SAINT_OPTION:		result += "<saint>"; break;
+            case MSG_CODE_POTION_OPTION:	result += "<potion>"; break;
+            case MSG_CODE_BATTLE_OPTION:	result += "<battle>"; break;
+            case MSG_CODE_OPTION_TEXT:		result += "<text>"; break;
+            default:
+                if (uint8(c) < 0x20 && c != 0x1F) {	// 0x1F is 'ä'
+                    char tag[8];
+                    snprintf(tag, sizeof(tag), "<%02X>", uint8(c));
+                    result += tag;
+                } else
+                    result += LocationFile::DecodeName(&c, 1);
+                break;
+        }
+    }
+    return result;
+}
+
+
+static void
+DumpMessages(const MsgFile& messages)
+{
+    for (uint32 i = 0; i < messages.CountCards(); i++) {
+        const msg_card& card = messages.CardAt(i);
+        std::cout << "card " << i << "  top " << int(card.textTop)
+            << "  left " << int(card.textLeft)
+            << "  right " << int(card.textRight);
+        if (card.unknown1 != 0 || card.unknown2 != 0) {
+            std::cout << "  unknown " << int(card.unknown1) << " "
+                << int(card.unknown2);
+        }
+        std::cout << std::endl << DescribeCardText(card.text) << std::endl
+            << std::endl;
+    }
+}
+
+
+static void
+ListMessages(const Catalog& catalog)
+{
+    for (int32 i = 0; i < catalog.CountEntries(); i++) {
+        std::unique_ptr<Stream> stream(catalog.GetStreamAt(uint32(i)));
+        std::cout << catalog.EntryAt(i).filename << "  "
+            << MsgFile(stream.get()).CountCards() << " cards" << std::endl;
+    }
+}
+
+
 static void
 ExtractAll(const Catalog& catalog, const std::string& outputDir,
     const GFX::Palette& palette)
@@ -139,6 +198,8 @@ Usage()
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
+        "  --messages [name]             list MSGFILES, or dump a card deck\n"
+        "                                (e.g. PARTY02, or a path to a .MSG file)\n"
         "<dir> is the game's data directory (default: " << kDefaultDataDir
         << ")" << std::endl;
 }
@@ -175,6 +236,15 @@ int main(int argc, char **argv)
         }
         if (command == "--locations") {
             DumpLocations(data.Locations());
+            return 0;
+        }
+        if (command == "--messages") {
+            if (extra < 1)
+                ListMessages(data.MessageCatalog());
+            else if (std::string(argv[arg + 1]).find('/') != std::string::npos)
+                DumpMessages(MsgFile(argv[arg + 1]));	// a path
+            else
+                DumpMessages(data.Messages(argv[arg + 1]));
             return 0;
         }
         if (command == "--extract") {

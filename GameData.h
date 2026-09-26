@@ -9,6 +9,7 @@
 
 #include "GraphicsDefs.h"
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -16,6 +17,7 @@ class Catalog;
 class CityFile;
 class FontFile;
 class LocationFile;
+class MsgFile;
 class WorldMap;
 
 class GameData {
@@ -35,6 +37,11 @@ public:
     const CityFile&		Cities();			// DARKLAND.CTY
     const FontFile&		Fonts();			// FONTS.FNT
     const GFX::Palette&	EnemyPalette();		// ENEMYPAL.DAT, all chunks
+    const Catalog&		MessageCatalog();	// MSGFILES
+
+    // A card deck from MSGFILES, by name: "PARTY02", "PARTY02.MSG" and
+    // "$PARTY02.MSG" are the same file (case-insensitive).
+    const MsgFile&		Messages(const std::string& name);
 
     // Opens a catalog: `name` is a game file name (e.g. "EINFO.CAT") or
     // a path. The caller owns the result.
@@ -50,4 +57,6 @@ private:
     std::unique_ptr<CityFile>		fCities;
     std::unique_ptr<FontFile>		fFonts;
     std::unique_ptr<GFX::Palette>	fEnemyPalette;
+    std::unique_ptr<Catalog>		fMessageCatalog;
+    std::map<std::string, std::unique_ptr<MsgFile> > fMessages;
 };

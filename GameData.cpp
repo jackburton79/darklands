@@ -4,10 +4,14 @@
 #include "CityFile.h"
 #include "FontFile.h"
 #include "LocationFile.h"
+#include "MsgFile.h"
 #include "Palette.h"
+#include "Stream.h"
 #include "WorldMap.h"
 
+#include <cctype>
 #include <cstring>
+#include <stdexcept>
 #include <sys/stat.h>
 
 
@@ -96,6 +100,40 @@ GameData::EnemyPalette()
         fEnemyPalette = std::move(palette);
     }
     return *fEnemyPalette;
+}
+
+
+const Catalog&
+GameData::MessageCatalog()
+{
+    if (!fMessageCatalog)
+        fMessageCatalog.reset(new Catalog(PathFor("MSGFILES")));
+    return *fMessageCatalog;
+}
+
+
+const MsgFile&
+GameData::Messages(const std::string& name)
+{
+    // catalog entry names look like "$PARTY02.MSG"
+    std::string entryName;
+    for (char c : name)
+        entryName += char(std::toupper(uint8(c)));
+    if (entryName.compare(0, 1, "$") != 0)
+        entryName = "$" + entryName;
+    if (entryName.find('.') == std::string::npos)
+        entryName += ".MSG";
+
+    std::unique_ptr<MsgFile>& messages = fMessages[entryName];
+    if (!messages) {
+        std::unique_ptr<Stream> stream(MessageCatalog().GetStream(entryName));
+        if (!stream) {
+            fMessages.erase(entryName);
+            throw std::runtime_error("no " + entryName + " in MSGFILES");
+        }
+        messages.reset(new MsgFile(stream.get()));
+    }
+    return *messages;
 }
 
 
