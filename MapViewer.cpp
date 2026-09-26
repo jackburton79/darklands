@@ -5,6 +5,7 @@
 #include "CityLabels.h"
 #include "GameData.h"
 #include "GameTime.h"
+#include "InfoView.h"
 #include "LocationFile.h"
 #include "Palette.h"
 #include "ScreenSupport.h"
@@ -61,6 +62,7 @@ MapViewer::MapViewer(GameData& data)
     :
     fData(data),
     fClock(NULL),
+    fInfo(NULL),
     fBuffer(NULL),
     fOrigin(0, 0),
     fMouse(0, 0),
@@ -160,6 +162,14 @@ MapViewer::Run(GameWindow& window)
                         case SDLK_UP:		ScrollBy(0, -step); break;
                         case SDLK_DOWN:		ScrollBy(0, step); break;
                         case SDLK_SPACE:	CenterOnParty(); break;
+                        case SDLK_F1: case SDLK_F2: case SDLK_F3:
+                        case SDLK_F4: case SDLK_F5: case SDLK_F6:
+                            if (fInfo != NULL) {
+                                fInfo->SetPosition(fParty);
+                                fInfo->Run(window, key == SDLK_F6
+                                    ? InfoView::kPartyPage : int(key - SDLK_F1));
+                            }
+                            break;
                         default:
                             break;
                     }

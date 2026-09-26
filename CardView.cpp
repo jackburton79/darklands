@@ -1,12 +1,13 @@
 #include "CardView.h"
 
 #include "Bitmap.h"
-#include "Character.h"
+#include "InfoView.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "MsgFile.h"
 #include "PICImage.h"
 #include "Palette.h"
+#include "PartySidebar.h"
 #include "ScreenSupport.h"
 #include "TextSupport.h"
 
@@ -17,32 +18,13 @@
 const uint16 CardView::kScreenWidth;
 const uint16 CardView::kScreenHeight;
 
-// Fonts of FONTS.FNT: the card text (verified on the manual's
-// screenshot: same glyphs and line widths), the sidebar numbers
+// Font of the card text: index into FONTS.FNT (verified on the manual's
+// screenshot: same glyphs and line widths)
 static const uint32 kTextFontIndex	= 2;
-static const uint32 kNumberFontIndex = 0;
 
 // Screen layout: the party sidebar on the left, the card on the right.
 // The frame is 7 + 245 + 8 pixels wide, the width of its pictures.
 static const int kCardLeft			= 60;
-static const int kSidebarLeft		= 3;	// SIDEBAR.PIC, 54 x 198
-static const int kSidebarTop		= 1;
-
-// Character boxes in the sidebar, one per party member (measured on the
-// manual's screenshots, p. 17 and 28, about +-1 pixel): the nickname,
-// the character's picture (<image>STAT.PIC, 10 x 19) and three bars with
-// their values beneath: endurance, strength, divine favor
-static const int kBoxTop			= 1;
-static const int kBoxHeight			= 39;
-static const int kNameLeft			= 5;
-static const int kPictureLeft		= 5;
-static const int kPictureTop		= 9;	// relative to the box
-static const int kBarsTop			= 10;
-static const int kBarHeight			= 16;
-static const int kBarWidth			= 2;
-static const int kNumbersTop		= 28;
-static const int kBarCenters[3]		= { 23, 40, 53 };
-
 // Card text position relative to the header values (measured on the
 // manual's screenshot, about +-1 pixel)
 static const int kTextOffsetX		= -2;
@@ -71,12 +53,6 @@ static const GFX::Color kPaperRGB	= { 252, 228, 216, 0 };	// (63, 57, 54)
 static const uint8 kTextColor		= 137;
 static const uint8 kHighlightColor	= 140;
 static const uint8 kSidebarColor	= 159;
-static const uint8 kNameColor		= 15;	// EGA white
-static const uint8 kLeaderColor		= 14;	// EGA yellow
-static const uint8 kNumberColor		= 15;
-static const uint8 kBarTrackColor	= 8;	// EGA dark gray
-static const uint8 kBarColors[3]	= { 12, 10, 15 };	// light red, light
-                                                        // green, white
 
 // Under the text, the scene is faded toward the paper, as on the
 // manual's screenshot (p. 17), where it is barely visible behind the
@@ -164,8 +140,8 @@ CardView::CardView(GameData& data)
     :
     fData(data),
     fBuffer(NULL),
+    fInfo(NULL),
     fShowingScene(false),
-    fParty(NULL),
     fCapital(0),
     fCapitalPosition(0, 0),
     fSelected(-1),
@@ -173,7 +149,7 @@ CardView::CardView(GameData& data)
     fCursorVisible(false)
 {
     fFont.reset(new Font(fData.Fonts(), kTextFontIndex));
-    fNumberFont.reset(new Font(fData.Fonts(), kNumberFontIndex));
+    fSidebar.reset(new PartySidebar(fData));
 
     // card palette: the EGA colors (0..15), the capitals' range, paper
     fCardPalette = PICImage::EGAPalette();
@@ -183,7 +159,6 @@ CardView::CardView(GameData& data)
 
     for (int i = 0; i < 4; i++)
         fBorders[i] = _LoadPicture(kBorderNames[i]);
-    fSidebar = _LoadPicture("SIDEBAR.PIC");
 
     fScene.width = fScene.height = 0;
     fBuffer = new Bitmap(kScreenWidth, kScreenHeight, 8);
@@ -241,14 +216,7 @@ CardView::SetScene(const std::string& pictureName, bool showFirst)
 void
 CardView::SetParty(const party* members)
 {
-    fParty = members;
-    fPictures.clear();
-    if (fParty == NULL)
-        return;
-    for (const std::string& image : fParty->images) {
-        if (fPictures.find(image) == fPictures.end())
-            fPictures[image] = _LoadPicture(image + "STAT.PIC");
-    }
+    fSidebar->SetParty(members);
 }
 
 
@@ -280,6 +248,15 @@ CardView::Run(GameWindow& window)
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
                         return -1;
+                    case SDLK_F1: case SDLK_F2: case SDLK_F3: case SDLK_F4:
+                    case SDLK_F5:
+                        if (fInfo != NULL)
+                            fInfo->Run(window, int(event.key.keysym.sym - SDLK_F1));
+                        break;
+                    case SDLK_F6:
+                        if (fInfo != NULL)
+                            fInfo->Run(window, InfoView::kPartyPage);
+                        break;
                     case SDLK_UP:
                         SelectPrevious();
                         break;
@@ -305,8 +282,13 @@ CardView::Run(GameWindow& window)
                 break;
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    chosen = Clicked(GameWindow::ToScreen(event.button.x,
-                        event.button.y));
+                    const GFX::point point = GameWindow::ToScreen(
+                        event.button.x, event.button.y);
+                    const int member = fSidebar->MemberAt(point);
+                    if (member >= 0 && fInfo != NULL)
+                        fInfo->Run(window, member);
+                    else
+                        chosen = Clicked(point);
                     dirty = true;
                 }
                 break;
@@ -601,45 +583,5 @@ CardView::_DrawCard()
 void
 CardView::_DrawSidebar()
 {
-    fBuffer->FillRect(GFX::rect(0, 0, kCardLeft, kScreenHeight), kSidebarColor);
-    _DrawPicture(fSidebar, kSidebarLeft, kSidebarTop);
-    if (fParty == NULL)
-        return;
-
-    static const int kBarAttributes[3] = { ATTRIBUTE_ENDURANCE,
-        ATTRIBUTE_STRENGTH, ATTRIBUTE_DIVINE_FAVOR };
-    for (size_t i = 0; i < fParty->members.size() && i < size_t(kMaxPartySize);
-            i++) {
-        const character& member = fParty->members[i];
-        const int top = kBoxTop + int(i) * kBoxHeight;
-        fFont->RenderString(Font::ToGameCharset(member.shortName), fBuffer,
-            GFX::point(kNameLeft, top), int(i) == fParty->leader
-                ? kLeaderColor : kNameColor, kCardLeft - kNameLeft);
-
-        const std::map<std::string, raw_picture>::const_iterator picture
-            = fPictures.find(fParty->images[i]);
-        if (picture != fPictures.end())
-            _DrawPicture(picture->second, kPictureLeft, top + kPictureTop, 0);
-
-        // bars: the current value as a share of the maximum
-        for (int bar = 0; bar < 3; bar++) {
-            const int attribute = kBarAttributes[bar];
-            const int value = member.attributes[attribute];
-            const int maximum = std::max<int>(member.maxAttributes[attribute], 1);
-            const int height = std::min(kBarHeight, value * kBarHeight / maximum);
-            const int x = kBarCenters[bar] - kBarWidth / 2;
-            const int bottom = top + kBarsTop + kBarHeight;
-            fBuffer->FillRect(GFX::rect(x, top + kBarsTop, kBarWidth,
-                kBarHeight), kBarTrackColor);
-            if (height > 0) {
-                fBuffer->FillRect(GFX::rect(x, bottom - height, kBarWidth,
-                    height), kBarColors[bar]);
-            }
-            const std::string number = std::to_string(value);
-            const int width = fNumberFont->StringWidth(number);
-            fNumberFont->RenderString(number, fBuffer,
-                GFX::point(kBarCenters[bar] - width / 2, top + kNumbersTop),
-                kNumberColor);
-        }
-    }
+    fSidebar->Draw(fBuffer, true);
 }

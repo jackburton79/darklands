@@ -29,8 +29,12 @@ The goal is twofold:
 - Read the game's menu cards (`MSGFILES`), the text of nearly every
   menu and encounter in the game, and show them as the game does: frame,
   illuminated capital, text, options to choose
-- Read the characters (`CHARACTR.TMP`) and the saved games (`.SAV`):
-  the party, its money, where it is
+- Read the characters (`CHARACTR.TMP`), the saved games (`.SAV`) and
+  the item list (`DARKLAND.LST`): the party, its equipment, its money,
+  where it is
+- Show the party and character information screens (F6, F1..F5 or a
+  click on a character box): fame, time, wealth, a small map;
+  attributes, skills, equipment and the character's figure
 - Play the first steps, with the Quickstart party or from a saved game,
   shown in the sidebar as in the game: the party starts at the inn of a city, walks
   between the inn, the main street, the side streets and the city gate,
@@ -70,6 +74,7 @@ implemented yet. See the roadmap below.
 - [x] The flow between the city cards (inn, streets, gate) and the map
 - [x] The party: characters and saved games, the sidebar
 - [x] Game time: the clock, day and night, travel time (placeholder speeds)
+- [x] Party and character information screens
 - [ ] The city places (market, churches, guilds...), money
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
@@ -156,6 +161,9 @@ Game.*            The game: new or loaded, cities and the world map in turn
 GameTime.*        The game's date and time (monastic hours, Julian calendar)
 Character.*       A character (554-byte records) and the party
 CharacterFile.*   Reader for the new game's characters (CHARACTR.TMP)
+ListFile.*        Reader for the item, saint and formula lists (DARKLAND.LST)
+InfoView.*        The party and character information screens
+PartySidebar.*    The character boxes on the left of the screens
 SaveFile.*        Reader for the saved games (SAVES/*.SAV)
 CityVisit.*       The party in a city: which card follows which
 GameData.*        Access to the game's data files from one data directory

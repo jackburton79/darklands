@@ -23,6 +23,18 @@ enum character_attribute {
 
 static const int kSkillCount = 19;
 
+// What a character has in use: item types (item_definition::type in
+// DARKLAND.LST), 0xFF for none
+enum equipment_slot {
+    EQUIPMENT_WEAPON = 0,
+    EQUIPMENT_VITALS,			// armor on the vitals (head, torso)
+    EQUIPMENT_LIMBS,			// armor on the arms and legs
+    EQUIPMENT_SHIELD,
+    EQUIPMENT_MISSILE,			// missile weapon
+    EQUIPMENT_COUNT
+};
+static const uint8 kNoEquipment = 0xFF;
+
 struct item {
     uint16 code;
     uint8 type;
@@ -36,10 +48,11 @@ struct character {
     std::string shortName;		// nickname, e.g. "Gretch"
     uint16 age;
     bool female;
-    char shield;				// heraldic shield, 'A'..'O'
+    char heraldry;				// heraldic shield, 'A'..'O'
     uint8 attributes[ATTRIBUTE_COUNT];		// current values
     uint8 maxAttributes[ATTRIBUTE_COUNT];
     uint8 skills[kSkillCount];
+    uint8 equipment[EQUIPMENT_COUNT];		// item types, see equipment_slot
     std::vector<item> items;
 };
 
@@ -56,6 +69,9 @@ struct party {
                                         // pictures (F60STAT.PIC...)
     int leader;							// index into members
     money cash;
+    uint16 fame;
+    uint16 bankNotes;					// letter of credit, in florins
+    uint16 philosopherStone;			// quality, 0: none
 };
 
 static const size_t kCharacterRecordSize = 554;	// 0x22A

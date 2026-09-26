@@ -73,7 +73,11 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   option does, which options need a place). `MapViewer::Run()` returns
   when the party reaches a city.
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
-  same structure as `MapViewer`. `ScreenSupport`: `GameWindow` (shows a
+  same structure as `MapViewer`. `PartySidebar`: the character boxes.
+  `InfoView`: the F6 party and F1..F5 character screens, opened from
+  `CardView` and `MapViewer` (modal `Run(window, page)`).
+- `ListFile` (DARKLAND.LST): item definitions; a character's item code
+  indexes it, its equipment slots hold item *types*. `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.
 - `darklands.cpp`: command line only.
 

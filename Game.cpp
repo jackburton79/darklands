@@ -4,6 +4,7 @@
 #include "CityFile.h"
 #include "CityVisit.h"
 #include "GameData.h"
+#include "InfoView.h"
 #include "MapViewer.h"
 #include "SaveFile.h"
 #include "ScreenSupport.h"
@@ -85,6 +86,11 @@ Game::Run()
     visit.SetClock(&fTime);
     MapViewer map(fData);
     map.SetClock(&fTime);
+    InfoView info(fData);
+    info.SetParty(&fParty);
+    info.SetClock(&fTime);
+    visit.SetInfoView(&info);
+    map.SetInfoView(&info);
 
     GameWindow window("Darklands");
     int cityIndex = fCity;

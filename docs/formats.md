@@ -742,11 +742,18 @@ layout is wendigo's; checked on the four characters:
     +0x12   2     age (35, 40, 40, 45)
     +0x15   1     heraldic shield, 'A'..'O' (A, B, C, D)
     +0x17   1     sex: 1 = female (inferred: 1 for Gretchen only)
+    +0x22   1     missile weapon in use: item type, 0xFF = none
     +0x25   25    full name, NUL-terminated
     +0x3E   11    nickname ("Gretch"), NUL-terminated
+    +0x4B   1     vitals armor in use: item type
+    +0x4C   1     limbs armor in use: item type
+    +0x4F   1     vitals armor quality
+    +0x50   1     limbs armor quality
+    +0x51   1     weapon in use: item type
+    +0x5C   1     shield in use: item type
     +0x5D   7     current attributes: END STR AGL PER INT CHR DF
     +0x64   7     maximum attributes
-    +0x6B   19    skills
+    +0x6B   19    skills (order below)
     +0x7E   2     item count (at most 64)
     +0x80   20    saints known, 160 bits
     +0x94   22    alchemical formulae known
@@ -756,6 +763,19 @@ layout is wendigo's; checked on the four characters:
   attributes are plausible (divine favor 99 for all) and the current
   ones fall below the maximum after fights in the saved games; the
   item count matches the non-empty item records.
+- **Items** — **verified** on all the characters of `CHARACTR.TMP` and
+  two saved games: the code is the item's index in `DARKLAND.LST`, the
+  type byte is that item's type there, and the equipment in use (0x22,
+  0x4B, 0x4C, 0x51, 0x5C) is the type of one of the carried items
+  (e.g. Gretchen: weapon 3, a Short Sword; vitals 75, V:Plate Armor;
+  limbs 82, L:Chainmail). The weight is per carried item.
+- **Skills**: 19, in the order and with the abbreviations that
+  `DARKLAND.EXE` lists: Edged, Impact, Flail, Polearm, Thrown, Bow
+  weapons, Missile devices, Alchemy, Religion, Virtue, Speak Common,
+  Speak Latin, Read & Write, Healing, Artifice, Stealth, Streetwise,
+  Riding, Woodwise (wEdg wImp wFll wPol wThr wBow wMsD / Alch Relg Virt
+  SpkC SpkL R&W / Heal Artf Stlh StrW Ride WdWs, the three skill boards
+  of the character screen).
 - No money: the characters' funds are pooled when the adventure begins
   (manual p. 15). Where they come from is unknown.
 
@@ -768,6 +788,9 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
     0x15    23    label ("Darklands"; "new default" in DEFAULT)
     0x68    8     date: year, month, day, hour (words)
     0x70    6     money: florins, groschen, pfennigs (words)
+    0x7A    2     party fame (wendigo: "global reputation")
+    0x8C    2     letter of credit, in florins
+    0x92    2     philosopher's stone quality
     0x7C    2     location: index into DARKLAND.LOC, 0xFFFF = wilderness
     0x7E    4     map tile: x, y (words)
     0xA1    1     party leader: party slot
@@ -797,7 +820,76 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
   no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
   10 pf.
 
-## City descriptions (`DARKLAND.DSC`)
+## Item and name lists (`DARKLAND.LST`)
+
+See `ListFile.cpp` for a reference implementation.
+
+    offset  size     description
+    0x00    1        item slots (200)
+    0x01    1        saints (136)
+    0x02    1        alchemical formulae (66)
+    0x03    46·200   item definitions
+    ...              NUL-terminated strings: the saints' names, their
+                     short names, the formulae's names, their short names
+
+    item definition (wendigo's layout):
+    +0x00   20    name ("Hand Axe", "V:Plate Armor"), NUL-terminated
+    +0x14   10    short name ("Hnd Axe", "V:Plate")
+    +0x1E   2     type: what the characters' equipment refers to
+    +0x20   5     flags (weapon kinds, component, potion, relic...)
+    +0x25   1     weight
+    +0x26   1     default quality
+    +0x27   1     rarity
+    +0x28   4     unknown (relics, permits)
+    +0x2C   2     value
+
+- **verified**: 3 + 200 · 46 bytes, then exactly 2 · 136 + 2 · 66
+  strings to the end of the file ("St.Adrian"/"S.Adrian" first,
+  "al-Razi's Noxious Aroma"/"aR NoxAro" for the formulae); 172 of the
+  200 item slots are used.
+- The item types of the armor run in order: 67..75 V:Clothing, Padded,
+  Leather, Studded Leather, Cuirbouilli, Scale, Chainmail, Brigandine,
+  Plate; 76..84 the same for the limbs; 95..97 Small, Medium, Large
+  Shield.
+
+## Information screens
+
+The party information (F6) and character information (F1..F5, or a
+click on a character box) screens of the manual (pp. 20, 22), with
+their screenshots. See `InfoView.cpp` for a reference implementation.
+
+- **The interface palette**: 128..159 is the same in every picture
+  checked (`ILLMCAPS.PIC`, `PTYSTATS.PIC`, `ARMBACK.PIC`, the scenes):
+  31 of the 32 colors are identical, all but 128. **verified**
+- **Character boxes**: 40 pixels high (**verified**: the box borders of
+  the left column of `PTYSTATS.PIC` and `ARMBACK.PIC`).
+- **Party information**: the background is `PTYSTATS.PIC`, with the
+  panels, the character boxes and a small map of the Empire with a red
+  dot per city: 92 dots, 16 of them 3 × 3 (mostly the big cities), in
+  EGA colors 4 and 12. A linear fit from the world map's pixel
+  coordinates puts the cities on their dots with a mean error of 1.8
+  pixels (max 4.6): x = 0.02172 · X + 202.93, y = 0.02867 · Y + 72.49.
+  The party is marked with `MAPLOCTR.PIC`, a 9 × 9 cross-hair. The
+  labels are in `DARKLAND.EXE` next to "pics\ptystats.pic": PARTY
+  INFORMATION, MAP INFORMATION, PARTY FAME, TIME, DATE, LOCATION,
+  WEALTH, NOTES, LOCAL REP, Small-/Moderate-/Large-Sized, "Rep: ",
+  "%d Florins", "%d Groschen", "%d Pfenniges", "%d PhStone". The
+  reputation words, from best to worst: a local hero, respected,
+  unknown, suspected, wanted, hunted (thresholds unknown). The city
+  size words (*inferred*: 3..4 small, 5..6 moderate, 7..8 large; Kassel,
+  size 5, is "Moderate-Sized" on the screenshot).
+- **Character information**: the background is `ARMBACK.PIC`, with the
+  boards and the buttons (Equipment, Formulae, Saints). The archway
+  alone is `ARMSBACK.PIC`, at (59, 13) in it (**verified**: pixel
+  match). The figure is made of 137 × 170 pictures drawn in the archway,
+  index 0 transparent: limb armor (`PAD-LIMS`, `LEAT-LIM`, `STUDLIM`,
+  `CUIRBLIM`, `SCALELIM`, `CHAINLIM`, `BRIGLIM`, `PLATELIM`), vitals
+  armor (`PAD-VIT` ... `PLATEVIT`), shield (`SMALLSH`, `MEDIUMSH`) and
+  weapon (`WEAPONn`, n presumably the weapon's item type). The picture
+  lists are in `DARKLAND.EXE` in the item type order (clothing and
+  padded share `PAD-*`, medium and large shields `MEDIUMSH`).
+  The encumbrance board needs the carrying capacity, whose formula the
+  manual does not give.
 
 One line per city, the `$PlaceDesc` of the cards. See
 `DescriptionFile.cpp` for a reference implementation.
@@ -861,7 +953,10 @@ land).
 - [ ] Characters: the unknown fields of the record (0x00..0x11, 0x49:
       grows during the game), the sex byte (one female sample), where
       the starting money comes from
-- [ ] Saved games: the current screen (0x82) and everything else
+- [ ] Saved games: the current screen (0x82), the local reputations
+      (presumably in the locations array), everything else
+- [ ] Information screens: the fame and reputation thresholds of the
+      words, the carrying capacity
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

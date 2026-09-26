@@ -24,6 +24,7 @@ class Font;
 class GameData;
 class GameTime;
 class GameWindow;
+class InfoView;
 
 class MapViewer {
 public:
@@ -42,6 +43,8 @@ public:
     // The game's clock (not owned; NULL: none): traveling advances it,
     // the status bar shows it.
     void			SetClock(GameTime* clock)	{ fClock = clock; }
+    // The information screens that F1..F6 open (not owned; NULL: none).
+    void			SetInfoView(InfoView* info)	{ fInfo = info; }
 
     // Puts the party on a tile (e.g. a city it leaves) and centers the view
     // on it; the party stops and is no longer in a city.
@@ -92,6 +95,7 @@ private:
 
     GameData&		fData;
     GameTime*		fClock;
+    InfoView*		fInfo;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

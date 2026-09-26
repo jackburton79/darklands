@@ -4,6 +4,7 @@
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "FontFile.h"
+#include "ListFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "Palette.h"
@@ -95,6 +96,15 @@ GameData::Fonts()
     if (!fFonts)
         fFonts.reset(new FontFile(PathFor("FONTS.FNT")));
     return *fFonts;
+}
+
+
+const ListFile&
+GameData::Lists()
+{
+    if (!fLists)
+        fLists.reset(new ListFile(PathFor("DARKLAND.LST")));
+    return *fLists;
 }
 
 

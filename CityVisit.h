@@ -21,6 +21,7 @@
 class GameData;
 class GameTime;
 class GameWindow;
+class InfoView;
 struct party;
 
 class CityVisit {
@@ -49,6 +50,8 @@ public:
     // their night cards; some options take time.
     void			SetParty(const party* members);
     void			SetClock(GameTime* clock)	{ fClock = clock; }
+    // The information screens (not owned; NULL: none).
+    void			SetInfoView(InfoView* info);
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits.
@@ -81,6 +84,7 @@ private:
     card_variables	fVariables;
     const party*	fParty;
     GameTime*		fClock;
+    InfoView*		fInfo;
     bool			fNight;			// the current card is a night card
     int				fCity;
     int				fScreen;

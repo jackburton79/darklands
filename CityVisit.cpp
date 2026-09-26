@@ -5,6 +5,7 @@
 #include "DescriptionFile.h"
 #include "GameData.h"
 #include "GameTime.h"
+#include "InfoView.h"
 #include "ScreenSupport.h"
 
 #include <stdexcept>
@@ -202,6 +203,7 @@ CityVisit::CityVisit(GameData& data)
     fView(data),
     fParty(NULL),
     fClock(NULL),
+    fInfo(NULL),
     fNight(false),
     fCity(-1),
     fScreen(SCREEN_START),
@@ -236,6 +238,14 @@ CityVisit::SetParty(const party* members)
 }
 
 
+void
+CityVisit::SetInfoView(InfoView* info)
+{
+    fInfo = info;
+    fView.SetInfoView(info);
+}
+
+
 CityVisit::result
 CityVisit::Run(GameWindow& window, int cityIndex, int screen)
 {
@@ -256,6 +266,10 @@ CityVisit::Enter(int cityIndex, int screen)
     if (screen < 0 || screen >= SCREEN_COUNT)
         throw std::out_of_range("CityVisit::Enter(): invalid screen");
     fCity = cityIndex;
+    if (fInfo != NULL) {
+        const city& c = fData.Cities().CityAt(uint32(cityIndex));
+        fInfo->SetPosition(map_position{ c.x, c.y });
+    }
     fVariables.clear();
     AddCityVariables(fData, cityIndex, fVariables);
     if (fParty != NULL)

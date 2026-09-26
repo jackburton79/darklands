@@ -7,8 +7,13 @@
 
 // Record layout (see docs/formats.md)
 static const size_t kAgeOffset			= 0x12;
-static const size_t kShieldOffset		= 0x15;
+static const size_t kHeraldryOffset		= 0x15;
 static const size_t kSexOffset			= 0x17;	// 1: female (inferred)
+static const size_t kMissileOffset		= 0x22;
+static const size_t kVitalsOffset		= 0x4B;
+static const size_t kLimbsOffset		= 0x4C;
+static const size_t kWeaponOffset		= 0x51;
+static const size_t kShieldOffset		= 0x5C;
 static const size_t kFullNameOffset		= 0x25;
 static const size_t kFullNameLength		= 25;
 static const size_t kShortNameOffset	= 0x3E;
@@ -38,10 +43,15 @@ ReadCharacter(const uint8* record)
     c.shortName = StringAt(record, kShortNameOffset, kShortNameLength);
     c.age = uint16(record[kAgeOffset] | (record[kAgeOffset + 1] << 8));
     c.female = record[kSexOffset] == 1;
-    c.shield = char(record[kShieldOffset]);
+    c.heraldry = char(record[kHeraldryOffset]);
     memcpy(c.attributes, &record[kAttributesOffset], ATTRIBUTE_COUNT);
     memcpy(c.maxAttributes, &record[kMaxAttributesOffset], ATTRIBUTE_COUNT);
     memcpy(c.skills, &record[kSkillsOffset], kSkillCount);
+    c.equipment[EQUIPMENT_WEAPON] = record[kWeaponOffset];
+    c.equipment[EQUIPMENT_VITALS] = record[kVitalsOffset];
+    c.equipment[EQUIPMENT_LIMBS] = record[kLimbsOffset];
+    c.equipment[EQUIPMENT_SHIELD] = record[kShieldOffset];
+    c.equipment[EQUIPMENT_MISSILE] = record[kMissileOffset];
 
     const size_t count = record[kItemCountOffset]
         | (record[kItemCountOffset + 1] << 8);
@@ -63,6 +73,9 @@ MakeParty(const std::vector<character>& characters, const uint8* indices,
     party p;
     p.leader = 0;
     p.cash = money{ 0, 0, 0 };
+    p.fame = 0;
+    p.bankNotes = 0;
+    p.philosopherStone = 0;
     for (int slot = 0; slot < kMaxPartySize; slot++) {
         const uint16 index = uint16(indices[slot * 2]
             | (indices[slot * 2 + 1] << 8));
