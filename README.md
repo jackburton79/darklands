@@ -26,8 +26,9 @@ The goal is twofold:
   caves... with their map coordinates
 - List the cities (`DARKLAND.CTY`) with their rulers, neighboring
   cities, ports and named places
-- Explore the world map interactively: scroll around, see the terrain
-  under the mouse, click a city to see its details
+- Explore the world map interactively: travel with the party, enter
+  cities and pick a place from their menu (the places themselves are
+  not implemented yet), see each city's details
 
 Everything else — city screens, sound, text, the game itself — is not
 implemented yet. See the roadmap below.
@@ -50,6 +51,8 @@ implemented yet. See the roadmap below.
 - [x] Parse the city descriptions (`DARKLAND.CTY`, `--cities`)
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
+- [x] Party travel on the map (pathfinding, no travel time yet) and a
+      city menu
 - [ ] Decode more resource types (text, sound archives)
 - [ ] City screens, text and dialogue display
 - [ ] Sound playback
@@ -93,8 +96,9 @@ Point the program at the game's data directory (the one containing
 Game files are looked up by name, in that directory and then in `PICS`:
 
 ```sh
-# Explore the world map: arrow keys (shift: faster) or drag to scroll,
-# click a city for its details, Esc to close the details or quit
+# Explore the world map: click to travel there (clicking a city enters
+# it), right click a city for its details, arrow keys (shift: faster) or
+# drag to scroll, space to center on the party, Esc to go back or quit
 ./darklands --data /path/to/DARKLAND
 
 # Browse the images of a catalog (left/right arrow keys)
@@ -119,7 +123,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 darklands.cpp     Program entry point: image viewer, --extract, --map,
                   --locations, --cities
 GameData.*        Access to the game's data files from one data directory
-MapViewer.*       Interactive world map (scrolling, city details)
+MapViewer.*       Interactive world map (scrolling, travel, city menu)
+Travel.*          Paths across the world map
 WorldMap.*        The world map: tiles, column rule, drawing any part of it
 CityLabels.*      City names drawn over the map
 Catalog.*         Reader for the game's .CAT archive/catalog files

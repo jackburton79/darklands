@@ -58,12 +58,20 @@ public:
     // Pixels no tile covers are left untouched.
     void			Draw(Bitmap* bitmap, const GFX::point& origin) const;
 
+    // Draws one icon sheet cell (tile type 0..31, column 0..15) as if it
+    // were tile (x, y), in the same coordinates as Draw(). Does nothing
+    // without sheets.
+    void			DrawIcon(Bitmap* bitmap, const GFX::point& origin,
+                        int type, uint8 column, uint16 x, uint16 y) const;
+
     // Returns a new bitmap with the whole map. Release() it when done.
     Bitmap*			Render() const;
 
 private:
     void			_LoadSheets(const std::string sheetFiles[2]);
     void			_DrawTile(Bitmap* bitmap, uint16 x, uint16 y,
+                        int destX, int destY) const;
+    void			_DrawCell(Bitmap* bitmap, int type, uint8 column,
                         int destX, int destY) const;
 
     uint16			fWidth;

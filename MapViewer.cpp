@@ -32,6 +32,30 @@ static const int kScrollStep		= 16;	// pixels per arrow key press
 static const int kFastScrollStep	= 64;	// with shift
 static const int kDragThreshold		= 3;	// pixels before a click is a drag
 static const int kCityHitRadius		= 12;	// map pixels around a city tile
+static const int kTickMilliseconds	= 60;	// party travel speed: one tile per tick
+static const int kPartyMargin		= 48;	// keep the party this far from the edges
+static const int kPartyIconType		= 30;	// blue flag row of MAPICON2.PIC
+
+// The places of a city, in the order the panel and the city menu list them
+static const struct {
+    int place;
+    const char* label;
+} kPlaces[] = {
+    { CITY_SQUARE, "Square" }, { CITY_TOWN_HALL, "Town hall" },
+    { CITY_CASTLE, "Castle" }, { CITY_CATHEDRAL, "Cathedral" },
+    { CITY_CHURCH, "Church" }, { CITY_MARKET, "Market" },
+    { CITY_MINT_SQUARE, "Mint" }, { CITY_SLUMS, "Slums" },
+    { CITY_ARMORY, "Armory" }, { CITY_PAWNSHOP, "Pawnshop" },
+    { CITY_MONASTERY, "Monastery" }, { CITY_INN, "Inn" },
+    { CITY_UNIVERSITY, "University" }
+};
+
+// City menu layout
+static const int kMenuLeft			= 20;
+static const int kMenuTop			= 12;
+static const int kMenuWidth			= 280;
+static const int kMenuItemsTop		= 44;	// relative to kMenuTop
+static const int kMenuLineHeight	= 10;
 
 // Mouse cursor: libjgame hides the system cursor, so we draw our own
 // into the 320x200 screen. '#' = outline, 'o' = fill; hot spot top left.
@@ -69,7 +93,10 @@ MapViewer::MapViewer(GameData& data)
     fMouse(0, 0),
     fMouseInside(false),
     fCursorVisible(false),
-    fSelectedCity(-1)
+    fSelectedCity(-1),
+    fParty{ 0, 0 },
+    fDestinationCity(-1),
+    fCity(-1)
 {
     // load everything up front, so missing files are reported right away
     const WorldMap& map = fData.Map();
@@ -87,7 +114,7 @@ MapViewer::MapViewer(GameData& data)
     fGray = NearestColor(map.Palette(), 170, 170, 170);
     fDarkGray = NearestColor(map.Palette(), 40, 40, 40);
 
-    // start on the biggest city
+    // the party starts in front of the biggest city
     const CityFile& cities = fData.Cities();
     uint32 start = 0;
     for (uint32 i = 1; i < cities.CountCities(); i++) {
@@ -95,7 +122,8 @@ MapViewer::MapViewer(GameData& data)
             start = i;
     }
     if (cities.CountCities() > 0)
-        CenterOn(cities.CityAt(start).x, cities.CityAt(start).y);
+        fParty = map_position{ cities.CityAt(start).x, cities.CityAt(start).y };
+    CenterOnParty();
 }
 
 
@@ -128,8 +156,12 @@ MapViewer::Run()
     GFX::point lastPoint(0, 0);
     while (!quitting) {
         SDL_Event event;
-        if (!dirty && SDL_WaitEventTimeout(&event, 100) == 0)
+        if (!dirty && SDL_WaitEventTimeout(&event,
+                IsTraveling() ? kTickMilliseconds : 100) == 0) {
+            // no event before the timeout: move the party on
+            dirty = Tick();
             continue;
+        }
         if (dirty) {
             GFX::rect source = fBuffer->Frame();
             GraphicsEngine::BlitBitmap(Draw(), &source, converted, &source);
@@ -149,15 +181,20 @@ MapViewer::Run()
                 case SDL_KEYDOWN: {
                     const bool fast = (event.key.keysym.mod & KMOD_SHIFT) != 0;
                     const int step = fast ? kFastScrollStep : kScrollStep;
-                    switch (event.key.keysym.sym) {
+                    const SDL_Keycode key = event.key.keysym.sym;
+                    if (key == SDLK_ESCAPE) {
+                        if (!Escape())
+                            quitting = true;
+                    } else if (fCity >= 0) {
+                        // in a city, letters choose a place from the menu
+                        if (key >= SDLK_a && key <= SDLK_z)
+                            ChoosePlace(key - SDLK_a + 1);
+                    } else switch (key) {
                         case SDLK_LEFT:		ScrollBy(-step, 0); break;
                         case SDLK_RIGHT:	ScrollBy(step, 0); break;
                         case SDLK_UP:		ScrollBy(0, -step); break;
                         case SDLK_DOWN:		ScrollBy(0, step); break;
-                        case SDLK_ESCAPE:
-                            if (!ClosePanel())
-                                quitting = true;
-                            break;
+                        case SDLK_SPACE:	CenterOnParty(); break;
                         default:
                             break;
                     }
@@ -174,7 +211,7 @@ MapViewer::Run()
                                 || std::abs(point.y - pressPoint.y) > kDragThreshold) {
                             dragging = true;
                         }
-                        if (dragging) {
+                        if (dragging && fCity < 0) {
                             ScrollBy(lastPoint.x - point.x, lastPoint.y - point.y);
                             lastPoint = point;
                         }
@@ -200,6 +237,10 @@ MapViewer::Run()
                         }
                         buttonDown = false;
                         dragging = false;
+                        dirty = true;
+                    } else if (event.button.button == SDL_BUTTON_RIGHT) {
+                        RightClicked(GFX::point(event.button.x / kWindowScale,
+                            event.button.y / kWindowScale));
                         dirty = true;
                     }
                     break;
@@ -256,21 +297,93 @@ MapViewer::MouseLeft()
 
 
 void
+MapViewer::CenterOnParty()
+{
+    CenterOn(fParty.x, fParty.y);
+}
+
+
+void
 MapViewer::Clicked(const GFX::point& point)
 {
     MouseMoved(point);
+    if (fCity >= 0) {
+        const int item = _CityMenuItemAt(point);
+        if (item >= 0)
+            ChoosePlace(item + 1);
+        return;
+    }
+    fSelectedCity = -1;
     if (!fMouseInside)
+        return;
+
+    const GFX::point mapPoint = _ScreenToMap(point);
+    const int cityIndex = _CityAt(mapPoint);
+    if (cityIndex >= 0 && !IsTraveling()) {
+        const city& c = fData.Cities().CityAt(cityIndex);
+        _TravelTo(map_position{ c.x, c.y }, cityIndex);
+        return;
+    }
+    uint16 x, y;
+    if (fData.Map().TileAtPixel(mapPoint, x, y))
+        _TravelTo(map_position{ x, y }, -1);
+}
+
+
+void
+MapViewer::RightClicked(const GFX::point& point)
+{
+    MouseMoved(point);
+    if (fCity >= 0 || !fMouseInside)
         return;
     fSelectedCity = _CityAt(_ScreenToMap(point));
 }
 
 
-bool
-MapViewer::ClosePanel()
+void
+MapViewer::ChoosePlace(int number)
 {
-    if (fSelectedCity < 0)
+    if (fCity < 0)
+        return;
+    const std::vector<int> places = _CityMenuPlaces();
+    if (number < 1 || number > int(places.size()))
+        return;
+    const city& c = fData.Cities().CityAt(fCity);
+    fCityMessage = c.places[places[number - 1]] + ": not implemented yet.";
+}
+
+
+bool
+MapViewer::Escape()
+{
+    if (fSelectedCity >= 0) {
+        fSelectedCity = -1;
+        return true;
+    }
+    if (fCity >= 0) {
+        fCity = -1;
+        fCityMessage.clear();
+        return true;
+    }
+    if (IsTraveling()) {
+        fPath.clear();
+        fDestinationCity = -1;
+        return true;
+    }
+    return false;
+}
+
+
+bool
+MapViewer::Tick()
+{
+    if (fPath.empty())
         return false;
-    fSelectedCity = -1;
+    fParty = fPath.front();
+    fPath.erase(fPath.begin());
+    _KeepPartyVisible();
+    if (fPath.empty() && fDestinationCity >= 0)
+        _EnterCity(fDestinationCity);
     return true;
 }
 
@@ -281,8 +394,11 @@ MapViewer::Draw()
     const WorldMap& map = fData.Map();
     fBuffer->Clear(fBlack);
     map.Draw(fBuffer, fOrigin);
+    map.DrawIcon(fBuffer, fOrigin, kPartyIconType, 0, fParty.x, fParty.y);
     DrawCityLabels(fBuffer, fOrigin, map, fData.Locations(), *fLabelFont);
-    if (fSelectedCity >= 0)
+    if (fCity >= 0)
+        _DrawCityMenu();
+    else if (fSelectedCity >= 0)
         _DrawCityPanel();
     _DrawStatusBar();
     _DrawCursor();
@@ -334,6 +450,124 @@ MapViewer::_SetOrigin(int x, int y)
 }
 
 
+// Starts traveling to `destination`; `city` is the city there, or -1.
+void
+MapViewer::_TravelTo(const map_position& destination, int city)
+{
+    if (destination == fParty) {
+        fPath.clear();
+        fDestinationCity = -1;
+        if (city >= 0)
+            _EnterCity(city);
+        return;
+    }
+    fPath = FindPath(fData.Map(), fParty, destination);
+    fDestinationCity = fPath.empty() ? -1 : city;
+}
+
+
+void
+MapViewer::_EnterCity(int city)
+{
+    fCity = city;
+    fDestinationCity = -1;
+    fSelectedCity = -1;
+    fCityMessage.clear();
+}
+
+
+// Scrolls when the party gets close to the edges of the view.
+void
+MapViewer::_KeepPartyVisible()
+{
+    const GFX::point center = fData.Map().TileCenter(fParty.x, fParty.y);
+    const int x = center.x - fOrigin.x;
+    const int y = center.y - fOrigin.y;
+    if (x < kPartyMargin || x >= kScreenWidth - kPartyMargin
+            || y < kPartyMargin
+            || y >= kScreenHeight - kStatusBarHeight - kPartyMargin) {
+        CenterOnParty();
+    }
+}
+
+
+// Place slots of the current city, in menu order.
+std::vector<int>
+MapViewer::_CityMenuPlaces() const
+{
+    std::vector<int> places;
+    if (fCity < 0)
+        return places;
+    const city& c = fData.Cities().CityAt(fCity);
+    for (const auto& place : kPlaces) {
+        if (!c.places[place.place].empty())
+            places.push_back(place.place);
+    }
+    return places;
+}
+
+
+// Menu item (0-based) under a screen point, or -1.
+int
+MapViewer::_CityMenuItemAt(const GFX::point& point) const
+{
+    const int count = int(_CityMenuPlaces().size());
+    const int top = kMenuTop + kMenuItemsTop;
+    if (point.x < kMenuLeft || point.x >= kMenuLeft + kMenuWidth
+            || point.y < top || point.y >= top + count * kMenuLineHeight) {
+        return -1;
+    }
+    return (point.y - top) / kMenuLineHeight;
+}
+
+
+void
+MapViewer::_DrawCityMenu()
+{
+    const CityFile& cities = fData.Cities();
+    const city& c = cities.CityAt(fCity);
+    const std::vector<int> places = _CityMenuPlaces();
+
+    const int height = kMenuItemsTop + int(places.size()) * kMenuLineHeight + 34;
+    const GFX::rect panel = { sint16(kMenuLeft), sint16(kMenuTop),
+        uint16(kMenuWidth), uint16(height) };
+    fBuffer->FillRect(panel, fDarkGray);
+    fBuffer->StrokeRect(panel, fGray);
+
+    const int textLeft = kMenuLeft + 8;
+    _DrawText(*fLabelFont, c.fullName, textLeft, kMenuTop + 6, fYellow);
+    _DrawText(*fTextFont, "Ruled by " + c.places[CITY_RULER], textLeft,
+        kMenuTop + 20, fGray);
+    _DrawText(*fTextFont, "Where do you want to go?", textLeft,
+        kMenuTop + 32, fWhite);
+
+    // highlight the item under the mouse
+    const int hovered = fCursorVisible ? _CityMenuItemAt(fMouse) : -1;
+    int y = kMenuTop + kMenuItemsTop;
+    for (size_t i = 0; i < places.size(); i++) {
+        if (int(i) == hovered) {
+            const GFX::rect highlight = { sint16(kMenuLeft + 2), sint16(y - 1),
+                uint16(kMenuWidth - 4), uint16(kMenuLineHeight) };
+            fBuffer->FillRect(highlight, fBlack);
+        }
+        const std::string label(1, char('A' + i));
+        _DrawText(*fTextFont, label + ".", textLeft, y, fGray);
+        _DrawText(*fTextFont, c.places[places[i]], textLeft + 16, y, fWhite);
+        for (const auto& place : kPlaces) {
+            if (place.place == places[i]) {
+                _DrawText(*fTextFont, place.label, textLeft + 170, y, fGray);
+                break;
+            }
+        }
+        y += kMenuLineHeight;
+    }
+    y += 6;
+    if (!fCityMessage.empty())
+        _DrawText(*fTextFont, fCityMessage, textLeft, y, fYellow);
+    _DrawText(*fTextFont, "Esc: leave the city", textLeft, y + 12, fGray);
+}
+
+
 void
 MapViewer::_DrawStatusBar()
 {
@@ -342,6 +576,18 @@ MapViewer::_DrawStatusBar()
     fBuffer->FillRect(bar, fDarkGray);
     fBuffer->StrokeLine(0, top, kScreenWidth - 1, top, fGray);
 
+    if (fCity >= 0) {
+        _DrawText(*fTextFont, "In " + fData.Cities().CityAt(fCity).fullName,
+            3, top + 2, fWhite);
+        return;
+    }
+    if (IsTraveling()) {
+        std::string text = "Traveling";
+        if (fDestinationCity >= 0)
+            text += " to " + fData.Cities().CityAt(fDestinationCity).fullName;
+        const int width = fTextFont->StringWidth(Font::ToGameCharset(text));
+        _DrawText(*fTextFont, text, kScreenWidth - 3 - width, top + 2, fYellow);
+    }
     if (!fMouseInside)
         return;
     const WorldMap& map = fData.Map();
@@ -364,18 +610,6 @@ MapViewer::_DrawStatusBar()
 void
 MapViewer::_DrawCityPanel()
 {
-    static const struct {
-        int place;
-        const char* label;
-    } kPlaces[] = {
-        { CITY_SQUARE, "Square" }, { CITY_TOWN_HALL, "Town hall" },
-        { CITY_CASTLE, "Castle" }, { CITY_CATHEDRAL, "Cathedral" },
-        { CITY_CHURCH, "Church" }, { CITY_MARKET, "Market" },
-        { CITY_MINT_SQUARE, "Mint" }, { CITY_SLUMS, "Slums" },
-        { CITY_ARMORY, "Armory" }, { CITY_PAWNSHOP, "Pawnshop" },
-        { CITY_MONASTERY, "Monastery" }, { CITY_INN, "Inn" },
-        { CITY_UNIVERSITY, "University" }
-    };
     const CityFile& cities = fData.Cities();
     const city& c = cities.CityAt(fSelectedCity);
 
