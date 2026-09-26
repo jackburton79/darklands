@@ -34,7 +34,9 @@ The goal is twofold:
 - Play the first steps, with the Quickstart party or from a saved game,
   shown in the sidebar as in the game: the party starts at the inn of a city, walks
   between the inn, the main street, the side streets and the city gate,
-  leaves for the world map, travels and arrives at other cities. The
+  leaves for the world map, travels and arrives at other cities. Time
+  passes (traveling, sleeping at the inn) and the city shows its night
+  cards after Compline. The
   other places (market, churches, guilds...) and the options' effects
   (meals, money, fights...) are not implemented yet
 - Explore the world map: scrolling, city names, each city's details
@@ -67,7 +69,8 @@ implemented yet. See the roadmap below.
 - [x] Show a menu card with its options (`--card`)
 - [x] The flow between the city cards (inn, streets, gate) and the map
 - [x] The party: characters and saved games, the sidebar
-- [ ] The city places (market, churches, guilds...), money, time
+- [x] Game time: the clock, day and night, travel time (placeholder speeds)
+- [ ] The city places (market, churches, guilds...), money
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 
@@ -150,6 +153,7 @@ Game files are looked up by name, in that directory and then in `PICS`:
 darklands.cpp     Program entry point: the game, image viewer, --extract,
                   --map, --locations, --cities, --messages, --card
 Game.*            The game: new or loaded, cities and the world map in turn
+GameTime.*        The game's date and time (monastic hours, Julian calendar)
 Character.*       A character (554-byte records) and the party
 CharacterFile.*   Reader for the new game's characters (CHARACTR.TMP)
 SaveFile.*        Reader for the saved games (SAVES/*.SAV)

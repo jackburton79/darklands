@@ -30,3 +30,11 @@ bool IsPassable(const WorldMap& map, uint16 x, uint16 y);
 // distance between the tile centers.
 std::vector<map_position> FindPath(const WorldMap& map,
     const map_position& from, const map_position& to);
+
+// Game minutes to walk from a tile to a neighbor, by the terrain of the
+// neighbor: less on roads and open country, more in forests, marshes and
+// mountains (manual p. 27). The game's own figures are unknown (they are
+// in DARKLAND.EXE): these are placeholders, about 10 tiles a day on open
+// ground.
+uint32 TravelMinutes(const WorldMap& map, const map_position& from,
+    const map_position& to);

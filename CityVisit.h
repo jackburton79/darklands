@@ -19,6 +19,7 @@
 #include <vector>
 
 class GameData;
+class GameTime;
 class GameWindow;
 struct party;
 
@@ -31,6 +32,7 @@ public:
         SCREEN_MAIN_STREET,		// $MAINS01.MSG
         SCREEN_SIDE_STREET,		// $SIDES00.MSG
         SCREEN_GATE,			// leaving through the gate: $SELEC00.MSG
+        SCREEN_SLEEP,			// a meal and eight hours of sleep at the inn
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -42,8 +44,11 @@ public:
 
     explicit		CityVisit(GameData& data);	// throws if data is missing
 
-    // The party in the city (not owned). Set it before Enter() or Run().
+    // The party in the city and the game's clock (not owned). Set them
+    // before Enter() or Run(). At night the streets and the gate show
+    // their night cards; some options take time.
     void			SetParty(const party* members);
+    void			SetClock(GameTime* clock)	{ fClock = clock; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits.
@@ -75,6 +80,8 @@ private:
     msg_card		fNotImplementedCard;
     card_variables	fVariables;
     const party*	fParty;
+    GameTime*		fClock;
+    bool			fNight;			// the current card is a night card
     int				fCity;
     int				fScreen;
     int				fPreviousScreen;	// where "not implemented" goes back

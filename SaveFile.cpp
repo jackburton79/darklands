@@ -51,8 +51,8 @@ SaveFile::SaveFile(const std::string& fileName)
 
     fLocationName = StringAt(data, kLocationNameOffset, kLocationNameLength);
     fLabel = StringAt(data, kLabelOffset, kLabelLength);
-    fDate = game_date{ WordAt(data, kDateOffset), WordAt(data, kDateOffset + 2),
-        WordAt(data, kDateOffset + 4), WordAt(data, kDateOffset + 6) };
+    fDate = GameTime(WordAt(data, kDateOffset), WordAt(data, kDateOffset + 2),
+        WordAt(data, kDateOffset + 4), WordAt(data, kDateOffset + 6));
     const uint16 location = WordAt(data, kLocationOffset);
     fLocation = location == 0xFFFF ? -1 : int(location);
     fX = WordAt(data, kCoordinatesOffset);

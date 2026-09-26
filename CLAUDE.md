@@ -66,7 +66,9 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   with the game fonts, `ToGameCharset()` for UTF-8 input.
 - `MapViewer`: the interactive map (320x200 8-bit buffer, scaled 2x);
   `Travel`: A* paths on the map; `CityLabels`: city names over the map.
-- `Game`: runs `CityVisit` and `MapViewer` in turn, in one `GameWindow`.
+- `Game`: runs `CityVisit` and `MapViewer` in turn, in one `GameWindow`,
+  with one `GameTime` clock (traveling and some options advance it;
+  `CityVisit` has night variants of its screens, `kNightScreens`).
   `CityVisit`: the table of city screens (deck, card, scene, what each
   option does, which options need a place). `MapViewer::Run()` returns
   when the party reaches a city.

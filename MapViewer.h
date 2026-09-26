@@ -22,6 +22,7 @@
 class Bitmap;
 class Font;
 class GameData;
+class GameTime;
 class GameWindow;
 
 class MapViewer {
@@ -37,6 +38,10 @@ public:
     // The first version opens its own window.
     int				Run();
     int				Run(GameWindow& window);
+
+    // The game's clock (not owned; NULL: none): traveling advances it,
+    // the status bar shows it.
+    void			SetClock(GameTime* clock)	{ fClock = clock; }
 
     // Puts the party on a tile (e.g. a city it leaves) and centers the view
     // on it; the party stops and is no longer in a city.
@@ -57,8 +62,9 @@ public:
     // Returns false if there was nothing to close (i.e. quit).
     bool			Escape();
 
-    // Advances the party one tile along its path; returns false if it
-    // was not traveling. Run() calls it on a timer.
+    // Advances the party one tile along its path, and the clock by the
+    // time it takes; returns false if it was not traveling. Run() calls
+    // it on a timer.
     bool			Tick();
 
     bool			IsTraveling() const	{ return !fPath.empty(); }
@@ -85,6 +91,7 @@ private:
                         int x, int y, uint8 color) const;
 
     GameData&		fData;
+    GameTime*		fClock;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

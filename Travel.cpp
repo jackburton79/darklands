@@ -92,3 +92,38 @@ FindPath(const WorldMap& map, const map_position& from, const map_position& to)
     std::reverse(path.begin(), path.end());
     return path;
 }
+
+
+uint32
+TravelMinutes(const WorldMap& map, const map_position& from,
+    const map_position& to)
+{
+    // minutes per tile width (16 pixels) by tile type, the rows of the
+    // icon sheets (see docs/formats.md); 0 for types the party cannot be on
+    static const uint16 kMinutesPerTile[32] = {
+        120,	// plains
+        0,		// ocean
+        240, 240,	// rivers (on the bank)
+        240, 240,	// tidal marsh, marsh
+        120, 120,	// geest
+        120, 120,	// farmland
+        150, 150,	// fields and woods
+        150, 150,	// light woods
+        180, 180, 180, 180,	// forest
+        240, 240, 240, 240,	// rocky
+        360, 360,	// alps
+        60,		// road
+        90,		// ford
+        240,	// river
+        60,		// bridge
+        60, 60,	// castle, city
+        120, 120	// flags
+    };
+    const GFX::point a = map.TileCenter(from.x, from.y);
+    const GFX::point b = map.TileCenter(to.x, to.y);
+    const int dx = a.x - b.x;
+    const int dy = a.y - b.y;
+    const double pixels = std::sqrt(double(dx * dx + dy * dy));
+    const uint16 rate = kMinutesPerTile[map.TileTypeAt(to.x, to.y) & 31];
+    return uint32(pixels * rate / 16 + 0.5);
+}

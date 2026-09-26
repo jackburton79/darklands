@@ -39,6 +39,11 @@ Game::NewGame(int startCity)
     // CHARACTR.TMP has no money: the characters' funds are pooled at the
     // start of the game (manual p. 15), where from is unknown
     fParty = CharacterFile(fData.PathFor("CHARACTR.TMP")).Party();
+    try {
+        fTime = SaveFile(fData.PathFor("SAVES/DEFAULT")).Date();
+    } catch (const std::exception&) {
+        fTime = GameTime();		// no template: 1 January 1400
+    }
     fCity = startCity;
     fScreen = CityVisit::SCREEN_START;
 }
@@ -54,6 +59,7 @@ Game::LoadGame(const std::string& fileName)
     if (save.Party().members.empty())
         throw std::runtime_error("Game: no party in " + fileName);
     fParty = save.Party();
+    fTime = save.Date();
     // the cities are the first locations of DARKLAND.LOC; in a city the
     // game goes on in the main street (the saved screen is not decoded)
     if (save.Location() >= 0
@@ -76,7 +82,9 @@ Game::Run()
     // load everything before opening the window
     CityVisit visit(fData);
     visit.SetParty(&fParty);
+    visit.SetClock(&fTime);
     MapViewer map(fData);
+    map.SetClock(&fTime);
 
     GameWindow window("Darklands");
     int cityIndex = fCity;

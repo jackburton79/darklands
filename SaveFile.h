@@ -7,16 +7,10 @@
 #pragma once
 
 #include "Character.h"
+#include "GameTime.h"
 
 #include <string>
 #include <vector>
-
-struct game_date {
-    uint16 year;
-    uint16 month;			// 0-based (inferred)
-    uint16 day;
-    uint16 hour;
-};
 
 class SaveFile {
 public:
@@ -24,7 +18,7 @@ public:
 
     const std::string& Label() const			{ return fLabel; }
     const std::string& LocationName() const		{ return fLocationName; }
-    const game_date& Date() const				{ return fDate; }
+    const GameTime&	Date() const				{ return fDate; }
     // Index into DARKLAND.LOC, or -1 in the wilderness.
     int				Location() const			{ return fLocation; }
     uint16			X() const					{ return fX; }	// map tile
@@ -37,7 +31,7 @@ public:
 private:
     std::string		fLabel;
     std::string		fLocationName;
-    game_date		fDate;
+    GameTime		fDate;
     int				fLocation;
     uint16			fX;
     uint16			fY;

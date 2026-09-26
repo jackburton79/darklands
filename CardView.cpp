@@ -164,6 +164,7 @@ CardView::CardView(GameData& data)
     :
     fData(data),
     fBuffer(NULL),
+    fShowingScene(false),
     fParty(NULL),
     fCapital(0),
     fCapitalPosition(0, 0),
@@ -209,22 +210,25 @@ CardView::SetCard(const msg_card& card, const card_variables& variables,
 
 
 void
-CardView::SetScene(const std::string& pictureName)
+CardView::SetScene(const std::string& pictureName, bool showFirst)
 {
     fScene.width = fScene.height = 0;
     fScene.pixels.clear();
-    fPalette = fCardPalette;
+    fPalette = fScenePalette = fCardPalette;
+    fShowingScene = false;
     if (pictureName.empty())
         return;
-    // the scene sets 16..255: its colors are faded, the card range is
-    // put back
+    // the scene sets 16..255; the card range is put back. Under the card
+    // its colors are faded.
     GFX::Palette palette = fCardPalette;
     fScene = _LoadPicture(pictureName, &palette);
+    for (int i = 128; i < 160; i++)
+        palette.colors[i] = fCardPalette.colors[i];
+    fScenePalette = palette;
+    fShowingScene = showFirst;
     for (int i = 16; i < 256; i++) {
-        if (i >= 128 && i < 160) {
-            palette.colors[i] = fCardPalette.colors[i];
+        if (i >= 128 && i < 160)
             continue;
-        }
         GFX::Color& color = palette.colors[i];
         color.r = uint8(color.r + (kPaperRGB.r - color.r) * kSceneFadePercent / 100);
         color.g = uint8(color.g + (kPaperRGB.g - color.g) * kSceneFadePercent / 100);
@@ -288,7 +292,7 @@ CardView::Run(GameWindow& window)
                         chosen = Choose();
                         break;
                     default:
-                        if (fOptions.empty())
+                        if (fShowingScene || fOptions.empty())
                             chosen = Choose();
                         break;
                 }
@@ -350,6 +354,10 @@ int
 CardView::Clicked(const GFX::point& point)
 {
     MouseMoved(point);
+    if (fShowingScene) {
+        fShowingScene = false;
+        return -1;
+    }
     if (fOptions.empty())
         return point.x >= kCardLeft ? 0 : -1;
     const int option = _OptionAt(point);
@@ -376,6 +384,10 @@ CardView::SelectPrevious()
 int
 CardView::Choose()
 {
+    if (fShowingScene) {
+        fShowingScene = false;
+        return -1;
+    }
     if (fOptions.empty())
         return 0;
     return SelectedOption();
@@ -385,14 +397,16 @@ CardView::Choose()
 Bitmap*
 CardView::Draw()
 {
-    fBuffer->SetColors(fPalette.colors, 0, 256);
+    const GFX::Palette& palette = fShowingScene ? fScenePalette : fPalette;
+    fBuffer->SetColors(palette.colors, 0, 256);
     fBuffer->Clear(kSidebarColor);
     _DrawFrame();
-    _DrawCard();
+    if (!fShowingScene)
+        _DrawCard();
     _DrawSidebar();
     if (fCursorVisible) {
-        DrawMouseCursor(fBuffer, fMouse, NearestColor(fPalette, 0, 0, 0),
-            NearestColor(fPalette, 255, 255, 255));
+        DrawMouseCursor(fBuffer, fMouse, NearestColor(palette, 0, 0, 0),
+            NearestColor(palette, 255, 255, 255));
     }
     return fBuffer;
 }
@@ -518,7 +532,7 @@ CardView::_Layout(const msg_card& card, const std::string& text,
 int
 CardView::_OptionAt(const GFX::point& point) const
 {
-    if (point.x < kCardLeft)
+    if (fShowingScene || point.x < kCardLeft)
         return -1;
     for (size_t i = 0; i < fOptions.size(); i++) {
         if (point.y >= fOptions[i].top && point.y < fOptions[i].bottom)

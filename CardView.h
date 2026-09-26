@@ -45,9 +45,13 @@ public:
     void			SetCard(const msg_card& card,
                         const card_variables& variables,
                         const std::vector<int>& hidden = std::vector<int>());
-    // A scene picture (e.g. "MAIN-ST.PIC"), the background of the card,
-    // under the text; empty for none. Throws if it cannot be loaded.
-    void			SetScene(const std::string& pictureName);
+    // A scene picture (e.g. "MAIN-ST.PIC"): the background of the card,
+    // faded under the text; empty for none. With `showFirst`, it is shown
+    // alone first, in full color, until a click or a key ("you must
+    // left-click or tap Return to see the options", manual p. 27).
+    // Throws if it cannot be loaded.
+    void			SetScene(const std::string& pictureName,
+                        bool showFirst = true);
     // The party shown in the sidebar (not owned; NULL: none). Throws if
     // a character's picture cannot be loaded.
     void			SetParty(const party* members);
@@ -66,8 +70,10 @@ public:
     // Moves the highlight to the next/previous option.
     void			SelectNext();
     void			SelectPrevious();
-    // Chooses the highlighted option.
+    // Chooses the highlighted option (or leaves the scene picture).
     int				Choose();
+
+    bool			ShowingScene() const	{ return fShowingScene; }
 
     // Options shown, and the number of the highlighted one (-1: none).
     int				CountOptions() const	{ return int(fOptions.size()); }
@@ -118,9 +124,11 @@ private:
     raw_picture		fSidebar;
     raw_picture		fCapitals;
     GFX::Palette	fCardPalette;
-    GFX::Palette	fPalette;		// with the scene's colors, if any
+    GFX::Palette	fPalette;		// with the scene's faded colors, if any
+    GFX::Palette	fScenePalette;	// with the scene's own colors
 
     raw_picture		fScene;			// width 0 if none
+    bool			fShowingScene;	// the scene alone, before the card
     const party*	fParty;
     std::map<std::string, raw_picture> fPictures;	// by image code
 

@@ -635,12 +635,24 @@ characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
   - `$URBAN00.MSG` / `$URBAN01.MSG`: the inn (news, meal, residence,
     stables, storage...), by day / by night?
   - `$MAINS01.MSG` / `$MAINS02.MSG`: the main street by day / by night
-    (cards 1..3: handbills, fair, war); `$MAINS00.MSG` is a designer's
-    note ("This card describes options as you look down the main
-    streets of the city").
-  - `$SIDES00.MSG`: the side streets.
+    ("Darkness covers the main street... the watchmen, enforcing the
+    curfew"), same options in the same order (cards 1..3: handbills,
+    fair, war); `$MAINS00.MSG` is a designer's note ("This card
+    describes options as you look down the main streets of the city").
+    The night picture is presumably `XNMAIN.PIC`, `MAIN-ST.PIC` at
+    night.
+  - `$SIDES00.MSG` / `$SIDES01.MSG`: the side streets by day / by night
+    ("Tiny gleams from occasional windows..."): the night card lists
+    the fortress before the square.
   - `$SELEC00.MSG`: the city gate, to leave (card 0 by day, card 13 at
-    night); `$SELEC01.MSG`: the city walls.
+    night: "The gate is closed for the night"); `$SELEC01.MSG`: the
+    city walls. Card 13 has options such as "1 not available", "2 alc
+    not available", "4 combat not available": without the `...` code,
+    placeholders the game presumably swaps for the day card's options
+    or hides.
+  - `$URBAN00.MSG` card 2: "you eat a hearty meal, then take eight hours
+    of well-deserved sleep" (after the inn's "relax with a good meal and
+    get eight hours sleep for $Money1"; `$Money1` is the price).
 - Most options of a menu only make sense in some cities (e.g. the
   main street lists `$fortress`, the docks...): the game must hide the
   ones that do not apply. How is unknown; `CityVisit` hides the ones
@@ -768,7 +780,12 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
 
 - **Date**: the words are year, month, day, hour (1401, 0, 13, 6 in
   `DKSAVE1.SAV`), the reverse of the order given by wendigo. **verified**
-  (plausible values in three files); month 0 = January is *inferred*.
+  (plausible values in three files); month 0 = January is *inferred*
+  (the saved games are in month 0 of 1401, `DEFAULT` in month 4 of
+  1400). The game shows the time as one of eight monastic hours of
+  three hours each, Matins at midnight to Compline at 9 PM, on the
+  Julian calendar without leap years, and hides the year (manual
+  pp. 20-21).
 - **Location** — **verified**: `DKSAVE1.SAV` is at location 73, Olmütz,
   tile 295,659; `DARKLAND.LOC` puts Olmütz at 296,659, the next tile.
   `DKSAVE0.SAV` is in the wilderness nearby (289,654).

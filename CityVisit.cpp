@@ -4,6 +4,7 @@
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "GameData.h"
+#include "GameTime.h"
 #include "ScreenSupport.h"
 
 #include <stdexcept>
@@ -25,6 +26,7 @@ struct option_rule {
     int action;
     int target;					// screen, for ACTION_GO
     int needs;					// kAlways, a city_place or kNeedsHarbor
+    int minutes;				// game time the option takes
 };
 
 static const int kMaxOptions = 12;
@@ -36,12 +38,13 @@ struct screen_rules {
     option_rule options[kMaxOptions];	// in card order; the rest: not implemented
 };
 
-#define GO(screen)			{ ACTION_GO, CityVisit::screen, kAlways }
-#define GO_IF(screen, needs) { ACTION_GO, CityVisit::screen, needs }
-#define LEAVE				{ ACTION_LEAVE, 0, kAlways }
-#define TODO				{ ACTION_NOT_IMPLEMENTED, 0, kAlways }
-#define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs }
-#define HIDE				{ ACTION_HIDE, 0, kAlways }
+#define GO(screen)			{ ACTION_GO, CityVisit::screen, kAlways, 0 }
+#define GO_IF(screen, needs) { ACTION_GO, CityVisit::screen, needs, 0 }
+#define GO_AFTER(screen, minutes) { ACTION_GO, CityVisit::screen, kAlways, minutes }
+#define LEAVE				{ ACTION_LEAVE, 0, kAlways, 0 }
+#define TODO				{ ACTION_NOT_IMPLEMENTED, 0, kAlways, 0 }
+#define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs, 0 }
+#define HIDE				{ ACTION_HIDE, 0, kAlways, 0 }
 
 // The option lists are those of the cards (see `darklands --messages`).
 // The docks need a harbor: inferred, DARKLAND.CTY only knows sea ports.
@@ -64,7 +67,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "Here you can enjoy the good food... of the $Inn common-room."
     { "URBAN00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO, TODO,	// news, meal, residence...
+        TODO,								// local news and rumors
+        GO(SCREEN_SLEEP),					// a meal and eight hours sleep
+        TODO, TODO, TODO, TODO, TODO,		// residence, stables, storage...
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -100,29 +105,91 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         TODO, TODO, TODO, TODO, TODO,		// hide, potion, saint, fight, wall
         GO(SCREEN_MAIN_STREET)				// not leave just yet
     } },
+    // "Storing your gear, you eat a hearty meal, then take eight hours
+    // of well-deserved sleep." (no options: a click goes on)
+    { "URBAN00", 2, NULL, {
+        GO_AFTER(SCREEN_INN, 8 * 60)
+    } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
     } }
 };
 
+// At night (see GameTime::IsNight()) these screens show other cards;
+// a NULL deck: the same as by day
+static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
+    { NULL, 0, NULL, {} },					// start
+    { NULL, 0, NULL, {} },					// outside
+    { NULL, 0, NULL, {} },					// inn
+    // "Darkness covers the main street of $PlaceName..." (same options)
+    { "MAINS02", 0, "XNMAIN.PIC", {
+        TODO_IF(CITY_SQUARE),
+        TODO_IF(CITY_CASTLE),
+        TODO_IF(CITY_MARKET),
+        TODO,								// the churches
+        TODO,								// crafts district
+        GO_IF(SCREEN_INN, CITY_INN),
+        TODO_IF(kNeedsHarbor),				// wharves and docks
+        GO(SCREEN_SIDE_STREET),
+        TODO,								// a small grove
+        GO(SCREEN_GATE)
+    } },
+    // "Tiny gleams from occasional windows..." (another order)
+    { "SIDES01", 0, NULL, {
+        GO(SCREEN_MAIN_STREET),
+        TODO_IF(CITY_CASTLE),				// the dark tower of the fortress
+        TODO_IF(CITY_SQUARE),
+        TODO_IF(CITY_MARKET),
+        TODO,								// the churches
+        TODO,								// crafts district, inns...
+        TODO_IF(kNeedsHarbor),				// the docks
+        TODO,								// a dark grove
+        TODO,								// other locations
+        TODO								// the city wall
+    } },
+    // "The gate is closed for the night..." The game replaces options
+    // that do not apply with lines like "1 not available"
+    { "SELEC00", 13, NULL, {
+        TODO,								// talk the guards into it
+        HIDE,								// "1 not available"
+        HIDE,								// "2 alc not available"
+        TODO,								// call upon a saint
+        HIDE,								// "4 combat not available"
+        TODO,								// see how well the walls are guarded
+        GO(SCREEN_MAIN_STREET)				// not leave the city just yet
+    } },
+    { NULL, 0, NULL, {} },					// sleep
+    { NULL, 0, NULL, {} }					// not implemented
+};
+
 #undef GO
 #undef GO_IF
+#undef GO_AFTER
 #undef LEAVE
 #undef TODO
 #undef TODO_IF
 #undef HIDE
 
 
+static const screen_rules&
+RulesFor(int screen, bool night)
+{
+    if (night && kNightScreens[screen].deck != NULL)
+        return kNightScreens[screen];
+    return kScreens[screen];
+}
+
+
 static const option_rule&
-RuleFor(int screen, int option)
+RuleFor(const screen_rules& rules, int option)
 {
     static const option_rule kNotImplemented = { ACTION_NOT_IMPLEMENTED, 0,
-        kAlways };
+        kAlways, 0 };
     if (option < 0 || option >= kMaxOptions
-            || kScreens[screen].options[option].action == ACTION_UNLISTED)
+            || rules.options[option].action == ACTION_UNLISTED)
         return kNotImplemented;
-    return kScreens[screen].options[option];
+    return rules.options[option];
 }
 
 
@@ -134,14 +201,18 @@ CityVisit::CityVisit(GameData& data)
     fData(data),
     fView(data),
     fParty(NULL),
+    fClock(NULL),
+    fNight(false),
     fCity(-1),
     fScreen(SCREEN_START),
     fPreviousScreen(SCREEN_START)
 {
     // load the decks up front, so missing files are reported right away
-    for (const screen_rules& screen : kScreens) {
-        if (screen.deck != NULL)
-            fData.Messages(screen.deck).CardAt(uint32(screen.card));
+    for (const screen_rules* table : { kScreens, kNightScreens }) {
+        for (int i = 0; i < SCREEN_COUNT; i++) {
+            if (table[i].deck != NULL)
+                fData.Messages(table[i].deck).CardAt(uint32(table[i].card));
+        }
     }
 
     // in the game's character set, with the cards' control codes
@@ -201,9 +272,11 @@ CityVisit::Choose(int option)
         _Show(fPreviousScreen, false);
         return true;
     }
-    const option_rule& rule = RuleFor(fScreen, option);
+    const option_rule& rule = RuleFor(RulesFor(fScreen, fNight), option);
     switch (rule.action) {
         case ACTION_GO:
+            if (fClock != NULL)
+                fClock->AddMinutes(uint32(rule.minutes));
             _Show(rule.target);
             return true;
         case ACTION_LEAVE:
@@ -282,7 +355,12 @@ void
 CityVisit::_Show(int screen, bool withScene)
 {
     fScreen = screen;
-    const screen_rules& rules = kScreens[screen];
+    fNight = fClock != NULL && fClock->IsNight();
+    if (fClock != NULL) {
+        fVariables["CurrentBell"] = fClock->BellName();
+        fVariables["MonthName"] = fClock->MonthName();
+    }
+    const screen_rules& rules = RulesFor(screen, fNight);
     if (rules.deck == NULL) {
         fView.SetCard(fNotImplementedCard, fVariables);
         fView.SetScene("");
@@ -290,7 +368,7 @@ CityVisit::_Show(int screen, bool withScene)
     }
     fView.SetCard(fData.Messages(rules.deck).CardAt(uint32(rules.card)),
         fVariables, _HiddenOptions(screen));
-    fView.SetScene(withScene && rules.scene != NULL ? rules.scene : "");
+    fView.SetScene(rules.scene != NULL ? rules.scene : "", withScene);
 }
 
 
@@ -299,8 +377,9 @@ CityVisit::_HiddenOptions(int screen) const
 {
     const city& c = fData.Cities().CityAt(uint32(fCity));
     std::vector<int> hidden;
+    const screen_rules& rules = RulesFor(screen, fNight);
     for (int i = 0; i < kMaxOptions; i++) {
-        const option_rule& rule = RuleFor(screen, i);
+        const option_rule& rule = RuleFor(rules, i);
         bool hide = rule.action == ACTION_HIDE;
         if (rule.needs == kNeedsHarbor)
             hide = c.harbor == CITY_HARBOR_NONE;

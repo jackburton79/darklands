@@ -4,6 +4,7 @@
 #include "CityFile.h"
 #include "CityLabels.h"
 #include "GameData.h"
+#include "GameTime.h"
 #include "LocationFile.h"
 #include "Palette.h"
 #include "ScreenSupport.h"
@@ -59,6 +60,7 @@ static const char* kTerrainNames[32] = {
 MapViewer::MapViewer(GameData& data)
     :
     fData(data),
+    fClock(NULL),
     fBuffer(NULL),
     fOrigin(0, 0),
     fMouse(0, 0),
@@ -329,6 +331,8 @@ MapViewer::Tick()
 {
     if (fPath.empty())
         return false;
+    if (fClock != NULL)
+        fClock->AddMinutes(TravelMinutes(fData.Map(), fParty, fPath.front()));
     fParty = fPath.front();
     fPath.erase(fPath.begin());
     _KeepPartyVisible();
@@ -446,9 +450,17 @@ MapViewer::_DrawStatusBar()
     fBuffer->FillRect(bar, fDarkGray);
     fBuffer->StrokeLine(0, top, kScreenWidth - 1, top, fGray);
 
+    // the time on the left, then the tile under the mouse; the traveling
+    // destination or the city under the mouse on the right
+    int left = 3;
+    if (fClock != NULL) {
+        const std::string time = fClock->Describe();
+        _DrawText(*fTextFont, time, left, top + 2, fYellow);
+        left += fTextFont->StringWidth(Font::ToGameCharset(time)) + 10;
+    }
     if (fCity >= 0) {
         _DrawText(*fTextFont, "In " + fData.Cities().CityAt(fCity).fullName,
-            3, top + 2, fWhite);
+            left, top + 2, fWhite);
         return;
     }
     if (IsTraveling()) {
@@ -466,7 +478,7 @@ MapViewer::_DrawStatusBar()
     if (map.TileAtPixel(mapPoint, x, y)) {
         std::ostringstream text;
         text << x << "," << y << "  " << kTerrainNames[map.TileTypeAt(x, y) & 31];
-        _DrawText(*fTextFont, text.str(), 3, top + 2, fWhite);
+        _DrawText(*fTextFont, text.str(), left, top + 2, fWhite);
     }
     const int cityIndex = _CityAt(mapPoint);
     if (cityIndex >= 0) {
