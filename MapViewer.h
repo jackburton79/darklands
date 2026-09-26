@@ -33,6 +33,8 @@ public:
     void			ScrollBy(int dx, int dy);
     void			CenterOn(uint16 tileX, uint16 tileY);
     void			MouseMoved(const GFX::point& point);
+    // The mouse left the window: hides the cursor.
+    void			MouseLeft();
     void			Clicked(const GFX::point& point);
     // Closes the city panel; returns false if none was open.
     bool			ClosePanel();
@@ -49,6 +51,7 @@ private:
     void			_SetOrigin(int x, int y);
     void			_DrawStatusBar();
     void			_DrawCityPanel();
+    void			_DrawCursor();
     void			_DrawText(const Font& font, const std::string& utf8,
                         int x, int y, uint8 color) const;
 
@@ -59,7 +62,8 @@ private:
 
     GFX::point		fOrigin;		// map pixel at the top-left corner
     GFX::point		fMouse;			// screen coordinates
-    bool			fMouseInside;
+    bool			fMouseInside;	// over the map area
+    bool			fCursorVisible;	// over the window
     int				fSelectedCity;
 
     uint8			fBlack;

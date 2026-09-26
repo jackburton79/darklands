@@ -33,6 +33,24 @@ static const int kFastScrollStep	= 64;	// with shift
 static const int kDragThreshold		= 3;	// pixels before a click is a drag
 static const int kCityHitRadius		= 12;	// map pixels around a city tile
 
+// Mouse cursor: libjgame hides the system cursor, so we draw our own
+// into the 320x200 screen. '#' = outline, 'o' = fill; hot spot top left.
+static const char* kCursor[] = {
+    "#",
+    "##",
+    "#o#",
+    "#oo#",
+    "#ooo#",
+    "#oooo#",
+    "#ooooo#",
+    "#oooooo#",
+    "#ooooo###",
+    "#oo#oo#",
+    "##  #oo#",
+    "#   #oo#",
+    "     ##"
+};
+
 // Terrain names by tile type, as labeled on the icon sheets
 static const char* kTerrainNames[32] = {
     "Plains", "Ocean", "Major river", "Minor river", "Tidal marsh", "Marsh",
@@ -50,6 +68,7 @@ MapViewer::MapViewer(GameData& data)
     fOrigin(0, 0),
     fMouse(0, 0),
     fMouseInside(false),
+    fCursorVisible(false),
     fSelectedCity(-1)
 {
     // load everything up front, so missing files are reported right away
@@ -185,6 +204,8 @@ MapViewer::Run()
                     }
                     break;
                 case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_LEAVE)
+                        MouseLeft();
                     dirty = true;
                     break;
                 default:
@@ -220,8 +241,17 @@ void
 MapViewer::MouseMoved(const GFX::point& point)
 {
     fMouse = point;
-    fMouseInside = point.x >= 0 && point.y >= 0 && point.x < kScreenWidth
-        && point.y < kScreenHeight - kStatusBarHeight;
+    fCursorVisible = point.x >= 0 && point.y >= 0 && point.x < kScreenWidth
+        && point.y < kScreenHeight;
+    fMouseInside = fCursorVisible && point.y < kScreenHeight - kStatusBarHeight;
+}
+
+
+void
+MapViewer::MouseLeft()
+{
+    fCursorVisible = false;
+    fMouseInside = false;
 }
 
 
@@ -255,6 +285,7 @@ MapViewer::Draw()
     if (fSelectedCity >= 0)
         _DrawCityPanel();
     _DrawStatusBar();
+    _DrawCursor();
     return fBuffer;
 }
 
@@ -426,6 +457,23 @@ MapViewer::_DrawCityPanel()
             _DrawText(*fTextFont, r.label, textLeft, y, fGray);
         fTextFont->RenderString(r.value, fBuffer, GFX::point(r.x, y), fWhite);
         y += lineHeight;
+    }
+}
+
+
+void
+MapViewer::_DrawCursor()
+{
+    if (!fCursorVisible)
+        return;
+    for (size_t row = 0; row < sizeof(kCursor) / sizeof(kCursor[0]); row++) {
+        for (int column = 0; kCursor[row][column] != '\0'; column++) {
+            const char c = kCursor[row][column];
+            if (c == '#' || c == 'o') {
+                fBuffer->PutPixel(fMouse.x + column, fMouse.y + int(row),
+                    c == '#' ? fBlack : fWhite);
+            }
+        }
     }
 }
 
