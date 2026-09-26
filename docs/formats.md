@@ -653,6 +653,33 @@ characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
   - `$URBAN00.MSG` card 2: "you eat a hearty meal, then take eight hours
     of well-deserved sleep" (after the inn's "relax with a good meal and
     get eight hours sleep for $Money1"; `$Money1` is the price).
+  - The places, by day / by night (the night card is card 0 of the
+    `01` deck, or card 1 of the same deck):
+    `$CITYS00`/`01` the city square, `$CITYF00`/`01` the fortress,
+    `$MARKE00`/`01` the market, `$CHURC00`/`01` the religious quarter
+    (a hub: cathedral, church, monastery, university, hospital),
+    `$CATHE00`/`01` the cathedral, `$CITYC00`/`01` the city church,
+    `$MONAS00`/`01` the monastery, `$UNIVE00` the university,
+    `$COUNC00`/`01` the town hall, `$CITYB00` the barracks, `$BUSIN00`
+    the crafts district (a hub: guilds, inn, physician, grove, slum,
+    wall, gate), `$CIVCR00` the civil and `$MILCR00` the arms-making
+    guilds (card 1 at night), `$CITYG05`/`06` a grove where the party
+    waits (an hour, a bell of three hours, until nightfall / morning),
+    `$SLUMD00` the slum, `$DOCKS00`/`01` the docks, `$OTHER00` "other
+    locations you remember" (the homes of people met). `$CITYE00`..
+    `03` are the arrival at a walled city (by day, at night, at war,
+    during the fair), `$CITYG00`..`04` its gate, `$CITYW00`..`05` its
+    walls, `$CITYH00` the hospice, `$CITYM00` inside the monastery.
+  - Some are stubs: "City barracks, at night." (`$CITYB01`), "This is
+    the slum at night. It isn't done yet." (`$SLUMN00`), "Sorry, this
+    option isn't working yet." (`$NOGO00`), and the pawnshop, the
+    poorhouse, the stables.
+  - **Placeholder options**: many option lists have slots the game
+    fills in or hides: a bare number ("5", "...3"), an empty option,
+    "...this option should be hidden", or no `...` prefix at all ("1 not
+    available"). Other options only apply in some situations ("accept a
+    relic as reward for your services", "ask $NamedOneName to join your
+    party", the boats of the docks with their destinations and fares).
 - Most options of a menu only make sense in some cities (e.g. the
   main street lists `$fortress`, the docks...): the game must hide the
   ones that do not apply. How is unknown; `CityVisit` hides the ones

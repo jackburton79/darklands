@@ -13,6 +13,9 @@
 
 class GameTime {
 public:
+    static const uint16 kNightStart	= 21;	// Compline
+    static const uint16 kNightEnd	= 6;	// Prime
+
                     GameTime();		// 1 January 1400, midnight
                     GameTime(uint16 year, uint16 month, uint16 day,
                         uint16 hour);

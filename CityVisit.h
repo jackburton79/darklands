@@ -2,10 +2,12 @@
  * CityVisit.h
  * The party in a city: which card follows which. The original game
  * keeps this logic in DARKLAND.EXE, so the flow is rebuilt from the card
- * texts: the start at the inn, the arrival from the map, the inn, the
- * main street, the side streets and the city gate. Options that lead to
- * places not implemented yet show a "not implemented" card; options for
- * places the city does not have are hidden.
+ * texts: the start at the inn, the arrival from the map, the streets,
+ * the city's places (square, fortress, market, churches, guilds...) and
+ * the gate. What happens inside the places (trade, training, audiences,
+ * masses...) is not implemented yet: those options show a "not
+ * implemented" card. Options for places the city does not have are
+ * hidden.
  *
  * Run() shows the cards in a window; Enter(), Choose() and the view work
  * without one, for testing.
@@ -30,10 +32,27 @@ public:
         SCREEN_START = 0,		// the game starts at the inn: $PARTY02.MSG
         SCREEN_OUTSIDE,			// arriving from the map: $OUTSI00.MSG
         SCREEN_INN,				// $URBAN00.MSG
-        SCREEN_MAIN_STREET,		// $MAINS01.MSG
-        SCREEN_SIDE_STREET,		// $SIDES00.MSG
+        SCREEN_MAIN_STREET,		// $MAINS01.MSG, $MAINS02.MSG
+        SCREEN_SIDE_STREET,		// $SIDES00.MSG, $SIDES01.MSG
         SCREEN_GATE,			// leaving through the gate: $SELEC00.MSG
         SCREEN_SLEEP,			// a meal and eight hours of sleep at the inn
+        SCREEN_SQUARE,			// $CITYS00.MSG, $CITYS01.MSG
+        SCREEN_FORTRESS,		// $CITYF00.MSG, $CITYF01.MSG
+        SCREEN_MARKET,			// $MARKE00.MSG, $MARKE01.MSG
+        SCREEN_CHURCHES,		// the religious quarter: $CHURC00/01.MSG
+        SCREEN_CATHEDRAL,		// $CATHE00.MSG, $CATHE01.MSG
+        SCREEN_CHURCH,			// $CITYC00.MSG, $CITYC01.MSG
+        SCREEN_MONASTERY,		// $MONAS00.MSG, $MONAS01.MSG
+        SCREEN_UNIVERSITY,		// $UNIVE00.MSG
+        SCREEN_TOWN_HALL,		// $COUNC00.MSG, $COUNC01.MSG
+        SCREEN_BARRACKS,		// $CITYB00.MSG
+        SCREEN_DISTRICT,		// crafts district, inns, slum: $BUSIN00.MSG
+        SCREEN_CRAFTS,			// guilds and crafts: $CIVCR00.MSG
+        SCREEN_ARMS_CRAFTS,		// arms-making guilds: $MILCR00.MSG
+        SCREEN_GROVE,			// where to wait: $CITYG05.MSG, $CITYG06.MSG
+        SCREEN_SLUM,			// $SLUMD00.MSG
+        SCREEN_DOCKS,			// $DOCKS00.MSG, $DOCKS01.MSG
+        SCREEN_OTHER,			// "other locations you remember": $OTHER00
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };

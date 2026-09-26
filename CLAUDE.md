@@ -69,8 +69,10 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 - `Game`: runs `CityVisit` and `MapViewer` in turn, in one `GameWindow`,
   with one `GameTime` clock (traveling and some options advance it;
   `CityVisit` has night variants of its screens, `kNightScreens`).
-  `CityVisit`: the table of city screens (deck, card, scene, what each
-  option does, which options need a place). `MapViewer::Run()` returns
+  `CityVisit`: the tables of city screens, by day and by night (deck,
+  card, scene, what each option does, which options need a place); a
+  constructor check catches a miscounted table. `CardView` hides the
+  cards' placeholder options itself. `MapViewer::Run()` returns
   when the party reaches a city.
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
   same structure as `MapViewer`. `PartySidebar`: the character boxes.

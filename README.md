@@ -38,7 +38,11 @@ The goal is twofold:
 - Play the first steps, with the Quickstart party or from a saved game,
   shown in the sidebar as in the game: the party starts at the inn of a city, walks
   between the inn, the main street, the side streets and the city gate,
-  leaves for the world map, travels and arrives at other cities. Time
+  leaves for the world map, travels and arrives at other cities. The
+  city's places can be visited (square, fortress, market, churches,
+  cathedral, monastery, university, town hall, barracks, guilds, slum,
+  docks, a grove to wait in); what happens inside them is not
+  implemented yet. Time
   passes (traveling, sleeping at the inn) and the city shows its night
   cards after Compline. The
   other places (market, churches, guilds...) and the options' effects
@@ -75,7 +79,8 @@ implemented yet. See the roadmap below.
 - [x] The party: characters and saved games, the sidebar
 - [x] Game time: the clock, day and night, travel time (placeholder speeds)
 - [x] Party and character information screens
-- [ ] The city places (market, churches, guilds...), money
+- [x] The city places: moving between them, waiting
+- [ ] What happens in the places (trade, training, audiences...), money
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 

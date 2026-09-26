@@ -2,6 +2,9 @@
 
 #include <sstream>
 
+const uint16 GameTime::kNightStart;
+const uint16 GameTime::kNightEnd;
+
 static const uint16 kDaysInMonth[12] = {
     31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
@@ -18,8 +21,6 @@ static const char* kBellNames[8] = {
     "Compline"
 };
 
-static const uint16 kNightStart	= 21;	// Compline
-static const uint16 kNightEnd	= 6;	// Prime
 
 
 GameTime::GameTime()

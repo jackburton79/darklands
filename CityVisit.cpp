@@ -14,7 +14,7 @@
 enum option_action {
     ACTION_UNLISTED = 0,		// zero-filled rest of a list: not implemented
     ACTION_NOT_IMPLEMENTED,
-    ACTION_GO,					// to another screen
+    ACTION_GO,					// to another screen, after `minutes`
     ACTION_LEAVE,				// back to the map
     ACTION_HIDE					// never shown
 };
@@ -22,6 +22,10 @@ enum option_action {
 // Options that need the city to have something
 static const int kAlways			= -1;
 static const int kNeedsHarbor		= CITY_PLACE_COUNT;	// else a place slot
+
+// Special waiting times
+static const int kUntilNight		= -1;	// "wait until nightfall"
+static const int kUntilMorning		= -2;	// "camp here until morning"
 
 struct option_rule {
     int action;
@@ -33,7 +37,7 @@ struct option_rule {
 static const int kMaxOptions = 12;
 
 struct screen_rules {
-    const char* deck;
+    const char* deck;			// NULL: see kNightScreens
     int card;
     const char* scene;			// picture shown first, or NULL
     option_rule options[kMaxOptions];	// in card order; the rest: not implemented
@@ -41,14 +45,17 @@ struct screen_rules {
 
 #define GO(screen)			{ ACTION_GO, CityVisit::screen, kAlways, 0 }
 #define GO_IF(screen, needs) { ACTION_GO, CityVisit::screen, needs, 0 }
-#define GO_AFTER(screen, minutes) { ACTION_GO, CityVisit::screen, kAlways, minutes }
+#define WAIT(screen, minutes) { ACTION_GO, CityVisit::screen, kAlways, minutes }
 #define LEAVE				{ ACTION_LEAVE, 0, kAlways, 0 }
 #define TODO				{ ACTION_NOT_IMPLEMENTED, 0, kAlways, 0 }
 #define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs, 0 }
 #define HIDE				{ ACTION_HIDE, 0, kAlways, 0 }
 
-// The option lists are those of the cards (see `darklands --messages`).
-// The docks need a harbor: inferred, DARKLAND.CTY only knows sea ports.
+// The option lists are those of the cards (see `darklands --messages`);
+// options whose text is a placeholder ("5", "...this option should be
+// hidden") are hidden by CardView. The docks need a harbor (inferred:
+// DARKLAND.CTY only knows sea ports). The scene pictures other than
+// MAIN-ST.PIC are chosen by what they show (inferred).
 static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "You gather around the comfortable fire at the $Inn..."
     { "PARTY02", 0, NULL, {
@@ -76,28 +83,28 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "Looking down the main street of $PlaceName, you set off toward..."
     { "MAINS01", 0, "MAIN-ST.PIC", {
-        TODO_IF(CITY_SQUARE),
-        TODO_IF(CITY_CASTLE),
-        TODO_IF(CITY_MARKET),
-        TODO,								// the churches
-        TODO,								// craft guilds and side alleys
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO_IF(SCREEN_FORTRESS, CITY_CASTLE),
+        GO_IF(SCREEN_MARKET, CITY_MARKET),
+        GO(SCREEN_CHURCHES),
+        GO(SCREEN_DISTRICT),				// craft guilds and side alleys
         GO_IF(SCREEN_INN, CITY_INN),
-        TODO_IF(kNeedsHarbor),				// wharves and docks
+        GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_SIDE_STREET),
-        TODO,								// a scenic grove
+        GO(SCREEN_GROVE),
         GO(SCREEN_GATE)
     } },
     // "The side streets of $PlaceName are full of people..."
-    { "SIDES00", 0, NULL, {
+    { "SIDES00", 0, "XSIDE.PIC", {
         GO(SCREEN_MAIN_STREET),
-        TODO_IF(CITY_SQUARE),
-        TODO_IF(CITY_CASTLE),
-        TODO_IF(CITY_MARKET),
-        TODO,								// the churches
-        TODO,								// crafts district, inns...
-        TODO_IF(kNeedsHarbor),				// docks and wharves
-        TODO,								// a scenic grove
-        TODO,								// other locations
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO_IF(SCREEN_FORTRESS, CITY_CASTLE),
+        GO_IF(SCREEN_MARKET, CITY_MARKET),
+        GO(SCREEN_CHURCHES),
+        GO(SCREEN_DISTRICT),				// crafts district, inns...
+        GO_IF(SCREEN_DOCKS, kNeedsHarbor),
+        GO(SCREEN_GROVE),
+        GO(SCREEN_OTHER),
         TODO								// the city walls
     } },
     // "The gate is heavily guarded..."
@@ -109,7 +116,153 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "Storing your gear, you eat a hearty meal, then take eight hours
     // of well-deserved sleep." (no options: a click goes on)
     { "URBAN00", 2, NULL, {
-        GO_AFTER(SCREEN_INN, 8 * 60)
+        WAIT(SCREEN_INN, 8 * 60)
+    } },
+    // "The $citySquare, the main city square of $PlaceName..."
+    { "CITYS00", 0, "XTOWN.PIC", {
+        TODO,								// notices and gossip
+        GO_IF(SCREEN_TOWN_HALL, CITY_TOWN_HALL),
+        TODO,								// the prison
+        GO_IF(SCREEN_BARRACKS, CITY_ARMORY),
+        GO_IF(SCREEN_UNIVERSITY, CITY_UNIVERSITY),
+        GO(SCREEN_CHURCHES),
+        GO_IF(SCREEN_MARKET, CITY_MARKET),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Looming overhead are the great battlements of the $fortress..."
+    { "CITYF00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// audience, clerk, saint, dungeon
+        TODO, TODO, TODO,					// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The $marketplace... is the bustling center of all business"
+    { "MARKE00", 0, NULL, {
+        TODO, TODO, TODO,					// merchants, foreign traders,
+                                            // pharmacists
+        TODO, TODO, TODO,					// Fugger, Medici, Hanse
+        TODO_IF(CITY_PAWNSHOP),				// the Leihhaus
+        TODO,								// placeholder
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The tall spires of a gothic church arrow into the sky..."
+    { "CHURC00", 0, "XCHURCH.PIC", {
+        GO_IF(SCREEN_CATHEDRAL, CITY_CATHEDRAL),
+        GO_IF(SCREEN_CHURCH, CITY_CHURCH),
+        TODO,								// placeholder
+        GO_IF(SCREEN_MONASTERY, CITY_MONASTERY),
+        GO_IF(SCREEN_UNIVERSITY, CITY_UNIVERSITY),
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO_IF(SCREEN_FORTRESS, CITY_CASTLE),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Gargoyles leer overhead as you approach the famed $cathedral."
+    { "CATHE00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO, TODO, TODO,	// mass, priest, donate...
+        GO(SCREEN_CHURCHES),				// leave the cathedral
+        HIDE								// a relic as a quest reward
+    } },
+    // "You come to the $cityChurch, the church of $PlaceName."
+    { "CITYC00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// mass, confession, priest...
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Now you are before the city's monastery."
+    { "MONAS00", 0, NULL, {
+        TODO, TODO,							// study, prayers
+        TODO, TODO, TODO, TODO,				// placeholders
+        GO(SCREEN_CHURCHES)					// leave the monastery
+    } },
+    // "At the $university... the snobbish staff prefers to speak Latin"
+    { "UNIVE00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// saints, formulae, stone...
+        TODO, TODO, TODO,					// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The entrance... of the $councilHall for $PlaceName is well guarded."
+    { "COUNC00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO, TODO,	// audience, clerk, dungeon...
+        TODO, TODO,							// placeholders
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The $cityBarracks is the armory of $PlaceName..."
+    { "CITYB00", 0, NULL, {
+        TODO, TODO,							// training, recruits
+        HIDE,								// ask $NamedOneName to join
+        TODO, TODO,							// placeholders
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Navigating through the narrow streets, you seek..."
+    { "BUSIN00", 0, NULL, {
+        GO(SCREEN_ARMS_CRAFTS),
+        GO(SCREEN_CRAFTS),
+        GO_IF(SCREEN_INN, CITY_INN),
+        TODO,								// a physician
+        GO(SCREEN_GROVE),
+        GO_IF(SCREEN_SLUM, CITY_SLUMS),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET),
+        TODO,								// a piece of city wall
+        GO(SCREEN_GATE)
+    } },
+    // "...the picture signs that proclaim $PlaceName's guilds and crafts"
+    { "CIVCR00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// physician, astrologists,
+                                            // jewelers, tinkers, clothmakers
+        TODO, TODO,							// placeholders
+        GO(SCREEN_ARMS_CRAFTS),
+        GO(SCREEN_SIDE_STREET),
+        GO(SCREEN_MAIN_STREET)
+    } },
+    // "...signs with pictures portray the various guilds and crafts."
+    { "MILCR00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// soldiers, blacksmiths,
+                                            // swordsmiths, armorers, bowyers
+        TODO,								// placeholder
+        GO(SCREEN_OTHER),					// a specific building
+        GO(SCREEN_CRAFTS),
+        GO(SCREEN_SIDE_STREET),
+        GO(SCREEN_MAIN_STREET)
+    } },
+    // "You pause in a small grove of trees..."
+    { "CITYG05", 0, "XGROVE1.PIC", {
+        WAIT(SCREEN_GROVE, 60),				// an hour
+        WAIT(SCREEN_GROVE, 3 * 60),			// a bell
+        WAIT(SCREEN_GROVE, kUntilNight),
+        TODO, TODO, TODO, TODO, TODO,		// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The $slum of $PlaceName is full of paupers, drifters, thieves..."
+    { "SLUMD00", 0, NULL, {
+        WAIT(SCREEN_SLUM, 60),				// rest for an hour
+        TODO,								// listen to the rumors
+        TODO, TODO, TODO, TODO, TODO, TODO,	// placeholders
+        TODO,								// live very cheaply
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The craft tied to the piers and wharves have many destinations."
+    { "DOCKS00", 0, "DOCKDAY.PIC", {
+        HIDE, HIDE, HIDE, HIDE, HIDE,		// boats: the destinations and
+                                            // fares come from the game
+        TODO,								// placeholder
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Trudging along back streets and alleys, you head for..."
+    { "OTHER00", 0, NULL, {
+        HIDE, HIDE,							// the homes of people you met
+        TODO, TODO, TODO, TODO, TODO, TODO,	// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
     } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
@@ -125,28 +278,28 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },					// inn
     // "Darkness covers the main street of $PlaceName..." (same options)
     { "MAINS02", 0, "XNMAIN.PIC", {
-        TODO_IF(CITY_SQUARE),
-        TODO_IF(CITY_CASTLE),
-        TODO_IF(CITY_MARKET),
-        TODO,								// the churches
-        TODO,								// crafts district
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO_IF(SCREEN_FORTRESS, CITY_CASTLE),
+        GO_IF(SCREEN_MARKET, CITY_MARKET),
+        GO(SCREEN_CHURCHES),
+        GO(SCREEN_DISTRICT),				// crafts district
         GO_IF(SCREEN_INN, CITY_INN),
-        TODO_IF(kNeedsHarbor),				// wharves and docks
+        GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_SIDE_STREET),
-        TODO,								// a small grove
+        GO(SCREEN_GROVE),					// a small grove
         GO(SCREEN_GATE)
     } },
     // "Tiny gleams from occasional windows..." (another order)
     { "SIDES01", 0, NULL, {
         GO(SCREEN_MAIN_STREET),
-        TODO_IF(CITY_CASTLE),				// the dark tower of the fortress
-        TODO_IF(CITY_SQUARE),
-        TODO_IF(CITY_MARKET),
-        TODO,								// the churches
-        TODO,								// crafts district, inns...
-        TODO_IF(kNeedsHarbor),				// the docks
-        TODO,								// a dark grove
-        TODO,								// other locations
+        GO_IF(SCREEN_FORTRESS, CITY_CASTLE),
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO_IF(SCREEN_MARKET, CITY_MARKET),
+        GO(SCREEN_CHURCHES),
+        GO(SCREEN_DISTRICT),				// crafts district, inns...
+        GO_IF(SCREEN_DOCKS, kNeedsHarbor),
+        GO(SCREEN_GROVE),					// a dark grove
+        GO(SCREEN_OTHER),
         TODO								// the city wall
     } },
     // "The gate is closed for the night..." The game replaces options
@@ -161,16 +314,139 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_MAIN_STREET)				// not leave the city just yet
     } },
     { NULL, 0, NULL, {} },					// sleep
+    // "Amid the dark shadows of the city square..."
+    { "CITYS01", 0, NULL, {
+        TODO,								// read the notices
+        GO_IF(SCREEN_TOWN_HALL, CITY_TOWN_HALL),
+        TODO,								// the prison
+        TODO_IF(CITY_ARMORY),				// the barracks: no night card
+        GO_IF(SCREEN_UNIVERSITY, CITY_UNIVERSITY),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Flickering torchlight highlights the stone walls of the $fortress"
+    { "CITYF01", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO, TODO,	// bribes, dungeon...
+        TODO, TODO,							// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The $marketplace... is almost empty at night."
+    { "MARKE01", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// sneak, bribe, potion, saint,
+                                            // attack
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "Gothic spires are black spikes in the night sky."
+    { "CHURC01", 0, "XNCHRCH.PIC", {
+        GO_IF(SCREEN_CATHEDRAL, CITY_CATHEDRAL),
+        GO_IF(SCREEN_CHURCH, CITY_CHURCH),
+        TODO,								// the $hospital: no place slot
+        GO_IF(SCREEN_MONASTERY, CITY_MONASTERY),
+        GO_IF(SCREEN_UNIVERSITY, CITY_UNIVERSITY),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "...votive candles cast the only light"
+    { "CATHE01", 0, NULL, {
+        TODO, TODO, TODO, TODO,				// mass, priest, relic, sanctuary
+        GO(SCREEN_CHURCHES),				// leave the cathedral
+        HIDE								// a relic as a quest reward
+    } },
+    // "You come to $cityChurch... It is dark."
+    { "CITYC01", 0, NULL, {
+        TODO, TODO, TODO,					// mass, altar boy, sanctuary
+        GO(SCREEN_CHURCHES)					// leave the church
+    } },
+    // "It is dark at the monastery."
+    { "MONAS01", 0, "XNMONK.PIC", {
+        TODO,								// prayers
+        TODO, TODO, TODO, TODO,				// placeholders
+        GO(SCREEN_CHURCHES)					// leave the monastery
+    } },
+    { NULL, 0, NULL, {} },					// university
+    // "The $councilHall doors are locked..."
+    { "COUNC01", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO, TODO,	// bribes, dungeon...
+        TODO,								// placeholder
+        GO_IF(SCREEN_SQUARE, CITY_SQUARE),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    { NULL, 0, NULL, {} },					// barracks: not reached at night
+    // BUSIN00 has no night card: the day one, without the slum (its night
+    // card is a stub, "This is the slum at night. It isn't done yet.")
+    { "BUSIN00", 0, NULL, {
+        GO(SCREEN_ARMS_CRAFTS),
+        GO(SCREEN_CRAFTS),
+        GO_IF(SCREEN_INN, CITY_INN),
+        TODO,								// a physician
+        GO(SCREEN_GROVE),
+        TODO_IF(CITY_SLUMS),
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET),
+        TODO,								// a piece of city wall
+        GO(SCREEN_GATE)
+    } },
+    // "Peering down the narrow streets, dimly lit with lamplight..."
+    { "CIVCR00", 1, NULL, {
+        TODO, TODO, TODO, TODO, TODO,
+        TODO, TODO,
+        GO(SCREEN_ARMS_CRAFTS),
+        GO(SCREEN_SIDE_STREET),
+        GO(SCREEN_MAIN_STREET)
+    } },
+    // "Walking along the dark streets, you peer down each one..."
+    { "MILCR00", 1, NULL, {
+        TODO, TODO, TODO, TODO, TODO,
+        TODO,
+        GO(SCREEN_OTHER),
+        GO(SCREEN_CRAFTS),
+        GO(SCREEN_SIDE_STREET),
+        GO(SCREEN_MAIN_STREET)
+    } },
+    // "The moonlight filters down through a quiet stand of trees."
+    { "CITYG06", 0, "XGROVE27.PIC", {
+        WAIT(SCREEN_GROVE, 60),				// an hour
+        WAIT(SCREEN_GROVE, 3 * 60),			// a bell
+        WAIT(SCREEN_GROVE, kUntilMorning),	// camp until morning
+        TODO, TODO, TODO, TODO, TODO,		// placeholders
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    { NULL, 0, NULL, {} },					// slum: not reached at night
+    // "Some activity still proceeds on the docks of $PlaceName..."
+    { "DOCKS01", 0, "XDOCK.PIC", {
+        TODO,								// which boats are sailing
+        TODO, TODO,							// escape by boat
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    { NULL, 0, NULL, {} },					// other locations
     { NULL, 0, NULL, {} }					// not implemented
 };
 
 #undef GO
 #undef GO_IF
-#undef GO_AFTER
+#undef WAIT
 #undef LEAVE
 #undef TODO
 #undef TODO_IF
 #undef HIDE
+
+
+// The game minutes of a rule: its own, or until night or morning.
+static uint32
+MinutesFor(const option_rule& rule, const GameTime& clock)
+{
+    if (rule.minutes >= 0)
+        return uint32(rule.minutes);
+    const int now = clock.Hour() * 60 + clock.Minute();
+    const int target = (rule.minutes == kUntilNight
+        ? GameTime::kNightStart : GameTime::kNightEnd) * 60;
+    return uint32((target - now + 24 * 60) % (24 * 60));
+}
 
 
 static const screen_rules&
@@ -209,7 +485,12 @@ CityVisit::CityVisit(GameData& data)
     fScreen(SCREEN_START),
     fPreviousScreen(SCREEN_START)
 {
-    // load the decks up front, so missing files are reported right away
+    // every screen has a day card (a miscounted table would leave some
+    // zero-filled), and the decks load: missing files show up right away
+    for (int i = 0; i < SCREEN_COUNT; i++) {
+        if ((kScreens[i].deck == NULL) != (i == SCREEN_NOT_IMPLEMENTED))
+            throw std::logic_error("CityVisit: screen table out of order");
+    }
     for (const screen_rules* table : { kScreens, kNightScreens }) {
         for (int i = 0; i < SCREEN_COUNT; i++) {
             if (table[i].deck != NULL)
@@ -290,7 +571,7 @@ CityVisit::Choose(int option)
     switch (rule.action) {
         case ACTION_GO:
             if (fClock != NULL)
-                fClock->AddMinutes(uint32(rule.minutes));
+                fClock->AddMinutes(MinutesFor(rule, *fClock));
             _Show(rule.target);
             return true;
         case ACTION_LEAVE:

@@ -76,6 +76,18 @@ IsOptionCode(uint8 c)
 }
 
 
+// Options the game fills in or hides: without the "..." prefix ("1 not
+// available", "5"), empty, just a number ("...3"), or saying so
+static bool
+IsPlaceholderOption(bool hasPrefix, const std::string& text)
+{
+    if (!hasPrefix || text.empty()
+            || text.find("option should be hidden") != std::string::npos)
+        return true;
+    return text.find_first_not_of("0123456789 ") == std::string::npos;
+}
+
+
 static bool
 IsNameCharacter(char c, bool digits)
 {
@@ -457,11 +469,13 @@ CardView::_Layout(const msg_card& card, const std::string& text,
         const int gap = int(i) * kParagraphGap;
         const bool option = i < line.size() && IsOptionCode(uint8(line[i]));
         std::string prefix;
+        bool hasPrefix = false;
         if (option) {
             const size_t textStart = line.find(char(MSG_CODE_OPTION_TEXT), i);
             if (textStart != std::string::npos) {
                 prefix = line.substr(i + 1, textStart - i - 1);
                 i = textStart + 1;
+                hasPrefix = true;
             } else
                 i++;
         }
@@ -470,8 +484,9 @@ CardView::_Layout(const msg_card& card, const std::string& text,
             rest.erase(rest.size() - 1);
         if (option) {
             optionNumber++;
-            if (std::find(hidden.begin(), hidden.end(), optionNumber)
-                    != hidden.end())
+            if (IsPlaceholderOption(hasPrefix, rest)
+                    || std::find(hidden.begin(), hidden.end(), optionNumber)
+                        != hidden.end())
                 continue;
         }
         y += gap;
