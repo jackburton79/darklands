@@ -1,7 +1,6 @@
 #include "CardView.h"
 
 #include "Bitmap.h"
-#include "CityFile.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "MsgFile.h"
@@ -166,10 +165,14 @@ CardView::~CardView()
 
 
 void
-CardView::SetCard(const msg_card& card, const card_variables& variables)
+CardView::SetCard(const msg_card& card, const card_variables& variables,
+    const std::vector<int>& hidden)
 {
-    _Layout(card, Normalize(Substitute(card.text, variables)));
+    _Layout(card, Normalize(Substitute(card.text, variables)), hidden);
     fSelected = fOptions.empty() ? -1 : 0;
+    // the option under the mouse, if it is on the window
+    if (fCursorVisible)
+        MouseMoved(fMouse);
 }
 
 
@@ -195,6 +198,13 @@ int
 CardView::Run()
 {
     GameWindow window("Darklands");
+    return Run(window);
+}
+
+
+int
+CardView::Run(GameWindow& window)
+{
     bool dirty = true;
     for (;;) {
         if (dirty) {
@@ -224,8 +234,8 @@ CardView::Run()
                         chosen = Choose();
                         break;
                     default:
-                        if (fShowingScene)
-                            Choose();
+                        if (fShowingScene || fOptions.empty())
+                            chosen = Choose();
                         break;
                 }
                 dirty = true;
@@ -268,6 +278,13 @@ CardView::MouseMoved(const GFX::point& point)
 }
 
 
+int
+CardView::SelectedOption() const
+{
+    return fSelected >= 0 ? fOptions[fSelected].number : -1;
+}
+
+
 void
 CardView::MouseLeft()
 {
@@ -283,7 +300,10 @@ CardView::Clicked(const GFX::point& point)
         fShowingScene = false;
         return -1;
     }
-    return _OptionAt(point);
+    if (fOptions.empty())
+        return point.x >= kCardLeft ? 0 : -1;
+    const int option = _OptionAt(point);
+    return option >= 0 ? fOptions[option].number : -1;
 }
 
 
@@ -310,7 +330,9 @@ CardView::Choose()
         fShowingScene = false;
         return -1;
     }
-    return fSelected;
+    if (fOptions.empty())
+        return 0;
+    return SelectedOption();
 }
 
 
@@ -335,31 +357,6 @@ CardView::Draw()
             NearestColor(palette, 255, 255, 255));
     }
     return fBuffer;
-}
-
-
-/* static */
-void
-CardView::AddCityVariables(card_variables& variables, const city& c)
-{
-    // place variables by DARKLAND.CTY slot (inferred from the names and
-    // the texts; see docs/formats.md)
-    static const struct {
-        const char* name;
-        int place;
-    } kPlaceVariables[] = {
-        { "citySquare", CITY_SQUARE }, { "councilHall", CITY_TOWN_HALL },
-        { "fortress", CITY_CASTLE }, { "cathedral", CITY_CATHEDRAL },
-        { "cityChurch", CITY_CHURCH }, { "marketplace", CITY_MARKET },
-        { "slum", CITY_SLUMS }, { "pawnshop", CITY_PAWNSHOP },
-        { "monastery", CITY_MONASTERY }, { "Inn", CITY_INN },
-        { "inn", CITY_INN }, { "university", CITY_UNIVERSITY }
-    };
-    variables["PlaceName"] = c.shortName;
-    for (const auto& variable : kPlaceVariables) {
-        if (!c.places[variable.place].empty())
-            variables[variable.name] = c.places[variable.place];
-    }
 }
 
 
@@ -397,7 +394,8 @@ CardView::_DrawPicture(const raw_picture& picture, int x, int y,
 
 // Splits the text into screen lines, and finds the options.
 void
-CardView::_Layout(const msg_card& card, const std::string& text)
+CardView::_Layout(const msg_card& card, const std::string& text,
+    const std::vector<int>& hidden)
 {
     fLines.clear();
     fOptions.clear();
@@ -409,6 +407,7 @@ CardView::_Layout(const msg_card& card, const std::string& text)
     const int right = interiorLeft + card.textRight + kTextOffsetX;
     const int lineHeight = fFont->Height() + kLineGap;
     int y = interiorTop + card.textTop + kTextOffsetY;
+    int optionNumber = -1;
 
     size_t start = 0;
     while (start < text.size()) {
@@ -419,10 +418,9 @@ CardView::_Layout(const msg_card& card, const std::string& text)
         start = end + 1;
 
         size_t i = 0;
-        while (i < line.size() && line[i] == MSG_CODE_PARAGRAPH) {
-            y += kParagraphGap;
+        while (i < line.size() && line[i] == MSG_CODE_PARAGRAPH)
             i++;
-        }
+        const int gap = int(i) * kParagraphGap;
         const bool option = i < line.size() && IsOptionCode(uint8(line[i]));
         std::string prefix;
         if (option) {
@@ -436,6 +434,13 @@ CardView::_Layout(const msg_card& card, const std::string& text)
         std::string rest = line.substr(i);
         while (!rest.empty() && rest[rest.size() - 1] == ' ')
             rest.erase(rest.size() - 1);
+        if (option) {
+            optionNumber++;
+            if (std::find(hidden.begin(), hidden.end(), optionNumber)
+                    != hidden.end())
+                continue;
+        }
+        y += gap;
         if (!option && rest.empty()) {
             // an empty line; the one after the last newline is not a line
             if (start < text.size())
@@ -467,7 +472,7 @@ CardView::_Layout(const msg_card& card, const std::string& text)
             first = false;
         } while (!rest.empty());
         if (option)
-            fOptions.push_back(option_area{ top - 1, y - kLineGap });
+            fOptions.push_back(option_area{ optionNumber, top - 1, y - kLineGap });
     }
 }
 

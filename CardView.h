@@ -23,7 +23,7 @@
 class Bitmap;
 class Font;
 class GameData;
-struct city;
+class GameWindow;
 struct msg_card;
 
 // Values of the card variables, without the '$': "PlaceName" -> "Köln".
@@ -39,18 +39,23 @@ public:
                     ~CardView();
 
     // The card to show. Variables not in `variables` stay as they are.
+    // Options are numbered from 0 in card order; the ones in `hidden` are
+    // not shown, the others keep their numbers.
     void			SetCard(const msg_card& card,
-                        const card_variables& variables);
+                        const card_variables& variables,
+                        const std::vector<int>& hidden = std::vector<int>());
     // A scene picture (e.g. "MAIN-ST.PIC") shown before the card, until
     // a click or a key; empty for none. Throws if it cannot be loaded.
     void			SetScene(const std::string& pictureName);
 
-    // Opens a window and runs until an option is chosen: returns its
-    // index, or -1 if the user quit.
+    // Runs until an option is chosen: returns its number, or -1 if the
+    // user quit. A card without options is left with a click or a key
+    // (as option 0). The first version opens its own window.
     int				Run();
+    int				Run(GameWindow& window);
 
     // Input, in screen (320x200) coordinates. Clicked() and Choose()
-    // return the index of the chosen option, or -1.
+    // return the number of the chosen option, or -1.
     void			MouseMoved(const GFX::point& point);
     void			MouseLeft();
     int				Clicked(const GFX::point& point);
@@ -61,15 +66,11 @@ public:
     int				Choose();
 
     bool			ShowingScene() const	{ return fShowingScene; }
+    // Options shown, and the number of the highlighted one (-1: none).
     int				CountOptions() const	{ return int(fOptions.size()); }
-    int				SelectedOption() const	{ return fSelected; }
+    int				SelectedOption() const;
 
     Bitmap*			Draw();
-
-    // The variables the game takes from a city: $PlaceName, $Inn,
-    // $citySquare...
-    static void		AddCityVariables(card_variables& variables,
-                        const city& c);
 
 private:
     struct text_line {
@@ -78,6 +79,7 @@ private:
         std::string text;		// game character set
     };
     struct option_area {
+        int number;				// in card order, hidden options included
         int top;
         int bottom;				// exclusive
     };
@@ -95,7 +97,8 @@ private:
     void			_DrawPicture(const raw_picture& picture, int x, int y,
                         int transparent = -1, int height = -1);
 
-    void			_Layout(const msg_card& card, const std::string& text);
+    void			_Layout(const msg_card& card, const std::string& text,
+                        const std::vector<int>& hidden);
     int				_OptionAt(const GFX::point& point) const;
     void			_DrawFrame();
     void			_DrawCard();
@@ -118,8 +121,8 @@ private:
     uint8			fCapital;		// letter of the capital, 0 if none
     GFX::point		fCapitalPosition;
     std::vector<text_line>	fLines;
-    std::vector<option_area> fOptions;
-    int				fSelected;		// highlighted option, or -1
+    std::vector<option_area> fOptions;	// the options shown
+    int				fSelected;		// index into fOptions, or -1
 
     GFX::point		fMouse;
     bool			fCursorVisible;

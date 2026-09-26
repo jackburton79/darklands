@@ -40,7 +40,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ## Running
 
 ```sh
-./darklands                          # interactive world map (MapViewer)
+./darklands [--start Köln]           # the game (Game): city cards + map
 ./darklands EINFO.CAT                # browse a catalog's images
 ./darklands --extract EINFO.CAT out/ # export them as BMP (out/ must exist)
 ./darklands --map [prefix]           # full map render, with city names
@@ -55,13 +55,18 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 - Readers, one per format: `Catalog` (.CAT), `PICImage` (.PIC, chunked:
   `M0` palette + `X0` image), `Palette` (ENEMYPAL.DAT, `NearestColor()`),
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
-  card decks, read from the MSGFILES catalog via `GameData::Messages()`).
+  card decks, read from the MSGFILES catalog via `GameData::Messages()`),
+  `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city).
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
   rule, `Draw(bitmap, origin)` for any part of the map, `TileAtPixel()`.
 - `GameData`: lazy access to all game files. `TextSupport` (`Font`): text
   with the game fonts, `ToGameCharset()` for UTF-8 input.
 - `MapViewer`: the interactive map (320x200 8-bit buffer, scaled 2x);
   `Travel`: A* paths on the map; `CityLabels`: city names over the map.
+- `Game`: runs `CityVisit` and `MapViewer` in turn, in one `GameWindow`.
+  `CityVisit`: the table of city screens (deck, card, scene, what each
+  option does, which options need a place). `MapViewer::Run()` returns
+  when the party reaches a city.
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
   same structure as `MapViewer`. `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.

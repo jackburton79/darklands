@@ -46,13 +46,6 @@ static const struct {
     { CITY_UNIVERSITY, "University" }
 };
 
-// City menu layout
-static const int kMenuLeft			= 20;
-static const int kMenuTop			= 12;
-static const int kMenuWidth			= 280;
-static const int kMenuItemsTop		= 44;	// relative to kMenuTop
-static const int kMenuLineHeight	= 10;
-
 // Terrain names by tile type, as labeled on the icon sheets
 static const char* kTerrainNames[32] = {
     "Plains", "Ocean", "Major river", "Minor river", "Tidal marsh", "Marsh",
@@ -112,10 +105,18 @@ MapViewer::~MapViewer()
 }
 
 
-void
+int
 MapViewer::Run()
 {
     GameWindow window("Darklands - world map");
+    return Run(window);
+}
+
+
+int
+MapViewer::Run(GameWindow& window)
+{
+    fCity = -1;
 
     bool quitting = false;
     bool dirty = true;
@@ -129,6 +130,8 @@ MapViewer::Run()
                 IsTraveling() ? kTickMilliseconds : 100) == 0) {
             // no event before the timeout: move the party on
             dirty = Tick();
+            if (fCity >= 0)
+                return fCity;
             continue;
         }
         if (dirty) {
@@ -149,10 +152,6 @@ MapViewer::Run()
                     if (key == SDLK_ESCAPE) {
                         if (!Escape())
                             quitting = true;
-                    } else if (fCity >= 0) {
-                        // in a city, letters choose a place from the menu
-                        if (key >= SDLK_a && key <= SDLK_z)
-                            ChoosePlace(key - SDLK_a + 1);
                     } else switch (key) {
                         case SDLK_LEFT:		ScrollBy(-step, 0); break;
                         case SDLK_RIGHT:	ScrollBy(step, 0); break;
@@ -173,7 +172,7 @@ MapViewer::Run()
                                 || std::abs(point.y - pressPoint.y) > kDragThreshold) {
                             dragging = true;
                         }
-                        if (dragging && fCity < 0) {
+                        if (dragging) {
                             ScrollBy(lastPoint.x - point.x, lastPoint.y - point.y);
                             lastPoint = point;
                         }
@@ -215,7 +214,22 @@ MapViewer::Run()
                     break;
             }
         } while (!quitting && SDL_PollEvent(&event));
+        if (fCity >= 0)
+            return fCity;
     }
+    return -1;
+}
+
+
+void
+MapViewer::SetPartyPosition(const map_position& position)
+{
+    fParty = position;
+    fPath.clear();
+    fDestinationCity = -1;
+    fCity = -1;
+    fSelectedCity = -1;
+    CenterOnParty();
 }
 
 
@@ -267,12 +281,6 @@ void
 MapViewer::Clicked(const GFX::point& point)
 {
     MouseMoved(point);
-    if (fCity >= 0) {
-        const int item = _CityMenuItemAt(point);
-        if (item >= 0)
-            ChoosePlace(item + 1);
-        return;
-    }
     fSelectedCity = -1;
     if (!fMouseInside)
         return;
@@ -300,29 +308,11 @@ MapViewer::RightClicked(const GFX::point& point)
 }
 
 
-void
-MapViewer::ChoosePlace(int number)
-{
-    if (fCity < 0)
-        return;
-    const std::vector<int> places = _CityMenuPlaces();
-    if (number < 1 || number > int(places.size()))
-        return;
-    const city& c = fData.Cities().CityAt(fCity);
-    fCityMessage = c.places[places[number - 1]] + ": not implemented yet.";
-}
-
-
 bool
 MapViewer::Escape()
 {
     if (fSelectedCity >= 0) {
         fSelectedCity = -1;
-        return true;
-    }
-    if (fCity >= 0) {
-        fCity = -1;
-        fCityMessage.clear();
         return true;
     }
     if (IsTraveling()) {
@@ -356,9 +346,7 @@ MapViewer::Draw()
     map.Draw(fBuffer, fOrigin);
     map.DrawIcon(fBuffer, fOrigin, kPartyIconType, 0, fParty.x, fParty.y);
     DrawCityLabels(fBuffer, fOrigin, map, fData.Locations(), *fLabelFont);
-    if (fCity >= 0)
-        _DrawCityMenu();
-    else if (fSelectedCity >= 0)
+    if (fSelectedCity >= 0)
         _DrawCityPanel();
     _DrawStatusBar();
     _DrawCursor();
@@ -432,7 +420,6 @@ MapViewer::_EnterCity(int city)
     fCity = city;
     fDestinationCity = -1;
     fSelectedCity = -1;
-    fCityMessage.clear();
 }
 
 
@@ -448,83 +435,6 @@ MapViewer::_KeepPartyVisible()
             || y >= kScreenHeight - kStatusBarHeight - kPartyMargin) {
         CenterOnParty();
     }
-}
-
-
-// Place slots of the current city, in menu order.
-std::vector<int>
-MapViewer::_CityMenuPlaces() const
-{
-    std::vector<int> places;
-    if (fCity < 0)
-        return places;
-    const city& c = fData.Cities().CityAt(fCity);
-    for (const auto& place : kPlaces) {
-        if (!c.places[place.place].empty())
-            places.push_back(place.place);
-    }
-    return places;
-}
-
-
-// Menu item (0-based) under a screen point, or -1.
-int
-MapViewer::_CityMenuItemAt(const GFX::point& point) const
-{
-    const int count = int(_CityMenuPlaces().size());
-    const int top = kMenuTop + kMenuItemsTop;
-    if (point.x < kMenuLeft || point.x >= kMenuLeft + kMenuWidth
-            || point.y < top || point.y >= top + count * kMenuLineHeight) {
-        return -1;
-    }
-    return (point.y - top) / kMenuLineHeight;
-}
-
-
-void
-MapViewer::_DrawCityMenu()
-{
-    const CityFile& cities = fData.Cities();
-    const city& c = cities.CityAt(fCity);
-    const std::vector<int> places = _CityMenuPlaces();
-
-    const int height = kMenuItemsTop + int(places.size()) * kMenuLineHeight + 34;
-    const GFX::rect panel = { sint16(kMenuLeft), sint16(kMenuTop),
-        uint16(kMenuWidth), uint16(height) };
-    fBuffer->FillRect(panel, fDarkGray);
-    fBuffer->StrokeRect(panel, fGray);
-
-    const int textLeft = kMenuLeft + 8;
-    _DrawText(*fLabelFont, c.fullName, textLeft, kMenuTop + 6, fYellow);
-    _DrawText(*fTextFont, "Ruled by " + c.places[CITY_RULER], textLeft,
-        kMenuTop + 20, fGray);
-    _DrawText(*fTextFont, "Where do you want to go?", textLeft,
-        kMenuTop + 32, fWhite);
-
-    // highlight the item under the mouse
-    const int hovered = fCursorVisible ? _CityMenuItemAt(fMouse) : -1;
-    int y = kMenuTop + kMenuItemsTop;
-    for (size_t i = 0; i < places.size(); i++) {
-        if (int(i) == hovered) {
-            const GFX::rect highlight = { sint16(kMenuLeft + 2), sint16(y - 1),
-                uint16(kMenuWidth - 4), uint16(kMenuLineHeight) };
-            fBuffer->FillRect(highlight, fBlack);
-        }
-        const std::string label(1, char('A' + i));
-        _DrawText(*fTextFont, label + ".", textLeft, y, fGray);
-        _DrawText(*fTextFont, c.places[places[i]], textLeft + 16, y, fWhite);
-        for (const auto& place : kPlaces) {
-            if (place.place == places[i]) {
-                _DrawText(*fTextFont, place.label, textLeft + 170, y, fGray);
-                break;
-            }
-        }
-        y += kMenuLineHeight;
-    }
-    y += 6;
-    if (!fCityMessage.empty())
-        _DrawText(*fTextFont, fCityMessage, textLeft, y, fYellow);
-    _DrawText(*fTextFont, "Esc: leave the city", textLeft, y + 12, fGray);
 }
 
 

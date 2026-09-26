@@ -26,13 +26,15 @@ The goal is twofold:
   caves... with their map coordinates
 - List the cities (`DARKLAND.CTY`) with their rulers, neighboring
   cities, ports and named places
-- Explore the world map interactively: travel with the party, enter
-  cities and pick a place from their menu (the places themselves are
-  not implemented yet), see each city's details
 - Read the game's menu cards (`MSGFILES`), the text of nearly every
   menu and encounter in the game, and show them as the game does: frame,
-  illuminated capital, text, options to choose (their effects are not
-  implemented yet)
+  illuminated capital, text, options to choose
+- Play the first steps: the party starts at the inn of a city, walks
+  between the inn, the main street, the side streets and the city gate,
+  leaves for the world map, travels and arrives at other cities. The
+  other places (market, churches, guilds...) and the options' effects
+  (meals, money, fights...) are not implemented yet
+- Explore the world map: scrolling, city names, each city's details
 
 Everything else — city screens, sound, text, the game itself — is not
 implemented yet. See the roadmap below.
@@ -60,7 +62,8 @@ implemented yet. See the roadmap below.
 - [x] Parse the menu cards (`MSGFILES`, `--messages`)
 - [ ] Decode more resource types (sound archives, ...)
 - [x] Show a menu card with its options (`--card`)
-- [ ] City screens and the game flow between cards
+- [x] The flow between the city cards (inn, streets, gate) and the map
+- [ ] The city places (market, churches, guilds...), money, time
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 
@@ -102,10 +105,14 @@ Point the program at the game's data directory (the one containing
 Game files are looked up by name, in that directory and then in `PICS`:
 
 ```sh
-# Explore the world map: click to travel there (clicking a city enters
-# it), right click a city for its details, arrow keys (shift: faster) or
-# drag to scroll, space to center on the party, Esc to go back or quit
+# Play, from a random city (--start <city>: from that one).
+# Cards: the mouse or the arrow keys to choose an option, click or
+# Return to take it, Esc to quit.
+# Map: click to travel there (clicking a city goes there and shows it),
+# right click a city for its details, arrow keys (shift: faster) or drag
+# to scroll, space to center on the party, Esc to go back or quit
 ./darklands --data /path/to/DARKLAND
+./darklands --start Hamburg
 
 # Browse the images of a catalog (left/right arrow keys)
 ./darklands EINFO.CAT
@@ -135,10 +142,12 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ## Project layout
 
 ```
-darklands.cpp     Program entry point: image viewer, --extract, --map,
-                  --locations, --cities, --messages, --card
+darklands.cpp     Program entry point: the game, image viewer, --extract,
+                  --map, --locations, --cities, --messages, --card
+Game.*            The game: cities and the world map in turn
+CityVisit.*       The party in a city: which card follows which
 GameData.*        Access to the game's data files from one data directory
-MapViewer.*       Interactive world map (scrolling, travel, city menu)
+MapViewer.*       Interactive world map (scrolling, travel, city details)
 CardView.*        A menu card on screen: frame, text, options
 ScreenSupport.*   The game window and mouse cursor, for the screens
 Travel.*          Paths across the world map
@@ -149,7 +158,8 @@ PICImage.*        Decoder for the game's .PIC image format
 Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
 MapFile.*         Reader for the world map file (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
-CityFile.*        Reader for the city descriptions (DARKLAND.CTY)
+CityFile.*        Reader for the cities (DARKLAND.CTY)
+DescriptionFile.* Reader for the city descriptions (DARKLAND.DSC)
 MsgFile.*         Reader for the menu cards (.MSG files in MSGFILES)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
 TextSupport.*     Text rendering with the game fonts

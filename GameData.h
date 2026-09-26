@@ -15,6 +15,7 @@
 
 class Catalog;
 class CityFile;
+class DescriptionFile;
 class FontFile;
 class LocationFile;
 class MsgFile;
@@ -35,6 +36,7 @@ public:
     const WorldMap&		Map();				// DARKLAND.MAP + icon sheets
     const LocationFile&	Locations();		// DARKLAND.LOC
     const CityFile&		Cities();			// DARKLAND.CTY
+    const DescriptionFile& CityDescriptions();	// DARKLAND.DSC
     const FontFile&		Fonts();			// FONTS.FNT
     const GFX::Palette&	EnemyPalette();		// ENEMYPAL.DAT, all chunks
     const Catalog&		MessageCatalog();	// MSGFILES
@@ -55,6 +57,7 @@ private:
     std::unique_ptr<WorldMap>		fMap;
     std::unique_ptr<LocationFile>	fLocations;
     std::unique_ptr<CityFile>		fCities;
+    std::unique_ptr<DescriptionFile> fCityDescriptions;
     std::unique_ptr<FontFile>		fFonts;
     std::unique_ptr<GFX::Palette>	fEnemyPalette;
     std::unique_ptr<Catalog>		fMessageCatalog;

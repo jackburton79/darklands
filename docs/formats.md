@@ -598,24 +598,53 @@ The text contains 67 distinct `$Name` variables that the game replaces,
 e.g. `$PlaceName` (the current city), `$ChosenOneName` ...
 `$ChosenFiveName` and `$NamedOneName` ... (party members and other
 characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
-`$Number1`, `$Text1`, `$CityLordName`. The ones named after a place
-match the place slots of `DARKLAND.CTY` (*inferred* from the names and
-the texts): `$citySquare` 3, `$councilHall` 4, `$fortress` 5,
-`$cathedral` 6, `$cityChurch` 7, `$marketplace` 8, `$slum` 10,
-`$pawnshop` 12, `$monastery` 13, `$Inn` 14, `$university` 15.
+`$Number1`, `$Text1`, `$CityLordName`.
+
+`DARKLAND.EXE` holds the list of the variable names as plain strings
+(`PlaceName`, `PlaceDesc`, `Inn`, `Money1`..`Money5`, `LeaderName`,
+`ChosenOneName`..., `citySquare`, `councilHall`, `imperialMint`,
+`cityBarracks`, `university`, `marketplace`, `fortress`, `pawnshop`,
+`hospital`, `docks`, `poorhouse`, `slum`, `whorehouse`, `warehouse`,
+`monastery`, `cathedral`, `cityChurch`, `NamedOneName`..., `CityLordName`,
+`CityLordTitle`, `Support1`..., `SabbatTime`, ...).
+
+- `$PlaceDesc` is the city's line of `DARKLAND.DSC` (see below):
+  "Before you lies the $PlaceName, $PlaceDesc." **verified** for the
+  record-to-city match.
+- The place variables match the place slots of `DARKLAND.CTY`
+  (*inferred* from the names and the texts): `$citySquare` 3,
+  `$councilHall` 4, `$fortress` 5, `$cathedral` 6, `$cityChurch` 7,
+  `$marketplace` 8, `$imperialMint` 9, `$slum` 10, `$cityBarracks` 11
+  (the Zeughaus), `$pawnshop` 12, `$monastery` 13, `$Inn` 14,
+  `$university` 15. `$CityLordTitle` is presumably slot 0, the ruler.
 
 ### Where the cards are used
 
 - Which card is shown, with which picture, and what an option does is
   decided by `DARKLAND.EXE`: the card file names do not appear in it as
   plain text. Only the texts tell what a card is for.
-- The game starts with `$PARTY02.MSG`: card 0 for a party ("You gather
-  around the comfortable fire at the $Inn...", with a leftover "test
-  mines" option), card 1 for a single character. `$MAINS01.MSG` is the
-  main street menu. *inferred* from the texts and the manual.
+- The city cards, as far as the texts tell (*inferred*; `CityVisit.cpp`
+  links them this way):
+  - `$PARTY02.MSG`: the start of the game, at the inn. Card 0 for a
+    party ("You gather around the comfortable fire at the $Inn...",
+    with a leftover "test mines" option), card 1 for a single
+    character; cards 2..6 look like a longer version of card 0.
+  - `$OUTSI00.MSG`: arriving at a city from the map ("Before you lies
+    the $PlaceName, $PlaceDesc."): main gate by day or night, over the
+    wall, or turn away.
+  - `$URBAN00.MSG` / `$URBAN01.MSG`: the inn (news, meal, residence,
+    stables, storage...), by day / by night?
+  - `$MAINS01.MSG` / `$MAINS02.MSG`: the main street by day / by night
+    (cards 1..3: handbills, fair, war); `$MAINS00.MSG` is a designer's
+    note ("This card describes options as you look down the main
+    streets of the city").
+  - `$SIDES00.MSG`: the side streets.
+  - `$SELEC00.MSG`: the city gate, to leave (card 0 by day, card 13 at
+    night); `$SELEC01.MSG`: the city walls.
 - Most options of a menu only make sense in some cities (e.g. the
   main street lists `$fortress`, the docks...): the game must hide the
-  ones that do not apply. How is unknown.
+  ones that do not apply. How is unknown; `CityVisit` hides the ones
+  whose place slot is empty, and the docks of inland cities.
 
 ### Card screen
 
@@ -659,6 +688,24 @@ city gate card `$SELEC00.MSG` card 0. Measured on it and on the pictures
 - `TEXTBACK.PIC` (158 × 50) is not the card background: it is a small
   framed panel, used elsewhere.
 
+## City descriptions (`DARKLAND.DSC`)
+
+One line per city, the `$PlaceDesc` of the cards. See
+`DescriptionFile.cpp` for a reference implementation.
+
+    offset  size     description
+    0x00    1        0x5E (not the count: there are 92 records)
+    0x01    80·92    records: text, NUL-terminated, NUL-padded
+
+- **File size: 7361 = 1 + 92 · 80** (**verified**); every record is
+  zero after its NUL.
+- **Record i describes city i of `DARKLAND.CTY`** (**verified** on the
+  names: 0 Groningen "a small North Sea port controlled by Dutch
+  nobles", 5 Lübeck "a wealthy Imperial Free City, center of the
+  Hanseatic League", 26 Köln "the largest city in the Empire, center
+  of trade and craftsmanship", 40 Marienburg "fortress-capital for the
+  Hochmeister of the Teutonic Order").
+
 ## Messages (`DARKLAND.MSG`)
 
 Not a card deck: **4001 = 1 + 10 · 400** (**verified**). Byte 0 is the
@@ -699,7 +746,9 @@ land).
       +0x6D
 - [x] `.MSG`: the card format (`MSGFILES`) and `DARKLAND.MSG`
 - [ ] `.MSG`: codes `0x13` and `0x01`; which picture goes with a card;
-      how options that do not apply to a city are hidden
+      how options that do not apply to a city are hidden; how the game
+      chooses between cards (day/night, fair, war...)
+- [ ] `.DSC`: the meaning of byte 0 (0x5E)
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

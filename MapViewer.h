@@ -2,7 +2,8 @@
  * MapViewer.h
  * Interactive world map: scrolling, city names, a status bar with the
  * tile under the mouse, an info panel for a city, and the party, which
- * travels across the map and enters cities.
+ * travels across the map and reaches cities (Run() then returns, and the
+ * caller shows the city).
  *
  * Everything is drawn into a 320x200 8-bit buffer with the map palette
  * (the game's resolution); Run() shows it scaled up in a window. The
@@ -21,6 +22,7 @@
 class Bitmap;
 class Font;
 class GameData;
+class GameWindow;
 
 class MapViewer {
 public:
@@ -30,8 +32,15 @@ public:
     explicit		MapViewer(GameData& data);	// throws if data is missing
                     ~MapViewer();
 
-    // Opens a window and runs until the user quits.
-    void			Run();
+    // Runs until the party reaches a city: returns its index (the party
+    // is then in front of it, CurrentCity()), or -1 if the user quit.
+    // The first version opens its own window.
+    int				Run();
+    int				Run(GameWindow& window);
+
+    // Puts the party on a tile (e.g. a city it leaves) and centers the view
+    // on it; the party stops and is no longer in a city.
+    void			SetPartyPosition(const map_position& position);
 
     // Input, in screen (320x200) coordinates.
     void			ScrollBy(int dx, int dy);
@@ -40,15 +49,11 @@ public:
     void			MouseMoved(const GFX::point& point);
     // The mouse left the window: hides the cursor.
     void			MouseLeft();
-    // Left click: on the map, travel there (entering the city, if it is
-    // one); in a city, choose the place under the mouse.
+    // Left click: travel there (reaching the city, if it is one).
     void			Clicked(const GFX::point& point);
     // Right click: the info panel of the city under the mouse.
     void			RightClicked(const GFX::point& point);
-    // In a city: choose place number `number` (1-based: the menu lists
-    // them as A, B, C...).
-    void			ChoosePlace(int number);
-    // Closes the info panel, else leaves the city, else stops the party.
+    // Closes the info panel, else stops the party.
     // Returns false if there was nothing to close (i.e. quit).
     bool			Escape();
 
@@ -60,10 +65,8 @@ public:
     const map_position& PartyPosition() const	{ return fParty; }
     // Index of the city whose info panel is open, or -1.
     int				SelectedCity() const	{ return fSelectedCity; }
-    // Index of the city the party is in, or -1 when on the map.
+    // Index of the city the party has reached, or -1 when on the map.
     int				CurrentCity() const		{ return fCity; }
-    // Last message shown in the city menu.
-    const std::string& CityMessage() const	{ return fCityMessage; }
 
     // Draws the current view into the 320x200 buffer and returns it.
     Bitmap*			Draw();
@@ -75,11 +78,8 @@ private:
     void			_TravelTo(const map_position& destination, int city);
     void			_EnterCity(int city);
     void			_KeepPartyVisible();
-    std::vector<int> _CityMenuPlaces() const;
-    int				_CityMenuItemAt(const GFX::point& point) const;
     void			_DrawStatusBar();
     void			_DrawCityPanel();
-    void			_DrawCityMenu();
     void			_DrawCursor();
     void			_DrawText(const Font& font, const std::string& utf8,
                         int x, int y, uint8 color) const;
@@ -98,8 +98,7 @@ private:
     map_position	fParty;
     std::vector<map_position> fPath;	// tiles still to walk, in order
     int				fDestinationCity;	// city at the end of fPath, or -1
-    int				fCity;				// city the party is in, or -1
-    std::string		fCityMessage;
+    int				fCity;				// city the party reached, or -1
 
     uint8			fBlack;
     uint8			fWhite;

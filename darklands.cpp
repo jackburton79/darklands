@@ -3,11 +3,12 @@
 #include "Catalog.h"
 #include "CityFile.h"
 #include "CityLabels.h"
+#include "CityVisit.h"
+#include "Game.h"
 #include "GameData.h"
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
 #include "LocationFile.h"
-#include "MapViewer.h"
 #include "MsgFile.h"
 #include "PICImage.h"
 #include "Stream.h"
@@ -154,25 +155,6 @@ ListMessages(const Catalog& catalog)
 }
 
 
-// Stand-in for the party until there is character creation: the
-// Quickstart party of the manual (p. 11), Gretchen as the leader.
-static void
-AddQuickstartParty(card_variables& variables)
-{
-    static const char* kNames[] = { "Gretchen", "Gunther", "Hans", "Ebhard" };
-    static const char* kOrdinals[] = { "One", "Two", "Three", "Four" };
-    for (int i = 0; i < 4; i++)
-        variables[std::string("Chosen") + kOrdinals[i] + "Name"] = kNames[i];
-    variables["LeaderName"] = kNames[0];
-    variables["he"] = "she";
-    variables["He"] = "She";
-    variables["his"] = "her";
-    variables["His"] = "Her";
-    variables["him"] = "her";
-    variables["himself"] = "herself";
-}
-
-
 // City by index or (short) name; -1 if there is none.
 static int
 FindCity(const CityFile& cities, const std::string& name)
@@ -201,8 +183,8 @@ ShowCard(GameData& data, const std::string& deck, uint32 cardIndex,
         throw std::runtime_error("no city " + cityName);
 
     card_variables variables;
-    CardView::AddCityVariables(variables, cities.CityAt(cityIndex));
-    AddQuickstartParty(variables);
+    CityVisit::AddCityVariables(data, cityIndex, variables);
+    CityVisit::AddPartyVariables(variables);
 
     CardView view(data);
     view.SetCard(messages.CardAt(cardIndex), variables);
@@ -257,7 +239,8 @@ static void
 Usage()
 {
     std::cerr << "usage: darklands [--data <dir>] [<command>]\n"
-        "  (no command)                  explore the world map\n"
+        "  (no command)                  play, from a random city\n"
+        "  --start <city>                play, from a city (name or index)\n"
         "  <catalog>                     browse a catalog's images\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
@@ -285,9 +268,9 @@ int main(int argc, char **argv)
     GameData data(dataDir);
     if (arg >= argc) {
         try {
-            MapViewer(data).Run();
+            Game(data).Run();
         } catch (const std::exception& e) {
-            std::cerr << "map viewer: " << e.what() << std::endl;
+            std::cerr << "game: " << e.what() << std::endl;
             Usage();
             return 1;
         }
@@ -314,6 +297,17 @@ int main(int argc, char **argv)
                 DumpMessages(MsgFile(argv[arg + 1]));	// a path
             else
                 DumpMessages(data.Messages(argv[arg + 1]));
+            return 0;
+        }
+        if (command == "--start") {
+            if (extra < 1) {
+                Usage();
+                return 1;
+            }
+            const int city = FindCity(data.Cities(), argv[arg + 1]);
+            if (city < 0)
+                throw std::runtime_error(std::string("no city ") + argv[arg + 1]);
+            Game(data).Run(city);
             return 0;
         }
         if (command == "--card") {

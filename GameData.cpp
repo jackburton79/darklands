@@ -2,6 +2,7 @@
 
 #include "Catalog.h"
 #include "CityFile.h"
+#include "DescriptionFile.h"
 #include "FontFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
@@ -76,6 +77,15 @@ GameData::Cities()
     if (!fCities)
         fCities.reset(new CityFile(PathFor("DARKLAND.CTY")));
     return *fCities;
+}
+
+
+const DescriptionFile&
+GameData::CityDescriptions()
+{
+    if (!fCityDescriptions)
+        fCityDescriptions.reset(new DescriptionFile(PathFor("DARKLAND.DSC")));
+    return *fCityDescriptions;
 }
 
 
