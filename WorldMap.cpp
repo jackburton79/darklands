@@ -215,6 +215,17 @@ WorldMap::Draw(Bitmap* bitmap, const GFX::point& origin) const
 }
 
 
+void
+WorldMap::DrawIcon(Bitmap* bitmap, const GFX::point& origin, int type,
+    uint8 column, uint16 x, uint16 y) const
+{
+    if (!fHaveSheets || x >= fWidth || y >= fHeight)
+        return;
+    const GFX::point cell = TileOrigin(x, y);
+    _DrawCell(bitmap, type, column, cell.x - origin.x, cell.y - origin.y);
+}
+
+
 Bitmap*
 WorldMap::Render() const
 {
@@ -284,9 +295,17 @@ WorldMap::_DrawTile(Bitmap* bitmap, uint16 x, uint16 y,
         return;
     }
 
-    const std::vector<uint8>& sheet = fSheets[tile.secondPalette ? 1 : 0];
-    const int sx = ColumnAt(x, y) * kTileWidth;
-    const int sy = tile.row * kTileHeight;
+    _DrawCell(bitmap, TileType(tile), ColumnAt(x, y), destX, destY);
+}
+
+
+void
+WorldMap::_DrawCell(Bitmap* bitmap, int type, uint8 column,
+    int destX, int destY) const
+{
+    const std::vector<uint8>& sheet = fSheets[(type >> 4) & 1];
+    const int sx = (column & 15) * kTileWidth;
+    const int sy = (type & 15) * kTileHeight;
     for (uint16 py = 0; py < kTileHeight; py++) {
         const uint8* src = &sheet[size_t(sy + py) * fSheetWidth + sx];
         for (uint16 px = 0; px < kTileWidth; px++) {
