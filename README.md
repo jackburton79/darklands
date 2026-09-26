@@ -41,7 +41,9 @@ The goal is twofold:
   leaves for the world map, travels and arrives at other cities. The
   city's places can be visited (square, fortress, market, churches,
   cathedral, monastery, university, town hall, barracks, guilds, slum,
-  docks, a grove to wait in); what happens inside them is not
+  docks, a grove to wait in); the arms-making guilds' shops buy and sell
+  (the item exchange scrolls; stock and prices rebuilt from the item
+  list and a screenshot); what happens in the other places is not
   implemented yet. Time
   passes (traveling, sleeping at the inn) and the city shows its night
   cards after Compline. The
@@ -80,7 +82,10 @@ implemented yet. See the roadmap below.
 - [x] Game time: the clock, day and night, travel time (placeholder speeds)
 - [x] Party and character information screens
 - [x] The city places: moving between them, waiting
-- [ ] What happens in the places (trade, training, audiences...), money
+- [x] Trade with the arms-making guilds (swordsmith, blacksmith,
+      armorer, bowyer)
+- [ ] What happens in the other places (training, audiences...), the
+      other merchants
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 
@@ -169,6 +174,7 @@ CharacterFile.*   Reader for the new game's characters (CHARACTR.TMP)
 ListFile.*        Reader for the item, saint and formula lists (DARKLAND.LST)
 InfoView.*        The party and character information screens
 PartySidebar.*    The character boxes on the left of the screens
+TradeView.*       Buying and selling with a merchant
 SaveFile.*        Reader for the saved games (SAVES/*.SAV)
 CityVisit.*       The party in a city: which card follows which
 GameData.*        Access to the game's data files from one data directory

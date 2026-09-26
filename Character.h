@@ -74,6 +74,11 @@ struct party {
     uint16 philosopherStone;			// quality, 0: none
 };
 
+// 1 florin = 20 groschen = 240 pfennigs; 1 groschen = 12 pfennigs
+// (manual p. 21)
+uint32 TotalPfennigs(const money& amount);
+money MoneyFromPfennigs(uint32 pfennigs);
+
 static const size_t kCharacterRecordSize = 554;	// 0x22A
 static const int kMaxPartySize = 5;
 

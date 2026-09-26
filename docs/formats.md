@@ -874,10 +874,47 @@ See `ListFile.cpp` for a reference implementation.
   strings to the end of the file ("St.Adrian"/"S.Adrian" first,
   "al-Razi's Noxious Aroma"/"aR NoxAro" for the formulae); 172 of the
   200 item slots are used.
+- **Flags** — **verified** by the names of the items that set them:
+  byte 0: edged (1), impact (2), polearm (4), flail (8), thrown (0x10),
+  bow (0x20), metal armor (0x40), shield (0x80); byte 1: tools (1:
+  torch, rope, lantern...), gear (2: clock, grappling hook, lockpick),
+  alchemical component (4), potion (8), relic (0x10), horse (0x20),
+  document (0x40: letter of credit, residency permit...); byte 2:
+  lockpick (1), light (2), arrow (4), quarrel (0x10), ball (0x20),
+  special/quest item (0x80); byte 3: throwable potion (1), non-metal
+  armor (4), missile device (8: crossbows, guns), music (0x20).
 - The item types of the armor run in order: 67..75 V:Clothing, Padded,
   Leather, Studded Leather, Cuirbouilli, Scale, Chainmail, Brigandine,
   Plate; 76..84 the same for the limbs; 95..97 Small, Medium, Large
   Shield.
+
+## Trade (item exchange scrolls)
+
+The manual (pp. 28-29) has a screenshot of the swordsmith's shop.
+`BUYSELL.PIC` is the whole screen: the character boxes, the card frame
+and two scrolls whose interiors are (80, 84)-(267, 116) and
+(104, 146)-(291, 178) (**verified**: the picture), four 8-pixel rows
+each. The texts are in `DARKLAND.EXE`: "%s holds the purse of %dfl,
+%dgr, %dpf (%lupf).", "%s barters for %s to the %Fs", " P|urchase an
+item", " S|ell an item", " B|arter for another person", " L|eave",
+"The %Fs offers...", "%s has...", "%5upf  %Fs  %3dq  %3dlbs" (the
+merchant's items), "%5upf  %Fs  (%3d) %2dq" (the party's), "Not enough
+money".
+
+- **Prices** on the screenshot, all quality 25: the swordsmith sells
+  Falchion and Short Sword (value 125) for 394 pf, Poniard (60) for
+  190, Dagger (40) for 127: about 3.141 · value + 1.4; he buys a Long
+  Sword (200) for 203 and a Halberd (325) for 330: about 1.015 · value.
+  He buys potions for much less, not in proportion (Black Cloud, value
+  405, for 118; Thunderbolt, 697, for 453, both quality 30). The leader
+  bargains ("changing leaders can change prices"). *inferred*, from
+  one screenshot of a pre-release version.
+- **Which merchant sells what** is the game's (`DARKLAND.EXE`). The
+  arms-making guilds' shops are `$SWORD00`, `$BLACK00`, `$ARMOR00`,
+  `$BOWYE00` (by day: "visit the street-level shopfronts to buy and
+  sell goods") and their `01` decks (at night: "awaken somebody to
+  make a purchase or a sale"); the other options belong to the guild
+  quests.
 
 ## Information screens
 
@@ -984,6 +1021,8 @@ land).
       (presumably in the locations array), everything else
 - [ ] Information screens: the fame and reputation thresholds of the
       words, the carrying capacity
+- [ ] Trade: the price rules (leader, quality, goods outside a
+      merchant's trade), what each merchant stocks
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

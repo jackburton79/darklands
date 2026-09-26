@@ -16,6 +16,7 @@
 
 #include "CardView.h"
 #include "MsgFile.h"
+#include "TradeView.h"
 
 #include <string>
 #include <vector>
@@ -53,6 +54,10 @@ public:
         SCREEN_SLUM,			// $SLUMD00.MSG
         SCREEN_DOCKS,			// $DOCKS00.MSG, $DOCKS01.MSG
         SCREEN_OTHER,			// "other locations you remember": $OTHER00
+        SCREEN_SWORDSMITH,		// the guilds' shops: $SWORD00/01.MSG,
+        SCREEN_BLACKSMITH,		// $BLACK00/01.MSG, $ARMOR00/01.MSG,
+        SCREEN_ARMORER,			// $BOWYE00/01.MSG
+        SCREEN_BOWYER,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -66,8 +71,9 @@ public:
 
     // The party in the city and the game's clock (not owned). Set them
     // before Enter() or Run(). At night the streets and the gate show
-    // their night cards; some options take time.
-    void			SetParty(const party* members);
+    // their night cards; some options take time. Trading changes the
+    // party's money and items.
+    void			SetParty(party* members);
     void			SetClock(GameTime* clock)	{ fClock = clock; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
@@ -82,6 +88,10 @@ public:
     bool			Choose(int option);
     int				Screen() const			{ return fScreen; }
     CardView&		View()					{ return fView; }
+    // After Choose(): the merchant to trade with (Run() then shows the
+    // trade screen), or -1.
+    int				PendingTrade() const	{ return fPendingTrade; }
+    TradeView&		Trade()					{ return fTrade; }
 
     // The card variables of a city: $PlaceName, $PlaceDesc, $Inn,
     // $citySquare...
@@ -99,9 +109,11 @@ private:
 
     GameData&		fData;
     CardView		fView;
+    TradeView		fTrade;
+    int				fPendingTrade;
     msg_card		fNotImplementedCard;
     card_variables	fVariables;
-    const party*	fParty;
+    party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
     bool			fNight;			// the current card is a night card

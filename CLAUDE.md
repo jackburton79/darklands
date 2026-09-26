@@ -79,7 +79,12 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `InfoView`: the F6 party and F1..F5 character screens, opened from
   `CardView` and `MapViewer` (modal `Run(window, page)`).
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
-  indexes it, its equipment slots hold item *types*. `ScreenSupport`: `GameWindow` (shows a
+  indexes it, its equipment slots hold item *types*; `item_flag` for
+  the categories.
+- `TradeView`: the item exchange scrolls (BUYSELL.PIC); `CityVisit`
+  opens it for `ACTION_TRADE` options, from `Run()` (`PendingTrade()`
+  in step-by-step tests). Stock and prices are inferred rules, in
+  `TradeView.cpp`. `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.
 - `darklands.cpp`: command line only.
 

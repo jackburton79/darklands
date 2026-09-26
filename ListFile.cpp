@@ -15,7 +15,11 @@ static const size_t kNameLength		= 20;
 static const size_t kShortNameOffset = 0x14;
 static const size_t kShortNameLength = 10;
 static const size_t kTypeOffset		= 0x1E;
+static const size_t kFlagsOffset	= 0x20;
 static const size_t kWeightOffset	= 0x25;
+static const size_t kQualityOffset	= 0x26;
+static const size_t kRarityOffset	= 0x27;
+static const size_t kValueOffset	= 0x2C;
 
 
 static std::string
@@ -50,7 +54,15 @@ ListFile::ListFile(const std::string& fileName)
             kShortNameLength);
         item.type = uint16(data[record + kTypeOffset]
             | (data[record + kTypeOffset + 1] << 8));
+        item.flags = uint32(data[record + kFlagsOffset])
+            | (uint32(data[record + kFlagsOffset + 1]) << 8)
+            | (uint32(data[record + kFlagsOffset + 2]) << 16)
+            | (uint32(data[record + kFlagsOffset + 3]) << 24);
         item.weight = data[record + kWeightOffset];
+        item.quality = data[record + kQualityOffset];
+        item.rarity = data[record + kRarityOffset];
+        item.value = uint16(data[record + kValueOffset]
+            | (data[record + kValueOffset + 1] << 8));
         fItems.push_back(item);
     }
 

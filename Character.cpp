@@ -91,3 +91,19 @@ MakeParty(const std::vector<character>& characters, const uint8* indices,
     }
     return p;
 }
+
+
+uint32
+TotalPfennigs(const money& amount)
+{
+    return uint32(amount.florins) * 240 + uint32(amount.groschen) * 12
+        + amount.pfennigs;
+}
+
+
+money
+MoneyFromPfennigs(uint32 pfennigs)
+{
+    return money{ uint16(pfennigs / 240), uint16(pfennigs % 240 / 12),
+        uint16(pfennigs % 12) };
+}

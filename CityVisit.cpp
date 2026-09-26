@@ -16,7 +16,8 @@ enum option_action {
     ACTION_NOT_IMPLEMENTED,
     ACTION_GO,					// to another screen, after `minutes`
     ACTION_LEAVE,				// back to the map
-    ACTION_HIDE					// never shown
+    ACTION_HIDE,				// never shown
+    ACTION_TRADE				// the trade screen, with merchant `target`
 };
 
 // Options that need the city to have something
@@ -50,6 +51,22 @@ struct screen_rules {
 #define TODO				{ ACTION_NOT_IMPLEMENTED, 0, kAlways, 0 }
 #define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs, 0 }
 #define HIDE				{ ACTION_HIDE, 0, kAlways, 0 }
+#define TRADE(merchant)		{ ACTION_TRADE, merchant, kAlways, 0 }
+
+// The guilds' shops by day and by night
+#define SHOP_OPTIONS(merchant) { \
+        TRADE(merchant),					/* buy and sell goods */ \
+        TODO, TODO,							/* politics, the masters */ \
+        HIDE, HIDE, HIDE,					/* the leader's secret */ \
+        GO(SCREEN_ARMS_CRAFTS)				/* leave */ \
+    }
+#define NIGHT_SHOP_OPTIONS(merchant) { \
+        TRADE(merchant),					/* awaken somebody to trade */ \
+        TODO,								/* awaken the guild leader */ \
+        HIDE, HIDE, HIDE,					/* the leader's home, saboteurs */ \
+        TODO, TODO, TODO, TODO,				/* placeholders */ \
+        GO(SCREEN_ARMS_CRAFTS)				/* leave */ \
+    }
 
 // The option lists are those of the cards (see `darklands --messages`);
 // options whose text is a placeholder ("5", "...this option should be
@@ -224,8 +241,11 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "...signs with pictures portray the various guilds and crafts."
     { "MILCR00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// soldiers, blacksmiths,
-                                            // swordsmiths, armorers, bowyers
+        TODO,								// Soldier's Road
+        GO(SCREEN_BLACKSMITH),
+        GO(SCREEN_SWORDSMITH),
+        GO(SCREEN_ARMORER),
+        GO(SCREEN_BOWYER),					// bowyers and gunsmiths
         TODO,								// placeholder
         GO(SCREEN_OTHER),					// a specific building
         GO(SCREEN_CRAFTS),
@@ -264,6 +284,13 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // "The sounds of hammers ringing on steel... fill Swordsmith's Lane."
+    // The shops of the four arms-making guilds have the same options;
+    // the guild politics and the leader's secrets belong to quests.
+    { "SWORD00", 0, NULL, SHOP_OPTIONS(MERCHANT_SWORDSMITH) },
+    { "BLACK00", 0, NULL, SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
+    { "ARMOR00", 0, NULL, SHOP_OPTIONS(MERCHANT_ARMORER) },
+    { "BOWYE00", 0, NULL, SHOP_OPTIONS(MERCHANT_BOWYER) },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -399,7 +426,11 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "Walking along the dark streets, you peer down each one..."
     { "MILCR00", 1, NULL, {
-        TODO, TODO, TODO, TODO, TODO,
+        TODO,
+        GO(SCREEN_BLACKSMITH),
+        GO(SCREEN_SWORDSMITH),
+        GO(SCREEN_ARMORER),
+        GO(SCREEN_BOWYER),
         TODO,
         GO(SCREEN_OTHER),
         GO(SCREEN_CRAFTS),
@@ -424,6 +455,11 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_SIDE_STREET)
     } },
     { NULL, 0, NULL, {} },					// other locations
+    // "The swordsmiths' courtyards are silent..."
+    { "SWORD01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_SWORDSMITH) },
+    { "BLACK01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
+    { "ARMOR01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_ARMORER) },
+    { "BOWYE01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BOWYER) },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -434,6 +470,9 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef TODO
 #undef TODO_IF
 #undef HIDE
+#undef TRADE
+#undef SHOP_OPTIONS
+#undef NIGHT_SHOP_OPTIONS
 
 
 // The game minutes of a rule: its own, or until night or morning.
@@ -477,6 +516,8 @@ CityVisit::CityVisit(GameData& data)
     :
     fData(data),
     fView(data),
+    fTrade(data),
+    fPendingTrade(-1),
     fParty(NULL),
     fClock(NULL),
     fInfo(NULL),
@@ -512,10 +553,11 @@ CityVisit::CityVisit(GameData& data)
 
 
 void
-CityVisit::SetParty(const party* members)
+CityVisit::SetParty(party* members)
 {
     fParty = members;
     fView.SetParty(members);
+    fTrade.SetParty(members);
 }
 
 
@@ -537,6 +579,12 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             return QUIT;
         if (!Choose(option))
             return LEAVE_CITY;
+        if (fPendingTrade >= 0) {
+            fTrade.SetMerchant(merchant_kind(fPendingTrade));
+            fTrade.Run(window);
+            fPendingTrade = -1;
+            _Show(fScreen, false);
+        }
     }
 }
 
@@ -563,6 +611,7 @@ CityVisit::Enter(int cityIndex, int screen)
 bool
 CityVisit::Choose(int option)
 {
+    fPendingTrade = -1;
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
         _Show(fPreviousScreen, false);
         return true;
@@ -576,6 +625,9 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_LEAVE:
             return false;
+        case ACTION_TRADE:
+            fPendingTrade = rule.target;
+            return true;
         default:
             fPreviousScreen = fScreen;
             _Show(SCREEN_NOT_IMPLEMENTED);
