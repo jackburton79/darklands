@@ -4,9 +4,9 @@
 #include "CityFile.h"
 #include "CityLabels.h"
 #include "GameData.h"
-#include "GraphicsEngine.h"
 #include "LocationFile.h"
 #include "Palette.h"
+#include "ScreenSupport.h"
 #include "TextSupport.h"
 #include "WorldMap.h"
 
@@ -15,13 +15,9 @@
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
-#include <stdexcept>
 
 const uint16 MapViewer::kScreenWidth;
 const uint16 MapViewer::kScreenHeight;
-
-// The window shows the 320x200 screen scaled by this factor
-static const int kWindowScale		= 2;
 
 // Fonts of FONTS.FNT (see docs/formats.md)
 static const uint32 kLabelFontIndex	= 2;	// city names on the map
@@ -56,24 +52,6 @@ static const int kMenuTop			= 12;
 static const int kMenuWidth			= 280;
 static const int kMenuItemsTop		= 44;	// relative to kMenuTop
 static const int kMenuLineHeight	= 10;
-
-// Mouse cursor: libjgame hides the system cursor, so we draw our own
-// into the 320x200 screen. '#' = outline, 'o' = fill; hot spot top left.
-static const char* kCursor[] = {
-    "#",
-    "##",
-    "#o#",
-    "#oo#",
-    "#ooo#",
-    "#oooo#",
-    "#ooooo#",
-    "#oooooo#",
-    "#ooooo###",
-    "#oo#oo#",
-    "##  #oo#",
-    "#   #oo#",
-    "     ##"
-};
 
 // Terrain names by tile type, as labeled on the icon sheets
 static const char* kTerrainNames[32] = {
@@ -137,16 +115,7 @@ MapViewer::~MapViewer()
 void
 MapViewer::Run()
 {
-    if (!GraphicsEngine::Initialize())
-        throw std::runtime_error("cannot initialize the graphics engine");
-    GraphicsEngine* engine = GraphicsEngine::Get();
-    engine->SetVideoMode(kScreenWidth * kWindowScale,
-        kScreenHeight * kWindowScale, 32, GraphicsEngine::VIDEOMODE_WINDOWED);
-    engine->SetWindowCaption("Darklands - world map");
-
-    // 8-bit buffer -> 32-bit copy (palette conversion) -> scaled to the
-    // screen (SDL_SoftStretch needs matching formats; it keeps pixels sharp)
-    Bitmap* converted = new Bitmap(kScreenWidth, kScreenHeight, 32);
+    GameWindow window("Darklands - world map");
 
     bool quitting = false;
     bool dirty = true;
@@ -163,12 +132,7 @@ MapViewer::Run()
             continue;
         }
         if (dirty) {
-            GFX::rect source = fBuffer->Frame();
-            GraphicsEngine::BlitBitmap(Draw(), &source, converted, &source);
-            GFX::rect screen = engine->ScreenFrame();
-            GraphicsEngine::BlitBitmapScaled(converted, &source,
-                engine->ScreenBitmap(), &screen);
-            engine->Update();
+            window.Show(Draw());
             dirty = false;
             if (!SDL_PollEvent(&event))
                 continue;
@@ -202,10 +166,8 @@ MapViewer::Run()
                     break;
                 }
                 case SDL_MOUSEMOTION: {
-                    // window coordinates: the screen is logical size, so
-                    // SDL already maps them to the 640x400 screen
-                    const GFX::point point(event.motion.x / kWindowScale,
-                        event.motion.y / kWindowScale);
+                    const GFX::point point = GameWindow::ToScreen(
+                        event.motion.x, event.motion.y);
                     if (buttonDown) {
                         if (std::abs(point.x - pressPoint.x) > kDragThreshold
                                 || std::abs(point.y - pressPoint.y) > kDragThreshold) {
@@ -224,23 +186,23 @@ MapViewer::Run()
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         buttonDown = true;
                         dragging = false;
-                        pressPoint = GFX::point(event.button.x / kWindowScale,
-                            event.button.y / kWindowScale);
+                        pressPoint = GameWindow::ToScreen(event.button.x,
+                            event.button.y);
                         lastPoint = pressPoint;
                     }
                     break;
                 case SDL_MOUSEBUTTONUP:
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         if (!dragging) {
-                            Clicked(GFX::point(event.button.x / kWindowScale,
-                                event.button.y / kWindowScale));
+                            Clicked(GameWindow::ToScreen(event.button.x,
+                                event.button.y));
                         }
                         buttonDown = false;
                         dragging = false;
                         dirty = true;
                     } else if (event.button.button == SDL_BUTTON_RIGHT) {
-                        RightClicked(GFX::point(event.button.x / kWindowScale,
-                            event.button.y / kWindowScale));
+                        RightClicked(GameWindow::ToScreen(event.button.x,
+                            event.button.y));
                         dirty = true;
                     }
                     break;
@@ -254,8 +216,6 @@ MapViewer::Run()
             }
         } while (!quitting && SDL_PollEvent(&event));
     }
-    converted->Release();
-    GraphicsEngine::Destroy();
 }
 
 
@@ -698,17 +658,8 @@ MapViewer::_DrawCityPanel()
 void
 MapViewer::_DrawCursor()
 {
-    if (!fCursorVisible)
-        return;
-    for (size_t row = 0; row < sizeof(kCursor) / sizeof(kCursor[0]); row++) {
-        for (int column = 0; kCursor[row][column] != '\0'; column++) {
-            const char c = kCursor[row][column];
-            if (c == '#' || c == 'o') {
-                fBuffer->PutPixel(fMouse.x + column, fMouse.y + int(row),
-                    c == '#' ? fBlack : fWhite);
-            }
-        }
-    }
+    if (fCursorVisible)
+        DrawMouseCursor(fBuffer, fMouse, fBlack, fWhite);
 }
 
 

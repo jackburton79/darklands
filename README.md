@@ -30,7 +30,9 @@ The goal is twofold:
   cities and pick a place from their menu (the places themselves are
   not implemented yet), see each city's details
 - Read the game's menu cards (`MSGFILES`), the text of nearly every
-  menu and encounter in the game
+  menu and encounter in the game, and show them as the game does: frame,
+  illuminated capital, text, options to choose (their effects are not
+  implemented yet)
 
 Everything else — city screens, sound, text, the game itself — is not
 implemented yet. See the roadmap below.
@@ -57,7 +59,8 @@ implemented yet. See the roadmap below.
       city menu
 - [x] Parse the menu cards (`MSGFILES`, `--messages`)
 - [ ] Decode more resource types (sound archives, ...)
-- [ ] City screens, text and dialogue display
+- [x] Show a menu card with its options (`--card`)
+- [ ] City screens and the game flow between cards
 - [ ] Sound playback
 - [ ] Character creation, combat, the actual game loop
 
@@ -121,15 +124,23 @@ Game files are looked up by name, in that directory and then in `PICS`:
 
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
 ./darklands --messages [name]
+
+# Show a card of a deck, in a city (default: card 0, in Köln), after a
+# scene picture: arrow keys or the mouse to choose an option, Return or
+# click to take it, Esc to quit
+./darklands --card PARTY02 0 Hamburg
+./darklands --card MAINS01 0 Köln MAIN-ST.PIC
 ```
 
 ## Project layout
 
 ```
 darklands.cpp     Program entry point: image viewer, --extract, --map,
-                  --locations, --cities, --messages
+                  --locations, --cities, --messages, --card
 GameData.*        Access to the game's data files from one data directory
 MapViewer.*       Interactive world map (scrolling, travel, city menu)
+CardView.*        A menu card on screen: frame, text, options
+ScreenSupport.*   The game window and mouse cursor, for the screens
 Travel.*          Paths across the world map
 WorldMap.*        The world map: tiles, column rule, drawing any part of it
 CityLabels.*      City names drawn over the map

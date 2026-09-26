@@ -565,9 +565,11 @@ A `.MSG` file is a deck of **cards**, each a text box with options:
     +0x05   ...   text, NUL-terminated (game character set + control codes)
 
 - **verified**: all 419 files parse to exactly their last byte.
-- Header meaning from the wendigo reference (top/left relative to the
-  inner edge of the card frame, the column is `right − left` wide):
-  *unverified* until cards are rendered. 3248 of the 3756 cards have
+- Header meaning from the wendigo reference: top/left relative to the
+  inner edge of the card frame, the column is `right − left` wide.
+  The width is **verified**: with it, the gate card (`$SELEC00.MSG`
+  card 0) breaks its lines exactly as on the manual's screenshot (see
+  "Card screen"). The exact origin is only measured (±1 pixel). 3248 of the 3756 cards have
   `0A 0A 00 F0 00` (10, 10, 240); 3344 have a right limit of 240, the
   others range from 3 to 255.
 - Bytes +2 and +4 are 0 in every card except the 76 of `$MCGUF07.MSG`
@@ -579,7 +581,7 @@ A `.MSG` file is a deck of **cards**, each a text box with options:
 | Code | Meaning |
 |------|---------|
 | `0x0A` | line break |
-| `0x14` | paragraph: follows a `0x0A`; two in a row before the options |
+| `0x14` | paragraph: follows a `0x0A`; each one adds about 2 pixels between lines (measured on the manual's screenshot); two in a row before some option lists |
 | `0x15` | starts an option: `0x15 "..." 0x1D` option text `0x0A` |
 | `0x16` | same, an option that opens the saint list (wendigo) |
 | `0x10` | same, an option that opens the potion list (wendigo) |
@@ -611,10 +613,51 @@ the texts): `$citySquare` 3, `$councilHall` 4, `$fortress` 5,
   around the comfortable fire at the $Inn...", with a leftover "test
   mines" option), card 1 for a single character. `$MAINS01.MSG` is the
   main street menu. *inferred* from the texts and the manual.
-- Card frame pictures named in `DARKLAND.EXE`: `TEXTBACK.PIC` (158 × 50,
-  text background), `RPBDRTOP`/`RPBDRBTM` (245 × 6), `RPBDRLFT` (7 × 200),
-  `RPBDRRGT` (8 × 200) and `ILLMCAPS.PIC` (320 × 200 with a palette,
-  presumably the illuminated capitals). *inferred*
+- Most options of a menu only make sense in some cities (e.g. the
+  main street lists `$fortress`, the docks...): the game must hide the
+  ones that do not apply. How is unknown.
+
+### Card screen
+
+The manual (p. 28, "Interaction Menus") has a screenshot of a card, the
+city gate card `$SELEC00.MSG` card 0. Measured on it and on the pictures
+(see `CardView.cpp` for a reference implementation):
+
+- **Layout**: a 60-pixel party sidebar on the left, the card on the
+  right, from x = 60 to the right edge, full height. The frame is made
+  of four pictures named in `DARKLAND.EXE`: `RPBDRTOP`/`RPBDRBTM`
+  (245 × 6), `RPBDRLFT` (7 × 200), `RPBDRRGT` (8 × 200): 7 + 245 + 8 =
+  260 = 320 − 60. **verified** against the screenshot.
+- **Font**: font 2 of `FONTS.FNT` (8 rows), lines 9 pixels apart.
+  **verified**: same glyphs, and the same line breaks with the header's
+  column width.
+- **Text origin**: about (inner left + left − 2, inner top + top + 1).
+  *measured*
+- **Illuminated capital**: the first letter of the card text is drawn
+  from `ILLMCAPS.PIC`, a sheet of 20 × 20 cells 21 pixels apart, A..O on
+  the first row and P..Z on the second. The first line of text follows
+  it, aligned with its bottom; the next lines are below it. **verified**
+  (screenshot and sheet).
+- **Options**: "..." then the option text; its continuation lines are
+  indented to the text, past the "...". **verified** (screenshot).
+- **Palette**: `ILLMCAPS.PIC` is the only picture whose `M0` chunk
+  covers 128..159, and that range is the card's: the borders use
+  129..142 and 255, the capitals 139, 140 and 5, `SIDEBAR.PIC`
+  (54 × 198, a blue gradient) 149..159. 184 of the 185 scene pictures
+  examined never use 128..159 (the exception: `XMS024.PIC`). The same
+  32 colors are entries 24..55 of `COMNCLRS.DAT` (72 colors), except
+  the first (128). **verified**
+- **Colors**, *inferred* from the screenshot, which is almost black and
+  white: white paper, white border dots (index 255), dark text, a dark
+  capital box with a light letter (index 140). Index 5, the capitals'
+  lattice, prints as dark as the box: the EGA magenta of the default VGA
+  palette fits, the gold of `COMNCLRS.DAT` entry 5 does not.
+- **Scene pictures** (e.g. `MAIN-ST.PIC`, `XMS001.PIC`) are 320 × 200
+  with a palette for 16..255, and draw only in the card area: the left
+  60 or so columns are a flat color. So the scene shows in the card's
+  place, presumably before it. *inferred*
+- `TEXTBACK.PIC` (158 × 50) is not the card background: it is a small
+  framed panel, used elsewhere.
 
 ## Messages (`DARKLAND.MSG`)
 
@@ -655,6 +698,8 @@ land).
 - [ ] `.CTY`: the second map tile (+0x46), the fields from +0x54 to
       +0x6D
 - [x] `.MSG`: the card format (`MSGFILES`) and `DARKLAND.MSG`
-- [ ] `.MSG`: the card header bytes (check by rendering), codes `0x13`
-      and `0x01`, which picture goes with a card
+- [ ] `.MSG`: codes `0x13` and `0x01`; which picture goes with a card;
+      how options that do not apply to a city are hidden
+- [ ] Card screen: the real colors (paper, text, highlight), the
+      crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

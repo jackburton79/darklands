@@ -26,8 +26,9 @@ Scale6To8(uint8 value)
 }
 
 
-static GFX::Palette
-EGAPalette()
+/* static */
+GFX::Palette
+PICImage::EGAPalette()
 {
     // https://moddingwiki.shikadi.net/wiki/EGA_Palette
     static const uint8 kEGA[16][3] = {

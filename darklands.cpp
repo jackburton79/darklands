@@ -1,4 +1,5 @@
 #include "Bitmap.h"
+#include "CardView.h"
 #include "Catalog.h"
 #include "CityFile.h"
 #include "CityLabels.h"
@@ -14,6 +15,7 @@
 #include "WorldMap.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -23,6 +25,9 @@
 
 
 static const char* kDefaultDataDir = "data/DARKLAND";
+
+// City of --card, by default
+static const char* kDefaultCardCity = "K\xC3\xB6ln";	// Köln
 
 // Font used for the city names: index into FONTS.FNT
 static const uint32 kLabelFont	= 2;
@@ -149,6 +154,66 @@ ListMessages(const Catalog& catalog)
 }
 
 
+// Stand-in for the party until there is character creation: the
+// Quickstart party of the manual (p. 11), Gretchen as the leader.
+static void
+AddQuickstartParty(card_variables& variables)
+{
+    static const char* kNames[] = { "Gretchen", "Gunther", "Hans", "Ebhard" };
+    static const char* kOrdinals[] = { "One", "Two", "Three", "Four" };
+    for (int i = 0; i < 4; i++)
+        variables[std::string("Chosen") + kOrdinals[i] + "Name"] = kNames[i];
+    variables["LeaderName"] = kNames[0];
+    variables["he"] = "she";
+    variables["He"] = "She";
+    variables["his"] = "her";
+    variables["His"] = "Her";
+    variables["him"] = "her";
+    variables["himself"] = "herself";
+}
+
+
+// City by index or (short) name; -1 if there is none.
+static int
+FindCity(const CityFile& cities, const std::string& name)
+{
+    char* end = NULL;
+    const long index = strtol(name.c_str(), &end, 10);
+    if (!name.empty() && *end == '\0')
+        return index >= 0 && index < long(cities.CountCities()) ? int(index) : -1;
+    for (uint32 i = 0; i < cities.CountCities(); i++) {
+        if (cities.CityAt(i).shortName == name)
+            return int(i);
+    }
+    return -1;
+}
+
+
+// Shows a card; prints the chosen option.
+static int
+ShowCard(GameData& data, const std::string& deck, uint32 cardIndex,
+    const std::string& cityName, const std::string& scene)
+{
+    const MsgFile& messages = data.Messages(deck);
+    const CityFile& cities = data.Cities();
+    const int cityIndex = FindCity(cities, cityName);
+    if (cityIndex < 0)
+        throw std::runtime_error("no city " + cityName);
+
+    card_variables variables;
+    CardView::AddCityVariables(variables, cities.CityAt(cityIndex));
+    AddQuickstartParty(variables);
+
+    CardView view(data);
+    view.SetCard(messages.CardAt(cardIndex), variables);
+    view.SetScene(scene);
+    const int option = view.Run();
+    if (option >= 0)
+        std::cout << "chosen option: " << option << std::endl;
+    return 0;
+}
+
+
 static void
 ExtractAll(const Catalog& catalog, const std::string& outputDir,
     const GFX::Palette& palette)
@@ -200,6 +265,10 @@ Usage()
         "  --cities                      list DARKLAND.CTY\n"
         "  --messages [name]             list MSGFILES, or dump a card deck\n"
         "                                (e.g. PARTY02, or a path to a .MSG file)\n"
+        "  --card <name> [card] [city] [picture]\n"
+        "                                show a card (default: card 0, in "
+        << kDefaultCardCity << "),\n"
+        "                                after a scene picture (e.g. MAIN-ST.PIC)\n"
         "<dir> is the game's data directory (default: " << kDefaultDataDir
         << ")" << std::endl;
 }
@@ -246,6 +315,16 @@ int main(int argc, char **argv)
             else
                 DumpMessages(data.Messages(argv[arg + 1]));
             return 0;
+        }
+        if (command == "--card") {
+            if (extra < 1) {
+                Usage();
+                return 1;
+            }
+            return ShowCard(data, argv[arg + 1],
+                extra > 1 ? uint32(atoi(argv[arg + 2])) : 0,
+                extra > 2 ? argv[arg + 3] : kDefaultCardCity,
+                extra > 3 ? argv[arg + 4] : "");
         }
         if (command == "--extract") {
             if (extra < 2) {

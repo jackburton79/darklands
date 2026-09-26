@@ -47,6 +47,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
 ./darklands --messages [PARTY02]     # list MSGFILES / dump a card deck
+./darklands --card PARTY02 0 Köln    # show a card (CardView)
 ```
 
 ## Code layout
@@ -61,6 +62,9 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   with the game fonts, `ToGameCharset()` for UTF-8 input.
 - `MapViewer`: the interactive map (320x200 8-bit buffer, scaled 2x);
   `Travel`: A* paths on the map; `CityLabels`: city names over the map.
+- `CardView`: a .MSG card on screen (frame, capital, text, options),
+  same structure as `MapViewer`. `ScreenSupport`: `GameWindow` (shows a
+  320x200 8-bit buffer) and the mouse cursor, shared by both.
 - `darklands.cpp`: command line only.
 
 ## Code style
@@ -87,6 +91,10 @@ Follow the existing files (Haiku-like style):
   its own), forces "linear" scaling, and ties the window size to the
   logical size. `SDL_SoftStretch` (`BlitBitmapScaled`) needs source and
   destination in the same pixel format: convert 8-bit to 32-bit first.
+- Blitting between 8-bit bitmaps with different palettes may remap
+  colors: to compose screens, copy raw indices (`PICImage::RawBytes()`).
+- With `SDL_VIDEODRIVER=dummy`, SDL sends a mouse motion to the window
+  center at startup: tests that count keypresses must allow for it.
 - String fields in the game files are in the game's character set:
   `0x1F [ \ ] _ { |` = `ä Ä Ö Ü ß ö ü` (`FONTS.UTL` has `ë` at `_`).
   Bytes after a string's NUL are garbage, not data.

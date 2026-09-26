@@ -59,6 +59,10 @@ public:
     // Width() * Height() bytes. No Bitmap, no palette involved.
     std::vector<uint8>	RawBytes() const;
 
+    // The 16 EGA colors (entries 0..15), black elsewhere: the default
+    // VGA palette.
+    static GFX::Palette	EGAPalette();
+
     // Convenience: parse + decode in one call.
     static Bitmap*	Decode(Stream* stream,
                         const GFX::Palette* palette = nullptr);
