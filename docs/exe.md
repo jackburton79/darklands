@@ -148,6 +148,42 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   hour), unless a quest is pending. The cards 7..10 (the merchants'
   descriptions) are not shown by this code.
 
+## Game states
+
+The card flows run as states: DS:E48A holds the current one, each
+place sets it on entry and loops while it is unchanged (`cmp word
+[0xE48A], n`); an option's handler sets the next. Day and night
+variants are often n and n + 1, chosen with 1367:072A (`sbb ax, ax;
+and ax, 1; add ax, n`: n by day). **verified** (code) for the states
+whose loop loads a deck:
+
+| state | deck | state | deck | state | deck |
+|---|---|---|---|---|---|
+| 0x06 | MAINS01 | 0x1D | URBAN00 | 0x43 | FUGGE00 |
+| 0x08 | MAINS02 | 0x1E | URBAN01 | 0x45 | MEDIC00 |
+| 0x09 | SIDES00 | 0x1F | DOCKS00 | 0x47 | HANSE00 |
+| 0x0A | SIDES01 | 0x21 | CITYG05 | 0x49 | PAWNS00 |
+| 0x12 | CITYS00 | 0x23 | SLUMD00 | 0x4B | BLACK00 |
+| 0x13 | CHURC00 | 0x25 | CLOTH00 | 0x4F | SWORD00 |
+| 0x14 | BUSIN00 | 0x2B | COUNC00 | 0x51 | ARMOR00 |
+| 0x15 | MARKE00 | 0x31 | UNIVE00 | 0x55 | BOWYE00 |
+| 0x16 | MARKE01 | 0x32 | CATHE00 | 0x57 | ARTIF00 |
+| 0x17 | MILCR00 | 0x34 | CITYC00 | 0x59 | ALCHE00 |
+| 0x18 | PHYSI00 | 0x3A | SELEC00 | 0x5D | JEWEL00 |
+| 0x1A | CIVCR00 | 0x3C | NIGHT00 | 0x6F | CLERI00 |
+| 0x1B | CITYF00 | 0x42 | PHARM01 | 0x7C | OTHER00 |
+
+(a night variant is usually its day state + 1; there are over a
+hundred states, most of them events and quests). The exits of the places done
+so far were checked against their handlers: the guilds' "leave" goes
+to the crafts (0x1A) or the arms-making guilds (0x17); the banks'
+"return to the marketplace" to 0x15/0x16, their side door and the
+League's to the side streets (0x09/0x0A), the League's main door to
+the market; the church's, the inn's and the crafts' ways out to the
+main (0x06/0x08) and side streets. The church's "talk to a priest"
+leads to CLERI00 (0x6F), sanctuary to state 0x81, the inn's "the
+composition of your party" to state 0xAA.
+
 ## Names and random numbers
 
 - 06A1:29A4 `srand`, 06A1:29B6 `rand` (Microsoft C: seed = seed ·

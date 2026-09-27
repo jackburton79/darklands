@@ -417,7 +417,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         HIDE, HIDE,							// placeholders
         TODO,								// chat with the clerks
         GO(SCREEN_SIDE_STREET),
-        GO(SCREEN_MARKET)					// the main door
+        GO(SCREEN_MARKET)					// the main door (state 0x15)
     } },
     // "...the guards grip their weapons and watch you carefully": the
     // same, with no tasks (a reputation under 0)
