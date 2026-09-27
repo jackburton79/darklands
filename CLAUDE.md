@@ -61,7 +61,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 
 The sources are in `src/`: `src/formats/` the readers of the game's
 files (no SDL), `src/game/` the game state and rules (`GameData`,
-`Character`, `GameTime`, `Travel`), `src/ui/` the screens and drawing,
+`Character`, `GameTime`, `Travel`, `BattlePath`), `src/ui/` the screens and drawing,
 `src/darklands.cpp` the command line. The folders are all on the
 include path: include headers by name (`#include "CityFile.h"`).
 
@@ -99,7 +99,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `Run(window, page)`).
 - `BattleView`: a provisional top view of a battlefield map (cells,
   walls, objects) and figures (party and enemies, with their sprites
-  and colors), until the game's own drawing is decoded.
+  and colors; members walk where one clicks, `BattlePath`), until the
+  game's own drawing is decoded.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

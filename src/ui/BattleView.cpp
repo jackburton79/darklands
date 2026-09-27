@@ -38,12 +38,16 @@ static const uint8 kPartySpriteColors	= 235;
 static const uint8 kPartyColors			= 80;
 static const int kFigureColors			= 8;
 
+// A step a figure takes, in milliseconds (the game's speed is not known)
+static const Uint32 kStepTicks			= 120;
+
 
 BattleView::BattleView(GameData& data)
     :
     fData(data),
     fBuffer(new Bitmap(kScreenWidth, kScreenHeight, 8)),
     fPalette(data.SpritePalette("")),
+    fSelected(-1),
     fOrigin(0, 0),
     fPlace(PLACE_WILDERNESS)
 {
@@ -62,6 +66,7 @@ BattleView::SetMap(std::unique_ptr<BattleMap> map, const std::string& name)
 {
     fMap = std::move(map);
     fFigures.clear();
+    fSelected = -1;
     fOrigin = GFX::point(0, 0);
     if (name.compare(0, 5, "ICITY") == 0 || name.compare(0, 8, "IWILDGAT") == 0
             || name.compare(0, 8, "IWILDWAL") == 0) {
@@ -80,7 +85,8 @@ BattleView::AddPartyMember(int member, const std::string& image,
     const std::vector<uint8>& colors, int x, int y, int direction)
 {
     figure f = { _LoadSprites(image), x, y, direction,
-        kPartyColors + kFigureColors * member };
+        kPartyColors + kFigureColors * member, member,
+        std::vector<battle_position>() };
     for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
         GFX::Color& color = fPalette.colors[f.colors + i];
         color.r = uint8((colors[3 * i] << 2) | (colors[3 * i] >> 4));
@@ -100,7 +106,8 @@ BattleView::AddPartyMember(int member, const std::string& image,
 void
 BattleView::AddEnemy(const std::string& image, int x, int y, int direction)
 {
-    figure f = { _LoadSprites(image), x, y, direction, -1 };
+    figure f = { _LoadSprites(image), x, y, direction, -1, -1,
+        std::vector<battle_position>() };
     // the enemies of different kinds may share palette indices: the last
     // one's colors win
     fData.ApplyEnemyColors(fPalette, image);
@@ -138,6 +145,115 @@ BattleView::FindFreeCell(int& x, int& y) const
 }
 
 
+battle_position
+BattleView::FigurePosition(int index) const
+{
+    const figure& f = fFigures.at(size_t(index));
+    return battle_position{ f.x, f.y };
+}
+
+
+void
+BattleView::SelectMember(int member)
+{
+    fSelected = -1;
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        if (member >= 0 && fFigures[i].member == member)
+            fSelected = int(i);
+    }
+}
+
+
+int
+BattleView::SelectedMember() const
+{
+    return fSelected >= 0 ? fFigures[size_t(fSelected)].member : -1;
+}
+
+
+bool
+BattleView::MoveSelectedTo(int x, int y)
+{
+    if (fSelected < 0 || !fMap)
+        return false;
+    figure& mover = fFigures[size_t(fSelected)];
+    std::vector<battle_position> occupied;
+    for (const figure& f : fFigures) {
+        if (&f != &mover)
+            occupied.push_back(battle_position{ f.x, f.y });
+    }
+    std::vector<battle_position> path = FindBattlePath(*fMap,
+        battle_position{ mover.x, mover.y }, battle_position{ x, y }, occupied);
+    if (path.empty())
+        return false;
+    mover.path = path;
+    return true;
+}
+
+
+bool
+BattleView::IsMoving() const
+{
+    for (const figure& f : fFigures) {
+        if (!f.path.empty())
+            return true;
+    }
+    return false;
+}
+
+
+// The sprites' 8 columns, clockwise from up (inferred from the sheets)
+static int
+DirectionOf(int dx, int dy)
+{
+    static const int kDirections[3][3] = {
+        { 7, 0, 1 },	// dy = -1
+        { 6, 0, 2 },	// dy = 0
+        { 5, 4, 3 }		// dy = 1
+    };
+    return kDirections[dy + 1][dx + 1];
+}
+
+
+void
+BattleView::Tick()
+{
+    for (figure& f : fFigures) {
+        if (f.path.empty())
+            continue;
+        const battle_position next = f.path.front();
+        // another figure may have stepped in since the path was found
+        bool taken = false;
+        for (const figure& other : fFigures)
+            taken = taken || (&other != &f && other.x == next.x && other.y == next.y);
+        if (taken) {
+            f.path.clear();
+            continue;
+        }
+        f.direction = DirectionOf(next.x - f.x, next.y - f.y);
+        f.x = next.x;
+        f.y = next.y;
+        f.path.erase(f.path.begin());
+    }
+}
+
+
+void
+BattleView::Clicked(const GFX::point& point)
+{
+    const int x = (point.x + fOrigin.x) / kCellSize;
+    const int y = (point.y + fOrigin.y) / kCellSize;
+    for (const figure& f : fFigures) {
+        if (f.x == x && f.y == y) {
+            if (f.member >= 0)
+                SelectMember(f.member);
+            return;
+        }
+    }
+    MoveSelectedTo(x, y);
+}
+
+
 // The combat animation ("CB") of a sprite set: "E03" in E00C.CAT, "F60"
 // in F60C.CAT. The first one: which one goes with a weapon is not decoded.
 std::shared_ptr<ImcFile>
@@ -162,21 +278,43 @@ void
 BattleView::Run(GameWindow& window)
 {
     bool dirty = true;
+    Uint32 lastStep = 0;
     for (;;) {
         if (dirty) {
             window.Show(Draw());
             dirty = false;
         }
+        const Uint32 now = SDL_GetTicks();
+        if (IsMoving() && now - lastStep >= kStepTicks) {
+            Tick();
+            lastStep = now;
+            dirty = true;
+        }
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, 100) == 0)
+        if (SDL_WaitEventTimeout(&event, IsMoving() ? 20 : 100) == 0)
             continue;
         switch (event.type) {
             case SDL_QUIT:
                 return;
+            case SDL_MOUSEBUTTONUP:
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    Clicked(GameWindow::ToScreen(event.button.x,
+                        event.button.y));
+                    lastStep = SDL_GetTicks();
+                    dirty = true;
+                }
+                break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
                         return;
+                    case SDLK_1:
+                    case SDLK_2:
+                    case SDLK_3:
+                    case SDLK_4:
+                    case SDLK_5:
+                        SelectMember(int(event.key.keysym.sym - SDLK_1));
+                        break;
                     case SDLK_LEFT:
                         Scroll(-1, 0);
                         break;
@@ -237,8 +375,15 @@ BattleView::Draw()
         order.push_back(&f);
     std::stable_sort(order.begin(), order.end(),
         [](const figure* a, const figure* b) { return a->y < b->y; });
-    for (const figure* f : order)
+    for (const figure* f : order) {
+        if (fSelected >= 0 && f == &fFigures[size_t(fSelected)]) {
+            // the selected member: a frame around its cell
+            fBuffer->StrokeRect(GFX::rect(f->x * kCellSize - fOrigin.x,
+                f->y * kCellSize - fOrigin.y, kCellSize, kCellSize),
+                kYellow + 7);
+        }
         _DrawFigure(*f);
+    }
     return fBuffer;
 }
 

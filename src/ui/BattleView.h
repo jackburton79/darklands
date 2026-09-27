@@ -10,6 +10,7 @@
  */
 #pragma once
 
+#include "BattlePath.h"
 #include "GraphicsDefs.h"
 #include "SupportDefs.h"
 
@@ -46,11 +47,26 @@ public:
     void			AddEnemy(const std::string& image, int x, int y,
                         int direction);
     int				CountFigures() const	{ return int(fFigures.size()); }
+    battle_position	FigurePosition(int figure) const;
+
+    // Moving the party: select a member (0..4, -1 none), then send it to
+    // a cell; each Tick() takes one step of its path. MoveSelectedTo()
+    // returns false if the cell cannot be reached.
+    void			SelectMember(int member);
+    int				SelectedMember() const;
+    bool			MoveSelectedTo(int x, int y);
+    bool			IsMoving() const;
+    void			Tick();
+
+    // A click on the screen (320x200 coordinates): selects the party
+    // member there, or sends the selected one to that cell.
+    void			Clicked(const GFX::point& point);
     // The open cell without a figure nearest to (x, y), in rings around
     // it; false if there is none.
     bool			FindFreeCell(int& x, int& y) const;
 
-    // Runs until Esc; the arrow keys scroll.
+    // Runs until Esc; the arrow keys scroll, 1..5 select a member, a
+    // click selects or moves.
     void			Run(GameWindow& window);
 
     // Moves the view by cells, within the map
@@ -73,6 +89,8 @@ private:
         int			y;
         int			direction;
         int			colors;		// the first of its 8 colors, or -1
+        int			member;		// in the party, or -1 (an enemy)
+        std::vector<battle_position> path;	// still to walk
     };
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image);
@@ -85,6 +103,7 @@ private:
     Bitmap*			fBuffer;
     GFX::Palette	fPalette;
     std::vector<figure> fFigures;
+    int				fSelected;		// index into fFigures, or -1
     std::unique_ptr<BattleMap> fMap;
     GFX::point		fOrigin;		// top left, in pixels
     place			fPlace;

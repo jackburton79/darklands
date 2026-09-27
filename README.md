@@ -185,7 +185,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ./darklands --battlemap ICITY.000
 
 # Show a battlefield map from above (provisional; arrow keys, Esc), with
-# the party of a saved game and four enemies (their sprite set, e.g. M03)
+# the party of a saved game and four enemies (their sprite set, e.g. M03);
+# 1..5 or a click select a member, a click on a cell sends it there
 ./darklands --battle IWILDGEN.101 M03 DKSAVE0.SAV
 
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
@@ -231,6 +232,7 @@ src/game/           Game state and rules (no screen)
   Character.*       A character (554-byte records) and the party
   GameTime.*        The game's date and time (monastic hours, Julian calendar)
   Travel.*          Paths across the world map
+  BattlePath.*      Paths across a battlefield map
 
 src/ui/             Screens and drawing
   Game.*            The game: new or loaded, cities and the world map in turn
