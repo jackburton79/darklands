@@ -21,6 +21,8 @@ static const size_t kVariantsOffset	= 0x0E;
 static const size_t kPaletteOffset	= 0x0F;	// count, chunks, first chunk
 static const size_t kAttributesOffset = 0x14;
 static const size_t kSkillsOffset	= 0x1B;
+// verified: in 64 of the 70 types it names an existing sprite of theirs
+static const size_t kWeaponOffset	= 0xA0;
 
 static const size_t kEnemyNameOffset = 0x02;
 static const size_t kEnemyNameLength = 12;	// "Castle Guard" fills it, no NUL
@@ -69,6 +71,7 @@ EnemyFile::EnemyFile(const std::string& fileName)
             memcpy(t.attributes, &record[kAttributesOffset],
                 sizeof(t.attributes));
             memcpy(t.skills, &record[kSkillsOffset], sizeof(t.skills));
+            t.weapon = record[kWeaponOffset];
             fTypes.push_back(t);
         }
 

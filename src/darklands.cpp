@@ -104,6 +104,7 @@ DumpEnemies(const EnemyFile& enemies)
             << std::left << std::setw(10) << t.name << std::right;
         if (t.variants != 0)
             std::cout << "  variants " << int(t.variants);
+        std::cout << "  weapon " << int(t.weapon);
         std::cout << std::endl << "    attributes";
         for (int a = 0; a < ATTRIBUTE_COUNT; a++)
             std::cout << " " << int(t.attributes[a]);
@@ -387,7 +388,8 @@ ShowBattle(GameData& data, const std::string& mapName, const std::string& enemy,
         if (view.FindFreeCell(x, y)) {
             view.AddPartyMember(int(i), members.images[i],
                 i < members.colors.size() ? members.colors[i]
-                    : std::vector<uint8>(), x, y, 0);
+                    : std::vector<uint8>(),
+                members.members[i].equipment[EQUIPMENT_WEAPON], x, y, 0);
         }
     }
     for (int i = 0; i < 4; i++) {

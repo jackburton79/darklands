@@ -21,6 +21,19 @@ static const size_t kMaxNameLength	= 30;
 // The jobs: 31 records of 18 bytes in DGROUP (321A); their names are the
 // far pointers at 290E:219B, by the record's first byte
 static const uint32 kDataGroup		= 0x321A;
+// The weapon table: 63 entries per array (verified: the codes and the
+// item names agree, docs/exe.md)
+static const uint32 kWeaponSegment	= 0x20A5;
+static const size_t kWeaponCount	= 63;
+static const uint32 kWeaponCategories = 0x75AC;
+static const uint32 kWeaponCodes	= 0x75EB;	// 2 bytes each
+static const uint32 kWeaponSpeeds	= 0x7669;
+static const uint32 kWeaponHands	= 0x76A8;	// hands << 4 | penetration
+static const uint32 kWeaponDamages	= 0x76E7;
+static const uint32 kWeaponSkills	= 0x7726;
+static const uint32 kWeaponMinimum	= 0x7765;
+static const uint32 kWeaponMaximum	= 0x77A4;
+static const uint32 kWeaponRanges	= 0x77E3;
 static const uint32 kJobTable		= 0x3ACE;
 static const size_t kJobCount		= 31;
 static const size_t kJobSize		= 18;
@@ -96,6 +109,25 @@ ExeData::ExeData(const std::string& exePath)
         if (job.attribute >= 7 || job.skills[0] >= 19 || job.skills[1] >= 19)
             throw std::runtime_error("ExeData: invalid job");
         fJobs.push_back(job);
+    }
+
+    const size_t weapons = kWeaponSegment * 16 + kDataBase;
+    if (weapons + kWeaponRanges + kWeaponCount > data.size())
+        throw std::runtime_error("ExeData: weapon table past the end");
+    const uint8* w = &data[weapons];
+    for (size_t i = 0; i < kWeaponCount; i++) {
+        exe_weapon weapon;
+        weapon.category = w[kWeaponCategories + i];
+        weapon.code = std::string((const char*)&w[kWeaponCodes + 2 * i], 2);
+        weapon.speed = w[kWeaponSpeeds + i];
+        weapon.hands = w[kWeaponHands + i] >> 4;
+        weapon.penetration = w[kWeaponHands + i] & 0x0F;
+        weapon.damage = w[kWeaponDamages + i];
+        weapon.skill = w[kWeaponSkills + i];
+        weapon.minStrength = w[kWeaponMinimum + i];
+        weapon.maxStrength = w[kWeaponMaximum + i];
+        weapon.range = w[kWeaponRanges + i];
+        fWeapons.push_back(weapon);
     }
 }
 

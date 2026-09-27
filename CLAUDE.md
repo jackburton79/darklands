@@ -74,7 +74,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `ImcFile` (the battle sprites, `GameData::SpritePalette()` for their
   colors), `ImgFile` (BATTLEGR.IMG, COMMONSP.IMG; both use `Sprite`),
   `BattleMap` (the IMAPS.CAT maps; it and `ImcFile` use `Lzexe`),
-  `ExeData` (the people's names, read from DARKLAND.EXE),
+  `ExeData` (the people's names, the jobs, the weapon table, read
+  from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column

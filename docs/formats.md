@@ -1106,11 +1106,14 @@ and `./darklands --enemies`.
     +0x2E   2     word, 8..20: unknown
     +0x30   ...   mostly zero; bytes at +0x92..+0xB8 look like two
                   groups of 6 bytes (weapons? `06 13 01 14 ff ff`) and
-                  runs of 0xFE / 0xFF. Not decoded. +0xA0 looks like a
-                  weapon type of DARKLAND.EXE's weapon table (exe.md,
-                  "Battles"): 6 (battle axe) for Sergeant1, whose
-                  sprites include E00CBA2; 48 (the skeleton's own
-                  weapon, SK) for the skeletons. *inferred*
+                  runs of 0xFE / 0xFF. Not decoded, but for:
+    +0xA0   1     the weapon, a type of DARKLAND.EXE's weapon table
+                  (exe.md, "Battles"): 6 (battle axe) for Sergeant1,
+                  whose sprites include E00CBA2; 48 (the skeleton's own
+                  weapon, SK) for the skeletons. **verified**: in 64 of
+                  the 70 types (Baphomet has no sprites) the weapon's
+                  code names one of the type's sprite files; +0xA6 is
+                  often a weapon too, with no sprites of its own
 
     enemy, 24 (0x18) bytes:
     +0x00   2     the first type of its group

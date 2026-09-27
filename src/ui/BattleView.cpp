@@ -3,6 +3,8 @@
 #include "BattleMap.h"
 #include "Bitmap.h"
 #include "Catalog.h"
+#include "EnemyFile.h"
+#include "ExeData.h"
 #include "GameData.h"
 #include "ImcFile.h"
 #include "ScreenSupport.h"
@@ -46,6 +48,7 @@ static const Uint32 kFrameTicks			= 60;
 BattleView::BattleView(GameData& data)
     :
     fData(data),
+    fExe(new ExeData(data.PathFor("DARKLAND.EXE"))),
     fBuffer(new Bitmap(kScreenWidth, kScreenHeight, 8)),
     fPalette(data.SpritePalette("")),
     fSelected(-1),
@@ -84,9 +87,10 @@ BattleView::SetMap(std::unique_ptr<BattleMap> map, const std::string& name)
 
 void
 BattleView::AddPartyMember(int member, const std::string& image,
-    const std::vector<uint8>& colors, int x, int y, int direction)
+    const std::vector<uint8>& colors, int weapon, int x, int y, int direction)
 {
-    figure f = { _LoadSprites(image, "CB"), _LoadSprites(image, "WK"), 0, 0,
+    figure f = { _LoadSprites(image, "CB", weapon),
+        _LoadSprites(image, "WK", weapon), 0, 0,
         x, y, direction, kPartyColors + kFigureColors * member, member,
         std::vector<battle_position>() };
     for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
@@ -108,8 +112,14 @@ BattleView::AddPartyMember(int member, const std::string& image,
 void
 BattleView::AddEnemy(const std::string& image, int x, int y, int direction)
 {
-    figure f = { _LoadSprites(image, "CB"), _LoadSprites(image, "WK"), 0, 0,
-        x, y, direction, -1, -1,
+    int weapon = -1;
+    const EnemyFile& enemies = fData.Enemies();
+    for (uint32 i = 0; i < enemies.CountTypes() && weapon < 0; i++) {
+        if (enemies.TypeAt(i).image == image)
+            weapon = enemies.TypeAt(i).weapon;
+    }
+    figure f = { _LoadSprites(image, "CB", weapon),
+        _LoadSprites(image, "WK", weapon), 0, 0, x, y, direction, -1, -1,
         std::vector<battle_position>() };
     // the enemies of different kinds may share palette indices: the last
     // one's colors win
@@ -318,17 +328,25 @@ BattleView::Clicked(const GFX::point& point)
 }
 
 
-// An animation of a sprite set, "CB" (combat) or "WK" (walking): "E03" in
-// E00C.CAT, "F60" in F60C.CAT. The first one: which one goes with a
-// weapon is not decoded.
+// An animation of a sprite set, "CB" (combat) or "WK" (walking), with a
+// weapon type: "E02" and 1 (a long sword, "SW") are E02CBSW.IMC in
+// E00C.CAT. Without that weapon's, the set's first.
 std::shared_ptr<ImcFile>
-BattleView::_LoadSprites(const std::string& image, const char* set)
+BattleView::_LoadSprites(const std::string& image, const char* set,
+    int weapon)
 {
     const bool enemy = !image.empty() && (image[0] == 'E' || image[0] == 'M');
     const std::string catalogName = enemy
         ? image.substr(0, 1) + "00C.CAT" : image + "C.CAT";
     std::unique_ptr<Catalog> catalog(fData.OpenCatalog(catalogName));
     const std::string prefix = image + set;
+    const std::vector<exe_weapon>& weapons = fExe->Weapons();
+    if (weapon >= 0 && size_t(weapon) < weapons.size()) {
+        const std::string name = prefix + weapons[size_t(weapon)].code + ".IMC";
+        std::unique_ptr<Stream> stream(catalog->GetStream(name));
+        if (stream)
+            return std::shared_ptr<ImcFile>(new ImcFile(stream.get()));
+    }
     for (int32 i = 0; i < catalog->CountEntries(); i++) {
         if (catalog->EntryAt(i).filename.compare(0, prefix.size(), prefix) != 0)
             continue;

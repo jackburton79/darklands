@@ -19,6 +19,7 @@
 #include <vector>
 
 class BattleMap;
+class ExeData;
 class Bitmap;
 class GameData;
 class GameWindow;
@@ -39,11 +40,12 @@ public:
 
     // Figures stand on open cells; direction 0..7 is the column of their
     // sprites (0 seems to face up, 4 down). Party members wear the colors
-    // of party::colors (member: 0..4). They throw if the sprites are
-    // missing.
+    // of party::colors (member: 0..4) and hold `weapon` (an item type,
+    // kNoEquipment for none); enemies the weapon of their type in
+    // DARKLAND.ENM. They throw if the sprites are missing.
     void			AddPartyMember(int member, const std::string& image,
-                        const std::vector<uint8>& colors, int x, int y,
-                        int direction);
+                        const std::vector<uint8>& colors, int weapon, int x,
+                        int y, int direction);
     void			AddEnemy(const std::string& image, int x, int y,
                         int direction);
     int				CountFigures() const	{ return int(fFigures.size()); }
@@ -105,7 +107,7 @@ private:
     };
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
-                        const char* set);
+                        const char* set, int weapon);
     std::vector<battle_position> _Occupied(const figure* except) const;
     bool			_PlanEnemy(figure& enemy);
     void			_DrawFigure(const figure& f);
@@ -114,6 +116,7 @@ private:
     void			_DrawCell(int x, int y, int left, int top);
 
     GameData&		fData;
+    std::unique_ptr<ExeData> fExe;
     Bitmap*			fBuffer;
     GFX::Palette	fPalette;
     std::vector<figure> fFigures;
