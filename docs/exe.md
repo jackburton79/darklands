@@ -62,6 +62,10 @@ function that draws the merchant's scroll.
 - 0E76:1A7E `location_property(n)` of the current location, a switch
   on n: 0 is the party's reputation there (record +0x12), 1 its word
   (see below).
+- DS:9C69 + 128 · slot: a party slot's status byte (0: empty, 1: with
+  the party; 2, 3 and 5 are set in a few places, 3 is reset to 0 by the
+  passing of time; *inferred*: members away, e.g. captured). The code
+  tests it about 115 times, mostly for 0 and 1.
 - DS:00E0.. the date (see "Time and travel"). DS:907B the leader (party slot), DS:907E the current location (index
   into DARKLAND.LOC, −1 in the wilderness; cities are < 92), DS:9785 a
   far pointer to the current city's DARKLAND.CTY record, [DS:7E6A]:0890
@@ -336,7 +340,9 @@ $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
 - **The card**: the physician (option 0), the alchemists (1), the
   tinkers (3), the clothmakers (4) and the ways out are on; the jewelers
   (2) and the placeholders (5, 6) are off, so the game never offers the
-  jewelers from here by day. In cities of size 3 or less the physician is
+  jewelers from here by day. Their handler exists (file 0xA46CE: an hour,
+  then state 0x5D/0x5E, $JEWEL00/01) and no other code enters those
+  states: the jewelers seem unreachable in the released game. In cities of size 3 or less the physician is
   missing when (location property 0x21 + year) % 3 is 0, the alchemist
   when property 0x21 is even; in size 4, the alchemist when it is a
   multiple of 3 (see "Names and random numbers").
