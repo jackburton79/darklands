@@ -54,6 +54,11 @@ enum option_action {
     ACTION_PAY_TOLL,			// the gate by day
     ACTION_CHARM_GUARDS,
     ACTION_SLIP_IN,
+    ACTION_BACK_TO_GATE,		// the gate by day or at night, by the hour
+    ACTION_HAIL_WATCH,			// the gate at night
+    ACTION_TALK_TO_WATCH,
+    ACTION_BRIBE_WATCH,
+    ACTION_FALL_BACK,
     ACTION_WATCH_RETURN,		// on where paying the fine would lead
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
@@ -97,10 +102,15 @@ static const int kNeedsFine			= -17;
 static const int kNeedsToll			= -18;
 static const int kNeedsCharm		= -19;
 static const int kNeedsSlip			= -20;
+static const int kNeedsHail			= -21;
+static const int kNeedsTalk			= -22;
+static const int kNeedsNightBribe	= -23;
 
 // The game's timed marks used here (0E76:2930, 2A32)
 static const int kMarkCharmFailed	= 0x0A;	// the gate's guards
 static const int kMarkSlipFailed	= 0x0B;
+static const int kMarkHailFailed	= 0x0C;	// the gate at night
+static const int kMarkTalkFailed	= 0x0D;
 static const int kMarkWanted		= 0x11;	// by the gate (inferred)
 static const int kMarkAlert			= 0x12;	// the gate's guards nervous
 static const int kMarkGuarded		= 0x17;	// the market is watched
@@ -637,16 +647,35 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYG01", 18, NULL, DAY_GATE_OPTIONS },
     { "CITYG01", 1, NULL, { GO(SCREEN_MAIN_STREET) } },
     { "CITYG01", 2, NULL, { GO(SCREEN_MAIN_STREET) } },
-    { "CITYG01", 3, NULL, { GO(SCREEN_DAY_GATE) } },
+    { "CITYG01", 3, NULL, { DO(ACTION_BACK_TO_GATE) } },
     { "CITYG01", 4, NULL, { GO(SCREEN_MAIN_STREET) } },
     { "CITYG01", 5, NULL, { GO(SCREEN_OUTSIDE) } },
     // "In the dead of night you approach the closed gate..." (state 3,
-    // file 0x93448; not implemented but for falling back)
+    // file 0x93448)
     { "CITYG00", 0, NULL, {
-        TODO, TODO, TODO,					// fame, talk, bribe
+        DO_IF(ACTION_HAIL_WATCH, kNeedsHail),	// rely on your fame
+        DO_IF(ACTION_TALK_TO_WATCH, kNeedsTalk),	// talk your way inside
+        DO_IF(ACTION_BRIBE_WATCH, kNeedsNightBribe),	// $Money1
         TODO, TODO,							// potion, saint
-        GO(SCREEN_OUTSIDE)					// fall back
+        DO(ACTION_FALL_BACK)
     } },
+    { "CITYG00", 0, NULL, {
+        HIDE, HIDE, HIDE,
+        TODO, TODO,
+        DO(ACTION_FALL_BACK)
+    } },
+    // "Holy Sacraments!... ushered into the city by a worshipful gateman"
+    { "CITYG00", 1, NULL, { GO(SCREEN_MAIN_STREET) } },
+    // "Nobody through the gates till dawn."
+    { "CITYG00", 2, NULL, { DO(ACTION_BACK_TO_GATE) } },
+    // "I recognize you. We've got a nice cozy dungeon cell waiting!"
+    { "CITYG00", 3, NULL, { GO(SCREEN_NIGHT_GATE_ALERTED) } },
+    // "...the watchman isn't very bright. ...He opens a sally port."
+    { "CITYG00", 4, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "...$Money1, saying, 'Isn't this sufficient for our toll?'"
+    { "CITYG00", 5, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "You retire to a quiet corner of the woods near the gate..."
+    { "CITYG00", 12, NULL, { GO(SCREEN_OUTSIDE) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -892,6 +921,13 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// before the walls, the gates
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -1238,6 +1274,26 @@ CityVisit::Choose(int option)
         case ACTION_SLIP_IN:
             _Show(_SlipIn());
             return true;
+        case ACTION_BACK_TO_GATE:
+            // states 2 or 3 by 1367:072A
+            _Show(fClock == NULL || IsGameDay(*fClock) ? SCREEN_DAY_GATE
+                : SCREEN_NIGHT_GATE);
+            return true;
+        case ACTION_HAIL_WATCH:
+            _Show(_HailWatch());
+            return true;
+        case ACTION_TALK_TO_WATCH:
+            _Show(_TalkToWatch());
+            return true;
+        case ACTION_BRIBE_WATCH:
+            _Show(_BribeWatch());
+            return true;
+        case ACTION_FALL_BACK:
+            // file 0x93BF2: card 12, an hour, before the walls
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _Show(SCREEN_NIGHT_GATE_RETIRED);
+            return true;
         case ACTION_LEAVE_PHYSICIAN:
             _Show(_LeavePhysician(false));
             return true;
@@ -1462,6 +1518,9 @@ CityVisit::_Show(int screen, bool withScene)
         screen = SCREEN_DAY_GATE_GUARDED;
     if (screen == SCREEN_DAY_GATE || screen == SCREEN_DAY_GATE_GUARDED)
         fVariables["Money1"] = MoneyText(_Toll());
+    if (screen == SCREEN_NIGHT_GATE || screen == SCREEN_NIGHT_GATE_ALERTED
+            || screen == SCREEN_NIGHT_GATE_BRIBED)
+        fVariables["Money1"] = MoneyText(_NightBribe());
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
         screen = SCREEN_FUGGER_COLD;
@@ -1540,6 +1599,13 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkCharmFailed) || _Marked(kMarkWanted);
         } else if (rule.needs == kNeedsSlip) {
             hide = _Marked(kMarkSlipFailed);
+        } else if (rule.needs == kNeedsHail) {
+            hide = _Marked(kMarkHailFailed);
+        } else if (rule.needs == kNeedsTalk) {
+            hide = _Marked(kMarkTalkFailed);
+        } else if (rule.needs == kNeedsNightBribe) {
+            hide = fParty == NULL
+                || TotalPfennigs(fParty->cash) < _NightBribe();
         } else if (rule.needs == kNeedsStone) {
             hide = fStoneOffered || fParty == NULL
                 || TotalPfennigs(fParty->cash) < _StonePrice();
@@ -2507,6 +2573,97 @@ CityVisit::_SlipIn()
         return SCREEN_NOT_IMPLEMENTED;
     }
     return SCREEN_SLIP_NOTICED;
+}
+
+
+// The gate at night's bribe (file 0x934C6): (city size / 3 + 1) · the
+// party's size (DS:A67E) · 18 / 10 pfennigs; for a party with a
+// negative local reputation (100 - reputation) / 33 pfennigs instead, as
+// the game has it
+uint32
+CityVisit::_NightBribe() const
+{
+    const int reputation = _Reputation();
+    if (reputation < 0)
+        return uint32((100 - reputation) / 33);
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int count = fParty != NULL ? int(fParty->members.size()) : 1;
+    return uint32((size / 3 + 1) * count * 18 / 10);
+}
+
+
+// Hailing the watch (file 0x936C0): recognized (card 3, no time) with a
+// reputation of -10 or less; else let in (card 1, no time, the main
+// street) if random(100) is under the reputation / 2 + the fame within
+// 0..100 (file 0x937A8, 1367:0028); else no more tries for 12 hours
+// (mark 0x0C), card 2 and an hour
+int
+CityVisit::_HailWatch()
+{
+    const int reputation = _Reputation();
+    if (reputation <= -10)
+        return SCREEN_NIGHT_GATE_ALARM;
+    const int fame = fParty != NULL ? std::min(100, int(fParty->fame)) : 0;
+    const int chance = std::max(0, reputation / 2 + fame);
+    if (int(fRandom() % 100) < chance)
+        return SCREEN_NIGHT_GATE_OPENED;
+    _Mark(kMarkHailFailed, 12);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_NIGHT_GATE_SHUT;
+}
+
+
+// Talking the way inside (file 0x9380A): recognized with a reputation of
+// -40 or less; else through a sally port (card 4, a lesson in Speak
+// Common for the leader, an hour, the side streets) if random(100) is
+// under (the leader's Speak Common + 2 · Intelligence) / 2 (file
+// 0x938EE); else no more tries for 12 hours (mark 0x0D), card 2 and an
+// hour. The game's lesson here has mode 7 (and 0 on failure), taken as
+// the usual one; the failure's is not reproduced.
+int
+CityVisit::_TalkToWatch()
+{
+    if (_Reputation() <= -40)
+        return SCREEN_NIGHT_GATE_ALARM;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    int chance = 0;
+    if (fParty != NULL && !fParty->members.empty()) {
+        const character& leader = fParty->members[size_t(fParty->leader)];
+        chance = (leader.skills[kSkillSpeakCommon]
+            + 2 * leader.attributes[ATTRIBUTE_INTELLIGENCE]) / 2;
+    }
+    if (random(100) < chance) {
+        if (fParty != NULL && !fParty->members.empty()) {
+            TrainSkill(fParty->members[size_t(fParty->leader)],
+                kSkillSpeakCommon, 10, random);
+        }
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_NIGHT_GATE_TALKED;
+    }
+    _Mark(kMarkTalkFailed, 12);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_NIGHT_GATE_SHUT;
+}
+
+
+// Bribing the watchman (file 0x93948): recognized with a reputation of
+// -10 or less; else paid (card 5, an hour, the side streets)
+int
+CityVisit::_BribeWatch()
+{
+    if (_Reputation() <= -10)
+        return SCREEN_NIGHT_GATE_ALARM;
+    if (fParty != NULL) {
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+            - _NightBribe());
+    }
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_NIGHT_GATE_BRIBED;
 }
 
 

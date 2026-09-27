@@ -386,11 +386,32 @@ coming from the map the party stands before the walls. **verified**
     decoded; *reconsider* (0x93052): before the walls, no time.
   09C0:20F3 (1462:00BA), which also stops the befriending, is not
   decoded (taken as false).
-- **The gate at night** (state 3, $CITYG00, file 0x93448): not decoded
-  yet.
-- Reproduced in `CityVisit`: before the walls, the waits, the gate by
-  day but for its potion, saint and attack, and the gate at night's
-  falling back. The speed is the agility (the load is not kept); state 1
+- **The gate at night** (state 3, $CITYG00, file 0x93448; the actions
+  through a switch at file 0x93660): the bribe ($Money1) is (size / 3 +
+  1) · the party's size (DS:A67E, the last used slot + 1) · 18 / 10
+  pfennigs, or (100 − reputation) / 33 pfennigs for a negative
+  reputation (so, oddly, far less); not offered without it.
+  - *rely on your fame* (file 0x936C0; not offered while mark 0x0C):
+    with a reputation of −10 or less card 3 ("I recognize you"), the
+    first three options gone for this stay, no time; else if random(100)
+    < the reputation / 2 + the fame within 0..100 (file 0x937A8,
+    1367:0028 clamps to 0..100; at least 0): card 1, no time, the main
+    street (state 8); else mark 0x0C for 12 hours, card 2 ("Nobody
+    through the gates till dawn"), an hour, the gate (state 2 or 3 by
+    the hour);
+  - *talk your way inside* (file 0x9380A; mark 0x0D): card 3 as above
+    with a reputation of −40 or less; else if random(100) < (the
+    leader's Speak Common + 2 · Intelligence) / 2 (file 0x938EE): card
+    4, a lesson in Speak Common for the leader (1462:0132 with mode 7),
+    an hour, the side streets (state 9 or 10); else mark 0x0D for 12
+    hours, card 2, a lesson of mode 0, an hour, the gate;
+  - *bribe* (file 0x93948): card 3 with a reputation of −10 or less;
+    else paid, card 5, an hour, the side streets;
+  - potion (file 0x939EC), saint (0x93B24): not decoded; *fall back*
+    (0x93BF2): card 12 of one of two decks at random, an hour, before
+    the walls.
+- Reproduced in `CityVisit`: before the walls, the waits, the gates but
+  for their potion, saint and attack options. The speed is the agility (the load is not kept); state 1
   (the challenge) and the walls are not implemented.
 
 ## The alchemist

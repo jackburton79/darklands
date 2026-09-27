@@ -136,7 +136,15 @@ public:
         SCREEN_GUARDS_UNMOVED,
         SCREEN_SLIPPED_IN,		// slipped in (4) or not (5)
         SCREEN_SLIP_NOTICED,
-        SCREEN_NIGHT_GATE,		// the gate at night: $CITYG00 card 0
+        SCREEN_NIGHT_GATE,		// the gate at night: $CITYG00 card 0,
+        SCREEN_NIGHT_GATE_ALERTED,	// after the alarm (0, the first
+                                // options gone), let in (1), refused (2),
+        SCREEN_NIGHT_GATE_OPENED,
+        SCREEN_NIGHT_GATE_SHUT,
+        SCREEN_NIGHT_GATE_ALARM,	// recognized (3), talked through (4),
+        SCREEN_NIGHT_GATE_TALKED,	// bribed (5), falling back (12)
+        SCREEN_NIGHT_GATE_BRIBED,
+        SCREEN_NIGHT_GATE_RETIRED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -257,6 +265,10 @@ private:
     int				_PayToll();
     int				_CharmGuards();
     int				_SlipIn();
+    uint32			_NightBribe() const;
+    int				_HailWatch();
+    int				_TalkToWatch();
+    int				_BribeWatch();
     void			_ChangeReputation(int low, int high);
     void			_RunBattle(GameWindow& window);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
