@@ -1022,6 +1022,171 @@ in the game character set. Only three are used: "Error Message" and
 two travel messages (entering a robber knight's territory, a blighted
 land).
 
+## Battle data family (`BATTLEGR.IMG`, `LEVEL*.ENM`, `*.IMC`, ...)
+
+The tactical (combat) side of the game is data-driven: battlefield
+definitions, enemy definitions with encounter placement, and enemy battle
+sprites live in separate files. A debug dump of the tactical module ships
+with the game (`TAC.TXT`, dated 09/15/92 — the debug code is still in
+DARKLAND.EXE) and names most of the structures; see also
+[exe.md](exe.md).
+
+### TAC.TXT — the game's own structure dump
+
+One battle's parameters, printed by the game's own debug code:
+
+```
+Tac params are
+	mode: 0
+	bfldtype: 43          battlefield type
+	rseed: 40077          random seed for the battlefield generation
+	ftype1: 3	fqual1: 1	fnum1: 4    three foe groups:
+	ftype2: 0	fqual2: 2	fnum2: 1    enemy type, quality, count
+	ftype3: -1	fqual3: 0	fnum3: 0    (-1: group absent)
+	terrn: 0	mnth: 7   terrain and month (seasonal battlefields)
+
+Enemy Activation Record for level 0
+	NumActivationSpots: 1
+	strtx: 624
+	strty: 56
+	sprd: 16
+	rm: -1
+	AllowReenf: 0
+	type[0]: 0  type[1]: 1  type[2]: -1
+	num/type[0]: 4  num/type[1]: 1  num/type[2]: 0
+	F: 0	G: 1	Pf: 7            loot in the spot
+Level Record:0
+V:-2 S:-2 R:-2 D-2 E:-2     five stat modifiers
+FurnRemove / WallRemove     x/y lists (5 / 7 entries max)
+```
+
+**Battlefields are procedurally generated** (terrain + month + seed →
+tile grid with furniture and walls), not stored images. BATTLEGR.IMG
+contains no pictures (see below). The debug text gives the field names
+and print order of the TacParams, ActivationRecord and LevelRecord
+structures; their exact binary layout is not decoded yet. The printed
+battle (4 skeletons + 1 other, level 0) is LEVEL0.ENM's content
+(M03 = Skeleton) — the dump and the data file describe the same fight,
+which makes it a ready-made test vector for the future decoder.
+
+### Enemy definitions (`LEVEL0/1/2.ENM`)
+
+Per-battle-level enemy definitions (291, 871, 581 bytes). *Partially
+decoded — exact stat offsets unknown.*
+
+    offset  size  description
+    0x00    1     enemy record count N (1, 3, 2 in the three files)
+    0x01    ...   N records, each starting with a size byte
+                  (0x30, 0x40, 0x80, 0x10 observed) — semantics unclear:
+                  not a flat record length
+    ...     ...   string table after the records:
+
+    per entry:
+    +0x00   1     count (?) — 01 or 04 observed
+    +0x01   1     NUL (padding?)
+    +0x02   4     image code, NUL-terminated ("M03", "E04", "E10", "PE04")
+    ...     ...   enemy name, NUL-terminated ("Skeleton", "Brigand Sgt",
+                  "Raubritter"), in the game character set
+
+- **Image codes** map to sprite catalogs by first letter: `E##` →
+  entries of `E00C.CAT` (human enemies), `M##` → `M00C.CAT`
+  (monsters/undead). The number is the enemy index used in the catalog
+  entry names (`E10` → `E10WKS2.IMC` etc.).
+- Some enemies have **two image codes** ("Brigand Sgt" appears as both
+  `E04` and `PE04` in LEVEL2.ENM): a foot and a mounted variant.
+  *inferred*
+- The codes match weapon/attack suffixes used by the IMC files (see
+  below): E10 (a mounted raubritter) only has lance (`S2`) files.
+- Byte values 0x14, 0x19, 0x28, 0x63 (20, 25, 40, 99) recur in the stat
+  areas — plausible stats/thresholds (99 = maximum). *inferred*
+- The byte `2a` appears at fixed positions in the records
+  (marker/separator, *inferred*).
+- The three bytes `a0 7c b5` appear at nearly the same offset in all
+  three files (format constant, purpose unknown).
+- The high-entropy data after the structured area is **byte-identical
+  between LEVEL1.ENM and LEVEL2.ENM** — template/filler garbage from the
+  tool that wrote the files, not data. (`ff ff ff 19 00 00` runs likewise.)
+- **verified**: the image-code/name pairs parse cleanly in all three
+  files; "Raubritter" (E10) matches the encounter deck `$RAUBI0` of
+  BATTLEGR.IMG.
+
+### Battlefield definitions (`BATTLEGR.IMG`)
+
+21236 bytes. *Structure only partially understood — the file is tabular,
+not graphic.*
+
+    0x00   4     dword (LE) 0x5160 = 20832: offset of a final section
+    0x04   ...   main body
+    0x5160 ~354 B  final section, all bytes <= 0x0F (nibble-packed)
+
+- Embedded in the body: **7-character encounter-deck name prefixes**
+  (`$RAUBI0`, `$MERCH0`, `$MINET0`..`3`, `$CLERI0`, `$CITYW0`,
+  `$CITYG0`, `$SITUA0`, `$POLIT0`, `$PARTY0`, `$URBAN0`, `$VILLA0`,
+  `$BOWYE00`, `$MENU`...), each preceded by byte `02` and followed by
+  parameters. These map encounter families to battle setups — the
+  source of TAC.TXT's `bfldtype`.
+- Much of the body is 4-bit data (values ≤ 0x0F in the quantized
+  columns): plausible nibble-packed battlefield layout/zone data for
+  the procedural generator. Earlier readings (increasing u16 offset
+  table, 0x7D-byte records) were **wrong** — discarded.
+- Fragments near the file end suggest mode/config strings (`EX_EMS`,
+  `EX_DISK`, `EXITS`, `...GRAPHI`).
+- **not decoded**: record layout, the meaning of the nibble data, the
+  final section. The DARKLAND.EXE debug printer (see TAC.TXT above) and
+  the `battlegr` string at file 0x191FDC (DGROUP offset 0x121C) are the
+  way in.
+
+### Enemy battle sprites (`*.IMC` in `E00C.CAT` / `M00C.CAT`)
+
+The battle animations. `E00C.CAT` holds the human enemies, `M00C.CAT`
+the monsters/undead; both are ordinary `.CAT` catalogs whose entries are
+`.IMC` files.
+
+**Naming**: `E10WKS2.IMC` = enemy E10, animation set `WK`, weapon `S2`;
+`M03DY.IMC` = monster M03 (Skeleton), death animation.
+
+- `E##`/`M##` — enemy index, matching the image codes in `LEVEL*.ENM`
+- `WK` / `CB` — the two animation sets per enemy (walking vs combat;
+  *inferred*). Enemies have one file per weapon they can use (sword,
+  axe, mace, flail, hammer, club, crossbow, bow, polearm, lance...);
+  weapon codes match the 2-char code table in DARKLAND.EXE. E10 (a
+  mounted raubritter) has only lance (`S2`) files; E07 has six weapons.
+- `DY` — one per enemy, much smaller (1.1–2.6 KB vs 3.6–21 KB): the
+  death animation. *inferred* from the name and size
+- `P##` codes (e.g. `PE04` in LEVEL2.ENM) never appear as catalog
+  prefixes: the mounted variant *is* the `CB` set. *inferred*
+
+**Header** (first bytes of every entry; *partially decoded*):
+
+    +0x00   2     varies per enemy family (1f 81, 4f 99, 67 01, 3f 90...):
+                  unknown — version or bitfield
+    +0x02   2     **frame count** (word): 5 for all humanoid animations,
+                  10 for wolves/beasts, 4/7/8 for others, 22 and 32 for
+                  the two dragons (M90, M73) — correlates with creature
+                  anatomy. **verified** across ~150 entries of both
+                  catalogs
+    +0x04   2     secondary per-frame count: 2 for all humanoids,
+                  3–4 for beasts, 13–14 for dragons. **verified**
+    +0x06   ...   further header fields (fe ff / ff 01 / fc ...),
+                  then a byte that looks like a 1-bit mask (e3, f8, fc,
+                  ff...) — WK/CB files cluster on e3/e2/f8, DY files on
+                  ff/7f/3f: plausible per-frame transparency mask,
+                  bit-packed. *inferred*
+    +0x12   ...   animation data
+
+- The body is dominated by values in the f0–ff band plus small
+  positives — not PIC-LZW entropy, not nibbles: plausibly a signed-byte
+  delta/RLE scheme (a third compression in the game). *inferred,
+  unverified*
+- **Identical lengths across nominally different files** (`M73WKD7` /
+  `M73WKP7` / `M73CBD7` / `M73CBP7` all 13584; `M11WKDX`/`M11WKPT`
+  both 9374): for some enemies the weapon suffix is nominal and the
+  files may share content. `cmp` a pair to check.
+- **Frame sizes and the exact animation layout are not decoded.**
+  Next steps: stride analysis on one animation (repeated 4-byte
+  windows), then try decoders on a single frame: PIC-LZW, nibble-RLE,
+  signed-byte RLE.
+
 ## Open questions
 
 - [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
