@@ -27,6 +27,7 @@
 
 class ExeData;
 class GameData;
+struct city;
 class GameTime;
 class GameWindow;
 class InfoView;
@@ -124,6 +125,18 @@ public:
         SCREEN_STONE_IMPROVED,	// my own" (5), improved (7)
         SCREEN_PHYSICIAN_NIGHT,	// woken at night: card 1,
         SCREEN_PHYSICIAN_CURSES,	// and cursing the party: card 7
+        SCREEN_OUTSIDE_CAPITAL,	// before the walls: $CITYE00 card 5 (a
+        SCREEN_OUTSIDE_FREE,	// capital), 6 (a free city),
+        SCREEN_WAIT_DAWN,		// waiting for dawn (1) or night (2)
+        SCREEN_WAIT_NIGHT,
+        SCREEN_DAY_GATE,		// the gate by day: $CITYG01 card 0,
+        SCREEN_DAY_GATE_GUARDED,	// the guards nervous (18),
+        SCREEN_TOLL_PAID,		// the toll paid (1),
+        SCREEN_GUARDS_CHARMED,	// the guards befriended (2) or not (3),
+        SCREEN_GUARDS_UNMOVED,
+        SCREEN_SLIPPED_IN,		// slipped in (4) or not (5)
+        SCREEN_SLIP_NOTICED,
+        SCREEN_NIGHT_GATE,		// the gate at night: $CITYG00 card 0
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -183,6 +196,9 @@ public:
 
     // The card variables of a city: $PlaceName, $PlaceDesc, $Inn,
     // $citySquare...
+    // $CityLordTitle: who governs the city for its lord (a Vogt, a
+    // Bürgermeister...)
+    static std::string	CityLordTitle(const city& c);
     static void		AddCityVariables(GameData& data, int cityIndex,
                         card_variables& variables);
     // The card variables of a party: $LeaderName, $ChosenOneName... (the
@@ -233,6 +249,15 @@ private:
     int				_PayFine();
     int				_RunFromWatch();
     int				_FightWatch();
+    int				_GoToGate(bool byDay);
+    uint32			_Toll() const;
+    int				_TollChance() const;
+    int				_CharmChance() const;
+    int				_SlipChance() const;
+    int				_PayToll();
+    int				_CharmGuards();
+    int				_SlipIn();
+    void			_ChangeReputation(int low, int high);
     void			_RunBattle(GameWindow& window);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;

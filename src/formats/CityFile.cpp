@@ -70,6 +70,8 @@ CityFile::CityFile(const std::string& fileName)
             c.harbor = WordAt(record, 0x52);
             c.flags = WordAt(record, 0x5E);
             c.peopleSeed = WordAt(record, 0x56);
+            c.rule = WordAt(record, 0x58);
+            c.ruleFlagged = WordAt(record, 0x5A);
             for (int s = 0; s < CITY_SHOP_COUNT; s++)
                 c.shopQuality[s] = record[kShopsOffset + s];
             for (int p = 0; p < CITY_PLACE_COUNT; p++)

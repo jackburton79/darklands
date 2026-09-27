@@ -451,7 +451,14 @@ Record (relative offsets, little-endian):
     +0x56   2     the seed of the city's people (**verified**: DARKLAND.EXE
                   adds a global to it for their names and skills, see
                   exe.md); equals the record index or index + 1
-    +0x58   6     unknown (small values)
+    +0x58   2     who rules it: 0 its ruler's seat (a capital), 1 ruled
+                  for its lord, 2 a free city (**verified**: DARKLAND.EXE
+                  picks the approach's card and $CityLordTitle by it;
+                  the values fit: Schleswig, München 0, Flensburg 1,
+                  Hamburg, Lübeck 2)
+    +0x5A   2     the same while the location's flags have bit 0x80
+                  (a war? *inferred*); values 0..3
+    +0x5C   2     unknown (small values)
     +0x5E   2     flags: 0x200 = the market has a Leihhaus (**verified**:
                   DARKLAND.EXE 0E76:1A8E reads it, 57 cities); the
                   other bits are read too, not decoded
@@ -634,7 +641,9 @@ characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
   `$councilHall` 4, `$fortress` 5, `$cathedral` 6, `$cityChurch` 7,
   `$marketplace` 8, `$imperialMint` 9, `$slum` 10, `$cityBarracks` 11
   (the Zeughaus), `$pawnshop` 12, `$monastery` 13, `$Inn` 14,
-  `$university` 15. `$CityLordTitle` is presumably slot 0, the ruler.
+  `$university` 15. `$CityLordName` is slot 0, the ruler, and
+  `$CityLordTitle` is computed (exe.md, "Arriving at a city").
+  **verified** (code)
 
 ### Where the cards are used
 
@@ -647,9 +656,10 @@ characters), `$he`/`$his`/`$him` (pronouns of the character), `$Money`,
     party ("You gather around the comfortable fire at the $Inn...",
     with a leftover "test mines" option), card 1 for a single
     character; cards 2..6 look like a longer version of card 0.
-  - `$OUTSI00.MSG`: arriving at a city from the map ("Before you lies
-    the $PlaceName, $PlaceDesc."): main gate by day or night, over the
-    wall, or turn away.
+  - `$OUTSI00.MSG` looks like the arrival at a city ("Before you lies
+    the $PlaceName, $PlaceDesc."), but DARKLAND.EXE never uses it: the
+    arrival is `$CITYE00.MSG`, then the gates `$CITYG00.MSG` (at night)
+    and `$CITYG01.MSG` (by day); see exe.md, "Arriving at a city".
   - `$URBAN00.MSG` / `$URBAN01.MSG`: the inn (news, meal, residence,
     stables, storage...), by day / by night?
   - `$MAINS01.MSG` / `$MAINS02.MSG`: the main street by day / by night

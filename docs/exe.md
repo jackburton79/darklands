@@ -330,6 +330,69 @@ one for n hours, 0E76:2A32 adds hours to it).
 - Not reproduced: the burglary, potions, saints, the load's effect on
   speed.
 
+## Arriving at a city
+
+The game never uses $OUTSI00.MSG (its name is nowhere in DARKLAND.EXE);
+coming from the map the party stands before the walls. **verified**
+(code; the deck names in DGROUP are "$CityE00", "$CityG01"...).
+
+- **Before the walls** (state 4, $CITYE00, file 0x941C0): card 5 for
+  a capital, 0 for a city ruled for its lord, 6 for a free city, by the
+  city record's +0x58 (+0x5A while the location's flags have bit 0x80;
+  0E76:1A7E(0x28)). The options (actions at file 0x94398...): the gate
+  by day (at night card 1 and a wait until 7 o'clock, 1367:0716), the
+  gate at night (by day card 2 and a wait until 20 o'clock), the wall
+  by day (card 3, city size / 2 + 1 hours, state 0xE) or at night (card
+  4, size / 2 + 2 hours, state 0xF), travel elsewhere.
+- **Card variables** (the switch at file 0x8E170, segment 150B at
+  0x8D110, on the index of the name in the table at 290E:21FF):
+  $CityLordName is the city record's place 0, the ruler (case 50);
+  $CityLordTitle (case 51) the ruler in a capital (place 1 while the
+  flag 0x80 is set), else, by the record's +0x56 (the city's number),
+  one of "Vogt", "Erbvogt", "Obervogt", "Burggraf", "Richter",
+  "Landhofmeister" (290E:2323, number % 6) where the city is ruled, one
+  of "alte Herr", "Ältere Herren", "Frager", "Losunger", "alte
+  Losunger", "Oberste Hauptmänn", "Schultheiss", "Schöff", "Bürgermeister"
+  (290E:233B, number % 9) in a free city; $PlaceAttitude (case 16) the
+  word of the local reputation (290E:2183, 0E76:1B12). **verified**
+  (code)
+- **The gate by day** (state 2, $CITYG01, file 0x925B0; card 18 while
+  mark 0x12, nervous guards): the toll ($Money1) is (size / 3 + 1)
+  pfennigs per member; the options' actions go through a switch at file
+  0x9284D, their chances through the table at DS:EA14 (segment 19DD at
+  file 0x925B0):
+  - *pay* (file 0x928B8; not offered without the toll): if random(100)
+    <= c, with c 0 for the wanted (mark 0x11) or a reputation of −10 or
+    less, 100 for a reputation of 0 or more, else 100 + the reputation
+    (· 2 while mark 0x12) within 1..99 (file 0x92916): the toll, an
+    hour, card 1, the main street (state 6 or 8); else state 1, $CHALL00
+    ("They're wanted here -- arrest them all!"), no time;
+  - *befriend the guards* (file 0x9298A; not offered while marks 0x0A
+    or 0x11): state 1 for the wanted or disliked (−10 or less); c =
+    the reputation / 2 + the leader's Charisma or Speak Common,
+    whichever is higher (1367:0084, a max), within 1..99 (file
+    0x92A62): card 2, a lesson in Speak Common for the leader (1462:0132
+    mode 1), the reputation + 1 (0E76:19D0), two hours, the main street;
+    else mark 0x0A for 12 hours, card 3, a lesson of mode 0, an hour,
+    back to the gate;
+  - *sneak in with the crowd* (file 0x92ADE; not offered while mark
+    0x0B): c = (the average speed, 0E76:060E, + the average Streetwise,
+    0E76:1600) / 2, halved for the wanted, within 1..99 (file 0x92B8A):
+    card 4, a lesson in Streetwise for all (1462:0132(−2, 16, 1, 10)),
+    an hour, the main street; else mark 0x0B for 12 hours, a lesson of
+    mode 0, and card 5 back before the walls, or for the wanted an hour
+    and state 1;
+  - potion (file 0x92BCC), saint (0x92D40), attack (0x92E1C): not
+    decoded; *reconsider* (0x93052): before the walls, no time.
+  09C0:20F3 (1462:00BA), which also stops the befriending, is not
+  decoded (taken as false).
+- **The gate at night** (state 3, $CITYG00, file 0x93448): not decoded
+  yet.
+- Reproduced in `CityVisit`: before the walls, the waits, the gate by
+  day but for its potion, saint and attack, and the gate at night's
+  falling back. The speed is the agility (the load is not kept); state 1
+  (the challenge) and the walls are not implemented.
+
 ## The alchemist
 
 $ALCHE00.MSG (state 0x59, file 0xD9B53; reached from the crafts in an

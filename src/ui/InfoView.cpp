@@ -120,24 +120,6 @@ SizeName(int size)
 }
 
 
-// The words of a reputation, as DARKLAND.EXE chooses them (0E76:1B12)
-static const char*
-ReputationName(int reputation)
-{
-    if (reputation <= -75)
-        return "hunted";
-    if (reputation <= -40)
-        return "wanted";
-    if (reputation <= -10)
-        return "suspected";
-    if (reputation <= 10)
-        return "unknown";
-    if (reputation <= 50)
-        return "respected";
-    return "a local hero";
-}
-
-
 static std::string
 HourName(int hour)
 {
@@ -482,7 +464,7 @@ InfoView::_DrawPartyPage()
             && nearest < int(fReputations->size())) {
         const int reputation = (*fReputations)[nearest];
         const GFX::rect& box = kPanels[PANEL_LOCAL_REP].valueBox;
-        _DrawText(ReputationName(reputation), box, 0, 2, kValueColor);
+        _DrawText(ReputationWord(reputation), box, 0, 2, kValueColor);
         _DrawText("(" + std::to_string(reputation) + ")", box, 1, 2,
             kValueColor);
     }
@@ -519,7 +501,7 @@ InfoView::_DrawPartyPage()
         _DrawText(SizeName(c.size), kMapInfoBox, 1, lines, kValueColor);
         if (known) {
             const int reputation = (*fReputations)[mapCity];
-            _DrawText(std::string("Rep: ") + ReputationName(reputation),
+            _DrawText(std::string("Rep: ") + ReputationWord(reputation),
                 kMapInfoBox, 2, lines, kValueColor);
             _DrawText("(" + std::to_string(reputation) + ")", kMapInfoBox, 3,
                 lines, kValueColor);

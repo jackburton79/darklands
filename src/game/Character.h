@@ -96,6 +96,11 @@ money MoneyFromPfennigs(uint32 pfennigs);
 // (DARKLAND.EXE 1367:0376)
 std::string MoneyText(uint32 pfennigs);
 
+// The word of a local reputation (DARKLAND.EXE 0E76:1B12): "a local
+// hero" over 50, "respected" over 10, "unknown" over -10, "suspected"
+// over -40, "wanted" over -75, else "hunted"
+const char* ReputationWord(int reputation);
+
 // Adds to a character's current attribute, as DARKLAND.EXE does
 // (0E76:0A72): the result stays within 1..99 and at most the maximum.
 void AddToAttribute(character& member, int attribute, int amount);

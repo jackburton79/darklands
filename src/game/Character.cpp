@@ -218,3 +218,20 @@ TrainParty(party& members, int skill, int mode, int amount,
             member.skills[skill]++;
     }
 }
+
+
+const char*
+ReputationWord(int reputation)
+{
+    if (reputation <= -75)
+        return "hunted";
+    if (reputation <= -40)
+        return "wanted";
+    if (reputation <= -10)
+        return "suspected";
+    if (reputation <= 10)
+        return "unknown";
+    if (reputation <= 50)
+        return "respected";
+    return "a local hero";
+}

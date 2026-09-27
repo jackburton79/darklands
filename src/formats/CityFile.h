@@ -53,6 +53,14 @@ enum city_flag {
     CITY_HAS_PAWNSHOP		= 0x0200	// the market's Leihhaus
 };
 
+// Who rules a city (DARKLAND.EXE: the card of the approach, and
+// $CityLordTitle)
+enum city_rule {
+    CITY_CAPITAL = 0,			// its ruler's seat
+    CITY_RULED = 1,				// ruled for its lord by a Vogt, a Burggraf...
+    CITY_FREE = 2				// a free city, with its council
+};
+
 // Which sea a port city is on.
 enum city_harbor {
     CITY_HARBOR_NORTH_SEA	= 0,
@@ -74,6 +82,9 @@ struct city {
     uint16 flags;				// see city_flag
     uint16 peopleSeed;			// +0x56: DARKLAND.EXE seeds the names and
                                 // skills of the city's people with it
+    uint16 rule;				// +0x58: city_rule
+    uint16 ruleFlagged;			// +0x5A: the same, while the location's
+                                // flags have bit 0x80 (0E76:1A7E(0x28))
     uint8 shopQuality[CITY_SHOP_COUNT];	// the quality of its goods; 0: the
                                         // city has no such shop
     std::string places[CITY_PLACE_COUNT];
