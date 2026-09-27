@@ -83,8 +83,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   the categories.
 - `TradeView`: the item exchange scrolls (BUYSELL.PIC); `CityVisit`
   opens it for `ACTION_TRADE` options, from `Run()` (`PendingTrade()`
-  in step-by-step tests). Stock and prices are inferred rules, in
-  `TradeView.cpp`. `ScreenSupport`: `GameWindow` (shows a
+  in step-by-step tests). Stock and prices follow DARKLAND.EXE. `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.
 - `darklands.cpp`: command line only.
 
@@ -121,6 +120,11 @@ Follow the existing files (Haiku-like style):
   Bytes after a string's NUL are garbage, not data.
 
 ## Reverse engineering and docs
+
+- `docs/exe.md`: DARKLAND.EXE is a Microsoft C 6 program with RTLink
+  overlays, code uncompressed. It explains how to map `seg:off` to file
+  offsets and how to find the code that uses a string; `ndisasm -b 16`
+  is installed. Cite the functions (`18E7:355E`) when porting a rule.
 
 - `docs/formats.md` is the reference. Mark every fact **verified** (checked
   against the game data, e.g. sizes that add up exactly, or a render that

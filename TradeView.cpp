@@ -2,6 +2,7 @@
 
 #include "Bitmap.h"
 #include "Character.h"
+#include "CityFile.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "ListFile.h"
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <random>
 
 static const uint32 kFontIndex		= 2;	// FONTS.FNT, as the cards
 
@@ -47,25 +49,48 @@ static const char* kMerchantNames[MERCHANT_COUNT] = {
     "Swordsmith", "Blacksmith", "Armorer", "Bowyer"
 };
 
-// What each merchant deals in, by item category (inferred)
-static const uint32 kMerchantGoods[MERCHANT_COUNT] = {
-    ITEM_EDGED,
-    ITEM_IMPACT | ITEM_POLEARM | ITEM_FLAIL | ITEM_THROWN,
-    ITEM_METAL_ARMOR | ITEM_SHIELD | ITEM_ARMOR,
-    ITEM_BOW | ITEM_MISSILE_DEVICE | ITEM_ARROW | ITEM_QUARREL | ITEM_BALL
+// DARKLAND.EXE, see docs/exe.md. The shop type (its quality in the
+// city record) and the item categories it deals in, as the guild shops
+// open the trade screen (the same mask by day and at night)
+static const struct {
+    int shop;
+    uint32 goods;			// item_definition::flags bits
+} kMerchants[MERCHANT_COUNT] = {
+    { SHOP_SWORDSMITH, 0x040000FF },
+    { SHOP_BLACKSMITH, 0x040000FF },
+    { SHOP_ARMORER, 0x040000FF },
+    { SHOP_BOWYER, 0x083C0030 }
 };
-// What each merchant buys at the full price: more than it sells (the
-// screenshot shows the swordsmith buying a halberd, a polearm); the
-// others' likewise by trade (inferred)
-static const uint32 kMeleeWeapons	= ITEM_EDGED | ITEM_IMPACT | ITEM_POLEARM
-    | ITEM_FLAIL | ITEM_THROWN;
-static const uint32 kMerchantBuys[MERCHANT_COUNT] = {
-    kMeleeWeapons,
-    kMeleeWeapons,
-    kMerchantGoods[MERCHANT_ARMORER],
-    kMerchantGoods[MERCHANT_BOWYER]
+
+// The chance (percent) that a merchant has an item, by city size - 1
+// (1 outside cities) and rarity (0..11): the table at 290E:399B
+static const uint8 kStockChance[9][12] = {
+    { 50, 20, 15, 10, 5, 1, 1, 0, 0, 0, 0, 0 },
+    { 75, 50, 35, 25, 15, 10, 5, 1, 1, 0, 0, 0 },
+    { 99, 75, 65, 60, 45, 30, 20, 10, 7, 4, 2, 1 },
+    { 99, 99, 90, 80, 65, 50, 35, 20, 15, 7, 4, 2 },
+    { 100, 99, 99, 99, 85, 70, 50, 35, 25, 15, 7, 3 },
+    { 100, 100, 99, 99, 90, 80, 65, 55, 40, 30, 15, 6 },
+    { 100, 100, 100, 100, 99, 99, 85, 75, 60, 50, 20, 12 },
+    { 100, 100, 100, 100, 100, 100, 100, 100, 85, 75, 30, 20 },
+    { 100, 100, 100, 100, 100, 100, 100, 100, 99, 99, 50, 30 }
 };
-static const uint32 kNeverSold		= ITEM_RELIC | ITEM_SPECIAL;
+
+// Item types every merchant keeps and sells at quality 25: arrows,
+// quarrels, balls
+static bool
+IsAmmunition(uint16 type)
+{
+    return type == 0x40 || type == 0x41 || type == 0x42;
+}
+
+
+static int64
+Clamp(int64 value, int64 low, int64 high)
+{
+    return std::max(low, std::min(value, high));
+}
+
 
 // The actions and their letters (DARKLAND.EXE: " P|urchase an item"...)
 static const char* kActionNames[4] = {
@@ -80,6 +105,9 @@ TradeView::TradeView(GameData& data)
     fData(data),
     fBuffer(NULL),
     fParty(NULL),
+    fCity(-1),
+    fReputation(0),
+    fLocationFlags(0),
     fKind(MERCHANT_SWORDSMITH),
     fMember(0),
     fActive(SCROLL_MERCHANT),
@@ -121,21 +149,59 @@ TradeView::SetParty(party* members)
 
 
 void
-TradeView::SetMerchant(merchant_kind kind)
+TradeView::SetPlace(int cityIndex, int reputation, uint8 flags)
+{
+    fCity = cityIndex;
+    fReputation = reputation;
+    fLocationFlags = flags;
+}
+
+
+/* static */
+bool
+TradeView::CityHasMerchant(GameData& data, int cityIndex, merchant_kind kind)
+{
+    if (cityIndex < 0 || cityIndex >= int(data.Cities().CountCities()))
+        return false;
+    return data.Cities().CityAt(uint32(cityIndex))
+        .shopQuality[kMerchants[kind].shop] != 0;
+}
+
+
+void
+TradeView::SetMerchant(merchant_kind kind, uint32 seed)
 {
     fKind = kind;
     fStock.clear();
+
+    // DARKLAND.EXE draws each item with random(100) against the chance
+    // for its rarity, adjusted by the quality of the goods; the seed here
+    // is ours, so that the stock stays the same during a visit
+    std::mt19937 random(seed);
     const std::vector<item_definition>& items = fData.Lists().Items();
+    int size = 1;
+    if (fCity >= 0)
+        size = std::min(int(fData.Cities().CityAt(uint32(fCity)).size) - 1, 8);
     for (size_t code = 0; code < items.size(); code++) {
         const item_definition& definition = items[code];
-        if (!definition.name.empty()
-                && (definition.flags & kMerchantGoods[kind]) != 0
-                && (definition.flags & kNeverSold) == 0)
-            fStock.push_back(uint16(code));
+        if (definition.name.empty() || definition.unsellable
+                || (definition.flags & kMerchants[kind].goods) == 0)
+            continue;
+        if (!IsAmmunition(definition.type)) {
+            int rarity = definition.rarity;
+            const int quality = MerchantQuality(uint16(code));
+            if (quality < 23)
+                rarity++;
+            else if (quality > 29)
+                rarity -= 2;
+            else if (quality > 26)
+                rarity--;
+            rarity = std::max(0, std::min(rarity, 11));
+            if (int(random() % 100) > kStockChance[size][rarity])
+                continue;
+        }
+        fStock.push_back(uint16(code));		// in item order, as the game
     }
-    // most valuable first, as on the manual's screenshot
-    std::stable_sort(fStock.begin(), fStock.end(),
-        [&items](uint16 a, uint16 b) { return items[a].value > items[b].value; });
 
     fMember = 0;
     fActive = SCROLL_MERCHANT;
@@ -210,29 +276,80 @@ TradeView::StockCode(int index) const
 }
 
 
-// Fitted on the manual's screenshot (p. 29), all quality 25: the
-// swordsmith sells for 394 pf items worth 125, 190 for 60, 127 for 40,
-// and buys for 203 an item worth 200, 330 for 325. The leader's skills
-// presumably matter ("changing leaders can change prices"); the quality
-// too. (inferred)
-uint32
-TradeView::BuyingPrice(uint16 code) const
+// The quality of the merchant's goods: halfway between the item's
+// default quality and the quality of the city's shop; 25 for ammunition,
+// alchemical components and types 23..25
+uint8
+TradeView::MerchantQuality(uint16 code) const
 {
-    const uint32 value = fData.Lists().Items()[code].value;
-    return (value * 3141 + 1400 + 500) / 1000;
+    const item_definition& definition = fData.Lists().Items()[code];
+    if (IsAmmunition(definition.type) || definition.flags == ITEM_COMPONENT
+            || (definition.type >= 0x17 && definition.type <= 0x19))
+        return 25;
+    int shopQuality = 25;
+    if (fCity >= 0)
+        shopQuality = fData.Cities().CityAt(uint32(fCity))
+            .shopQuality[kMerchants[fKind].shop];
+    return uint8((definition.quality + shopQuality) / 2);
 }
 
 
-int
-TradeView::SellingPrice(uint16 code) const
+// The price the merchant asks (DARKLAND.EXE, 18E7:355E): twice the
+// value at quality 25, more or less by rarity and city size, by the
+// leader's charisma and, when the party is disliked, by reputation.
+// 32-bit integer arithmetic, divisions rounding toward zero.
+uint32
+TradeView::BuyingPrice(uint16 code) const
 {
-    // the screenshot shows the swordsmith paying much less, and not in
-    // proportion, for potions: the rule for goods outside a merchant's
-    // trade is unknown, so these are not sold here
-    if (!_Deals(code))
-        return -1;
-    const uint32 value = fData.Lists().Items()[code].value;
-    return int((value * 1015 + 500) / 1000);
+    const item_definition& definition = fData.Lists().Items()[code];
+    const int64 value = int16(definition.value);
+    int64 quality = MerchantQuality(code);
+    int64 rarity = definition.rarity;
+    const int64 size = fCity >= 0
+        ? fData.Cities().CityAt(uint32(fCity)).size : 2;
+    // with flag 8 the game adds random(10) to the quality at every
+    // computation: not reproduced, so that prices stay put
+    if (fCity >= 0 && ((fLocationFlags & 0x02) != 0
+            || (fLocationFlags & 0x41) != 0))
+        rarity += 3;
+    int64 price = quality * value * 2 / 25;
+    if (fCity >= 0)
+        price += price * size * 2 / (rarity > 5 ? 100 : -100);
+    price += price * (25 - _LeaderCharisma()) / 100;
+    if (fCity >= 0) {
+        const int64 bad = Clamp(int16(fReputation * 50), -999, 99) / 100;
+        price += bad * price / -100;
+    }
+    return uint32(std::max<int64>(price, 1));
+}
+
+
+// What the merchant pays (DARKLAND.EXE, 18E7:3756): the same, from a
+// quarter of the value, the charisma the other way round. Every merchant
+// buys everything but the unsellable items.
+uint32
+TradeView::SellingPrice(uint16 code, uint8 itemQuality) const
+{
+    const item_definition& definition = fData.Lists().Items()[code];
+    if (definition.unsellable)
+        return 0;
+    const int64 value = int16(definition.value) / 4;
+    int64 quality = itemQuality;
+    int64 rarity = definition.rarity;
+    const int64 size = fCity >= 0
+        ? fData.Cities().CityAt(uint32(fCity)).size : 2;
+    if (fCity >= 0 && ((fLocationFlags & 0x02) != 0
+            || (fLocationFlags & 0x41) != 0))
+        rarity += 3;
+    int64 price = quality * value * 2 / 25;
+    if (fCity >= 0)
+        price += price * size * 2 / (rarity > 5 ? 100 : -100);
+    price += price * (25 - _LeaderCharisma()) / -100;
+    if (fCity >= 0) {
+        const int64 bad = Clamp(int16(fReputation * 50), -999, 75) / 100;
+        price += bad * price / 100;
+    }
+    return uint32(price < 1 ? 0 : price);
 }
 
 
@@ -252,7 +369,7 @@ TradeView::Purchase()
     std::vector<item>& items = _MemberItems();
     const item_definition& definition = fData.Lists().Items()[code];
     for (item& carried : items) {
-        if (carried.code == code && carried.quality == definition.quality
+        if (carried.code == code && carried.quality == MerchantQuality(code)
                 && carried.quantity < 255) {
             carried.quantity++;
             fParty->cash = MoneyFromPfennigs(purse - price);
@@ -263,7 +380,7 @@ TradeView::Purchase()
         fMessage = "No room for more items";
         return false;
     }
-    items.push_back(item{ code, uint8(definition.type), definition.quality,
+    items.push_back(item{ code, uint8(definition.type), MerchantQuality(code),
         1, definition.weight });
     fParty->cash = MoneyFromPfennigs(purse - price);
     return true;
@@ -278,8 +395,8 @@ TradeView::Sell()
         return false;
     std::vector<item>& items = _MemberItems();
     const int index = fSelected[SCROLL_MEMBER];
-    const int price = SellingPrice(items[index].code);
-    if (price < 0) {
+    const uint32 price = SellingPrice(items[index].code, items[index].quality);
+    if (price == 0) {
         fMessage = std::string("The ") + kMerchantNames[fKind]
             + " does not buy that";
         return false;
@@ -458,14 +575,6 @@ TradeView::Draw()
 
 
 bool
-TradeView::_Deals(uint16 code) const
-{
-    const uint32 flags = fData.Lists().Items()[code].flags;
-    return (flags & kMerchantBuys[fKind]) != 0 && (flags & kNeverSold) == 0;
-}
-
-
-bool
 TradeView::_Available(int which) const
 {
     if (fParty == NULL || fParty->members.empty())
@@ -543,15 +652,15 @@ TradeView::_DrawScroll(int which)
             const item_definition& definition = definitions[fStock[index]];
             snprintf(text, sizeof(text), "%5upf  %s  %3dq  %3dlbs",
                 BuyingPrice(fStock[index]), definition.name.c_str(),
-                definition.quality, definition.weight);
+                MerchantQuality(fStock[index]), definition.weight);
         } else {
             // "%5upf  %Fs  (%3d) %2dq"
             const item& carried = member.items[index];
             const int price = carried.code < definitions.size()
-                ? SellingPrice(carried.code) : -1;
+                ? int(SellingPrice(carried.code, carried.quality)) : 0;
             const std::string name = carried.code < definitions.size()
                 ? definitions[carried.code].name : "?";
-            if (price >= 0) {
+            if (price > 0) {
                 snprintf(text, sizeof(text), "%5dpf  %s  (%3d) %2dq", price,
                     name.c_str(), carried.quantity, carried.quality);
             } else {
@@ -561,4 +670,13 @@ TradeView::_DrawScroll(int which)
         }
         _DrawText(text, box.left + 2, y, kTextColor, box.right - box.left - 2);
     }
+}
+
+
+int
+TradeView::_LeaderCharisma() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 25;
+    return fParty->members[fParty->leader].attributes[ATTRIBUTE_CHARISMA];
 }

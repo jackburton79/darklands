@@ -120,6 +120,24 @@ SizeName(int size)
 }
 
 
+// The words of a reputation, as DARKLAND.EXE chooses them (0E76:1B12)
+static const char*
+ReputationName(int reputation)
+{
+    if (reputation <= -75)
+        return "hunted";
+    if (reputation <= -40)
+        return "wanted";
+    if (reputation <= -10)
+        return "suspected";
+    if (reputation <= 10)
+        return "unknown";
+    if (reputation <= 50)
+        return "respected";
+    return "a local hero";
+}
+
+
 static std::string
 HourName(int hour)
 {
@@ -164,6 +182,7 @@ InfoView::InfoView(GameData& data)
     fBuffer(NULL),
     fParty(NULL),
     fClock(NULL),
+    fReputations(NULL),
     fPosition{ 0, 0 },
     fPage(kPartyPage),
     fMouse(0, 0),
@@ -459,7 +478,14 @@ InfoView::_DrawPartyPage()
         _DrawText(cities.CityAt(nearest).shortName,
             kPanels[PANEL_LOCATION].valueBox, 0, 1, kValueColor);
     }
-    // the local reputation is in the saved games, not decoded yet
+    if (nearest >= 0 && fReputations != NULL
+            && nearest < int(fReputations->size())) {
+        const int reputation = (*fReputations)[nearest];
+        const GFX::rect& box = kPanels[PANEL_LOCAL_REP].valueBox;
+        _DrawText(ReputationName(reputation), box, 0, 2, kValueColor);
+        _DrawText("(" + std::to_string(reputation) + ")", box, 1, 2,
+            kValueColor);
+    }
 
     if (fParty != NULL) {
         const GFX::rect& wealth = kPanels[PANEL_WEALTH].valueBox;
@@ -486,8 +512,18 @@ InfoView::_DrawPartyPage()
     const int mapCity = MapCity();
     if (mapCity >= 0) {
         const city& c = cities.CityAt(uint32(mapCity));
-        _DrawText(c.shortName, kMapInfoBox, 0, 2, kValueColor);
-        _DrawText(SizeName(c.size), kMapInfoBox, 1, 2, kValueColor);
+        const bool known = fReputations != NULL
+            && mapCity < int(fReputations->size());
+        const int lines = known ? 4 : 2;
+        _DrawText(c.shortName, kMapInfoBox, 0, lines, kValueColor);
+        _DrawText(SizeName(c.size), kMapInfoBox, 1, lines, kValueColor);
+        if (known) {
+            const int reputation = (*fReputations)[mapCity];
+            _DrawText(std::string("Rep: ") + ReputationName(reputation),
+                kMapInfoBox, 2, lines, kValueColor);
+            _DrawText("(" + std::to_string(reputation) + ")", kMapInfoBox, 3,
+                lines, kValueColor);
+        }
     }
 
     const GFX::point locator = _SmallMapPoint(fPosition);

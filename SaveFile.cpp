@@ -25,6 +25,12 @@ static const size_t kCharacterCountOffset = 0xF1;
 static const size_t kIndicesOffset		= 0xF3;
 static const size_t kImagesOffset		= 0xFD;
 static const size_t kCharactersOffset	= 0x189;
+// After the characters: a word count of 48-byte event records, then a
+// word count of 58-byte location records, as in DARKLAND.LOC (verified)
+static const size_t kEventSize			= 48;
+static const size_t kLocationSize		= 58;
+static const size_t kReputationOffset	= 0x12;	// in a location record
+static const size_t kLocationFlagsOffset = 0x14;
 
 
 static uint16
@@ -68,6 +74,24 @@ SaveFile::SaveFile(const std::string& fileName)
         fCharacters.push_back(ReadCharacter(
             &data[kCharactersOffset + i * kCharacterRecordSize]));
     }
+    size_t offset = kCharactersOffset + count * kCharacterRecordSize;
+    if (offset + 2 <= size) {
+        const size_t events = WordAt(data, offset);
+        offset += 2 + events * kEventSize;
+        if (offset + 2 <= size) {
+            const size_t locations = WordAt(data, offset);
+            offset += 2;
+            if (offset + locations * kLocationSize <= size) {
+                for (size_t i = 0; i < locations; i++) {
+                    const size_t record = offset + i * kLocationSize;
+                    fReputations.push_back(int16(WordAt(data,
+                        record + kReputationOffset)));
+                    fLocationFlags.push_back(data[record + kLocationFlagsOffset]);
+                }
+            }
+        }
+    }
+
     fParty = MakeParty(fCharacters, &data[kIndicesOffset],
         &data[kImagesOffset], data[kLeaderOffset]);
     fParty.cash = money{ WordAt(data, kMoneyOffset),

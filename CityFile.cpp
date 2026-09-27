@@ -11,6 +11,7 @@ static const size_t kRecordSize		= 622;	// verified: 1 + 92 * 622 == file size
 static const size_t kNameLength		= 32;	// all strings are 32-byte fields
 static const size_t kFullNameOffset	= 0x20;
 static const size_t kPlacesOffset	= 0x6E;
+static const size_t kShopsOffset	= 0x62;	// verified: DARKLAND.EXE reads it
 static const int kNeighborCount		= 4;
 
 
@@ -67,6 +68,8 @@ CityFile::CityFile(const std::string& fileName)
                     c.neighbors.push_back(neighbor);
             }
             c.harbor = WordAt(record, 0x52);
+            for (int s = 0; s < CITY_SHOP_COUNT; s++)
+                c.shopQuality[s] = record[kShopsOffset + s];
             for (int p = 0; p < CITY_PLACE_COUNT; p++)
                 c.places[p] = StringAt(record, kPlacesOffset + p * kNameLength);
             fCities.push_back(c);

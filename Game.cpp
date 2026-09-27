@@ -5,6 +5,7 @@
 #include "CityVisit.h"
 #include "GameData.h"
 #include "InfoView.h"
+#include "LocationFile.h"
 #include "MapViewer.h"
 #include "SaveFile.h"
 #include "ScreenSupport.h"
@@ -45,6 +46,7 @@ Game::NewGame(int startCity)
     } catch (const std::exception&) {
         fTime = GameTime();		// no template: 1 January 1400
     }
+    fReputations.assign(fData.Locations().CountLocations(), 0);
     fCity = startCity;
     fScreen = CityVisit::SCREEN_START;
 }
@@ -61,6 +63,8 @@ Game::LoadGame(const std::string& fileName)
         throw std::runtime_error("Game: no party in " + fileName);
     fParty = save.Party();
     fTime = save.Date();
+    fReputations = save.Reputations();
+    fReputations.resize(fData.Locations().CountLocations(), 0);
     // the cities are the first locations of DARKLAND.LOC; in a city the
     // game goes on in the main street (the saved screen is not decoded)
     if (save.Location() >= 0
@@ -84,11 +88,13 @@ Game::Run()
     CityVisit visit(fData);
     visit.SetParty(&fParty);
     visit.SetClock(&fTime);
+    visit.SetReputations(&fReputations);
     MapViewer map(fData);
     map.SetClock(&fTime);
     InfoView info(fData);
     info.SetParty(&fParty);
     info.SetClock(&fTime);
+    info.SetReputations(&fReputations);
     visit.SetInfoView(&info);
     map.SetInfoView(&info);
 

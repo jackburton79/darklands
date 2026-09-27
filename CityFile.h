@@ -32,6 +32,21 @@ enum city_place {
     CITY_PLACE_COUNT
 };
 
+// The shops a city may have (DARKLAND.EXE lists their names in this
+// order; see docs/formats.md)
+enum city_shop {
+    SHOP_BLACKSMITH = 0,
+    SHOP_GOODS_MERCHANT,
+    SHOP_SWORDSMITH,
+    SHOP_ARMORER,
+    SHOP_GUNSMITH,
+    SHOP_BOWYER,
+    SHOP_ARTIFICER,
+    SHOP_JEWELER,
+    SHOP_CLOTHMAKER,
+    CITY_SHOP_COUNT
+};
+
 // Which sea a port city is on.
 enum city_harbor {
     CITY_HARBOR_NORTH_SEA	= 0,
@@ -50,6 +65,8 @@ struct city {
     uint16 y2;
     std::vector<uint16> neighbors;	// indices of nearby cities
     uint16 harbor;				// see city_harbor
+    uint8 shopQuality[CITY_SHOP_COUNT];	// the quality of its goods; 0: the
+                                        // city has no such shop
     std::string places[CITY_PLACE_COUNT];
 };
 

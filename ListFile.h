@@ -40,6 +40,8 @@ struct item_definition {
     std::string shortName;		// e.g. "Hnd Axe", "V:Plate"
     uint16 type;				// what the characters' equipment refers to
     uint32 flags;				// flags bytes 0..3, see item_flag
+    bool unsellable;			// flags byte 4, bit 7: merchants neither
+                                // sell nor buy it (DARKLAND.EXE)
     uint8 weight;
     uint8 quality;				// default quality
     uint8 rarity;				// 0..12

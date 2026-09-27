@@ -39,6 +39,9 @@ public:
     void			SetParty(const party* members);
     void			SetClock(const GameTime* clock)	{ fClock = clock; }
     void			SetPosition(const map_position& position);
+    // The party's reputation by location (not owned; NULL: unknown).
+    void			SetReputations(const std::vector<int16>* reputations)
+                        { fReputations = reputations; }
 
     // Shows a page (kPartyPage, or a party member) until a key or a click
     // closes it; F1..F5 and the character boxes switch characters.
@@ -99,6 +102,7 @@ private:
 
     const party*	fParty;
     const GameTime*	fClock;
+    const std::vector<int16>* fReputations;
     map_position	fPosition;
     int				fPage;
     GFX::point		fMouse;

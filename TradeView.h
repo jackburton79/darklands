@@ -6,11 +6,11 @@
  * leader does the bargaining, for any member ("Barter for another
  * person").
  *
- * What a merchant sells and the prices are the game's own rules, in
- * DARKLAND.EXE; they are rebuilt here from the item categories of
- * DARKLAND.LST and the prices on the manual's screenshot (see
- * docs/formats.md). The input handlers and Draw() work without a window,
- * for testing.
+ * What a merchant sells and the prices follow the game's own rules,
+ * decoded from DARKLAND.EXE (see docs/exe.md): the shop's goods by item
+ * category, a stock drawn by rarity and city size, the quality of the
+ * city's shop, the leader's charisma and the party's local reputation.
+ * The input handlers and Draw() work without a window, for testing.
  */
 #pragma once
 
@@ -30,10 +30,10 @@ struct item;
 struct party;
 
 enum merchant_kind {
-    MERCHANT_SWORDSMITH = 0,	// edged weapons
-    MERCHANT_BLACKSMITH,		// impact, polearm, flail, thrown weapons
-    MERCHANT_ARMORER,			// armor and shields
-    MERCHANT_BOWYER,			// bows, crossbows, guns and their ammunition
+    MERCHANT_SWORDSMITH = 0,
+    MERCHANT_BLACKSMITH,
+    MERCHANT_ARMORER,
+    MERCHANT_BOWYER,
     MERCHANT_COUNT
 };
 
@@ -47,9 +47,16 @@ public:
     // The party (not owned): buying and selling change its money and the
     // members' items.
     void			SetParty(party* members);
-    // Starts a session with a merchant: its stock, the leader bargaining
-    // for the first member.
-    void			SetMerchant(merchant_kind kind);
+    // Where the trade happens: a city (index into DARKLAND.CTY, or -1),
+    // the party's reputation there and the location's flags.
+    void			SetPlace(int cityIndex, int reputation, uint8 flags = 0);
+    // Starts a session with a merchant: its stock (drawn with `seed`),
+    // the leader bargaining for the first member.
+    void			SetMerchant(merchant_kind kind, uint32 seed = 0);
+    // Whether the city has that merchant (the quality of its shop is 0
+    // if not).
+    static bool		CityHasMerchant(GameData& data, int cityIndex,
+                        merchant_kind kind);
 
     // Runs until the party leaves.
     void			Run(GameWindow& window);
@@ -77,9 +84,13 @@ public:
     int				CountStock() const		{ return int(fStock.size()); }
     uint16			StockCode(int index) const;
 
-    // Prices in pfennigs; -1 if the merchant does not buy that item.
+    // Prices in pfennigs (DARKLAND.EXE): what the merchant asks for one
+    // of its items, and pays for an item of the party (0: it does not
+    // buy it).
     uint32			BuyingPrice(uint16 code) const;
-    int				SellingPrice(uint16 code) const;
+    uint32			SellingPrice(uint16 code, uint8 quality) const;
+    // The quality of the merchant's goods.
+    uint8			MerchantQuality(uint16 code) const;
 
     Bitmap*			Draw();
 
@@ -93,8 +104,8 @@ private:
     enum action { ACTION_PURCHASE = 0, ACTION_SELL, ACTION_BARTER,
         ACTION_LEAVE, ACTION_COUNT };
 
-    bool			_Deals(uint16 code) const;
     bool			_Available(int which) const;
+    int				_LeaderCharisma() const;
     int				_ActionAt(const GFX::point& point) const;
     std::vector<item>& _MemberItems();
     void			_DrawText(const std::string& utf8, int x, int y,
@@ -109,6 +120,9 @@ private:
     GFX::Palette	fPalette;
 
     party*			fParty;
+    int				fCity;
+    int				fReputation;
+    uint8			fLocationFlags;
     merchant_kind	fKind;
     std::vector<uint16> fStock;		// item codes, most valuable first
     int				fMember;		// whose items are on the lower scroll

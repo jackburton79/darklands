@@ -58,6 +58,7 @@ ListFile::ListFile(const std::string& fileName)
             | (uint32(data[record + kFlagsOffset + 1]) << 8)
             | (uint32(data[record + kFlagsOffset + 2]) << 16)
             | (uint32(data[record + kFlagsOffset + 3]) << 24);
+        item.unsellable = (data[record + kFlagsOffset + 4] & 0x80) != 0;
         item.weight = data[record + kWeightOffset];
         item.quality = data[record + kQualityOffset];
         item.rarity = data[record + kRarityOffset];

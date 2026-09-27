@@ -12,6 +12,7 @@
 #include "Travel.h"
 
 #include <string>
+#include <vector>
 
 class GameData;
 
@@ -39,6 +40,7 @@ private:
     GameData&		fData;
     party			fParty;
     GameTime		fTime;
+    std::vector<int16> fReputations;	// by location of DARKLAND.LOC
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from
     map_position	fPosition;		// else on the map, here

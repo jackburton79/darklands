@@ -25,6 +25,11 @@ public:
     uint16			Y() const					{ return fY; }
 
     const std::vector<character>& Characters() const	{ return fCharacters; }
+    // The state of each location of DARKLAND.LOC: the party's reputation
+    // there (-99..99) and its flags (war, fair...: not decoded). Empty if
+    // the file has no location array.
+    const std::vector<int16>& Reputations() const	{ return fReputations; }
+    const std::vector<uint8>& LocationFlags() const	{ return fLocationFlags; }
     // Empty in DEFAULT, the new game template.
     const party&	Party() const				{ return fParty; }
 
@@ -36,5 +41,7 @@ private:
     uint16			fX;
     uint16			fY;
     std::vector<character>	fCharacters;
+    std::vector<int16>	fReputations;
+    std::vector<uint8>	fLocationFlags;
     party			fParty;
 };

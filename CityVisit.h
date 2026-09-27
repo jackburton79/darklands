@@ -77,6 +77,10 @@ public:
     void			SetClock(GameTime* clock)	{ fClock = clock; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
+    // The party's reputation in each location of DARKLAND.LOC (not
+    // owned; NULL: 0 everywhere).
+    void			SetReputations(const std::vector<int16>* reputations)
+                        { fReputations = reputations; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits.
@@ -116,6 +120,7 @@ private:
     party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
+    const std::vector<int16>* fReputations;
     bool			fNight;			// the current card is a night card
     int				fCity;
     int				fScreen;

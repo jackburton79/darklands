@@ -6,6 +6,8 @@ please open an issue or a pull request.
 
 References:
 
+- The executable: see [exe.md](exe.md) for its structure and the rules
+  decoded from it.
 - File formats overview: <https://wendigo.online-siesta.com/darklands/file_formats/up-to-date/>
 - PIC decompression algorithm: <https://github.com/ogamespec/PicDecoder>
 
@@ -445,13 +447,21 @@ Record (relative offsets, little-endian):
                   0xFFFF = inland
     +0x54   2     4 in every record
     +0x56   2     unknown; equals the record index or index + 1
-    +0x58   ...   unknown (small values, then larger words)
+    +0x58   10    unknown (small values, then larger words)
+    +0x62   9     the quality of the city's shops, 0 if it has none:
+                  blacksmith, goods merchant, swordsmith, armorer,
+                  gunsmith, bowyer, artificer, jeweler, clothmaker
+    +0x6B   3     unknown
     +0x6E   32·16 names of the city's places, by slot (see below)
 
 - **Neighbors** — **verified** as a network of nearby cities: of 186
   links, 176 are symmetric; linked cities are a median 42 tiles apart,
   against 189 for arbitrary pairs (e.g. Hamburg: Lüneburg, Brandenburg,
   Magdeburg, Bremen; Köln: Duisburg, Koblenz). Some cities have none.
+- **Shops** — **verified**: DARKLAND.EXE takes a shop's quality from
+  +0x62 + its type (see exe.md). Dortmund, "famous for its gunsmiths",
+  has 43 for the gunsmith; Köln has no blacksmith, Groningen no
+  swordsmith, armorer or gunsmith.
 - **Harbor** — **verified** from the names: 0 = Groningen, Hamburg,
   Bremen, Leer, Zwolle, Elburg; 1 = Flensburg, Vordingborg, Nakskov,
   Schleswig, Lübeck, Wismar, Rostock, Stralsund, Stettin, Danzig.
@@ -827,6 +837,12 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
     0xFD    4·5   party: image codes
     0x111   24·5  party: colors
     0x189   554·N character records
+    ...     2     event count E
+            48·E  event records
+    ...     2     location count L (414; 405 in DEFAULT)
+            58·L  location records, as in DARKLAND.LOC, with the state
+                  of the game: +0x12 the party's reputation there
+                  (−99..99), +0x14 flags (war, fair...: not decoded)
 
 - **Date**: the words are year, month, day, hour (1401, 0, 13, 6 in
   `DKSAVE1.SAV`), the reverse of the order given by wendigo. **verified**
@@ -843,6 +859,12 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
   days later.
 - **Leader**: 1 with the party order Hans, Gretchen, Gunther, Ebhard:
   a party slot, Gretchen, as in the new game. *inferred*
+- **Events and locations** — **verified**: the counts and sizes add up
+  to the file's end (24 bytes remain); only 10 location records differ
+  from DARKLAND.LOC in `DKSAVE0.SAV`, in the fields +0x0, +0x8,
+  +0xC..+0xE, +0x12 and +0x14; Olmütz, where the party is, has a
+  reputation of 64. DARKLAND.EXE reads the reputation at +0x12 and the
+  flags at +0x14 of its location records (see exe.md).
 - `DEFAULT` is the new game template: the four Quickstart characters,
   no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
   10 pf.
@@ -863,7 +885,8 @@ See `ListFile.cpp` for a reference implementation.
     +0x00   20    name ("Hand Axe", "V:Plate Armor"), NUL-terminated
     +0x14   10    short name ("Hnd Axe", "V:Plate")
     +0x1E   2     type: what the characters' equipment refers to
-    +0x20   5     flags (weapon kinds, component, potion, relic...)
+    +0x20   5     flags (weapon kinds, component, potion, relic...); byte
+                  4, bit 7: merchants neither sell nor buy it (exe.md)
     +0x25   1     weight
     +0x26   1     default quality
     +0x27   1     rarity
@@ -890,6 +913,9 @@ See `ListFile.cpp` for a reference implementation.
 
 ## Trade (item exchange scrolls)
 
+The rules (what merchants sell, the qualities and the prices) are
+decoded from DARKLAND.EXE: see [exe.md](exe.md). The screen:
+
 The manual (pp. 28-29) has a screenshot of the swordsmith's shop.
 `BUYSELL.PIC` is the whole screen: the character boxes, the card frame
 and two scrolls whose interiors are (80, 84)-(267, 116) and
@@ -901,16 +927,10 @@ item", " S|ell an item", " B|arter for another person", " L|eave",
 merchant's items), "%5upf  %Fs  (%3d) %2dq" (the party's), "Not enough
 money".
 
-- **Prices** on the screenshot, all quality 25: the swordsmith sells
-  Falchion and Short Sword (value 125) for 394 pf, Poniard (60) for
-  190, Dagger (40) for 127: about 3.141 · value + 1.4; he buys a Long
-  Sword (200) for 203 and a Halberd (325) for 330: about 1.015 · value.
-  He buys potions for much less, not in proportion (Black Cloud, value
-  405, for 118; Thunderbolt, 697, for 453, both quality 30). The leader
-  bargains ("changing leaders can change prices"). *inferred*, from
-  one screenshot of a pre-release version.
-- **Which merchant sells what** is the game's (`DARKLAND.EXE`). The
-  arms-making guilds' shops are `$SWORD00`, `$BLACK00`, `$ARMOR00`,
+- The screenshot's prices (the swordsmith selling items worth 125 for
+  394 pf) do not follow the game's rules: it shows a pre-release
+  version.
+- The arms-making guilds' shops are `$SWORD00`, `$BLACK00`, `$ARMOR00`,
   `$BOWYE00` (by day: "visit the street-level shopfronts to buy and
   sell goods") and their `01` decks (at night: "awaken somebody to
   make a purchase or a sale"); the other options belong to the guild
@@ -938,8 +958,10 @@ their screenshots. See `InfoView.cpp` for a reference implementation.
   INFORMATION, MAP INFORMATION, PARTY FAME, TIME, DATE, LOCATION,
   WEALTH, NOTES, LOCAL REP, Small-/Moderate-/Large-Sized, "Rep: ",
   "%d Florins", "%d Groschen", "%d Pfenniges", "%d PhStone". The
-  reputation words, from best to worst: a local hero, respected,
-  unknown, suspected, wanted, hunted (thresholds unknown). The city
+  reputation words, from best to worst: a local hero (over 50),
+  respected (11..50), unknown (−9..10), suspected (−39..−10), wanted
+  (−74..−40), hunted (−75 and less) (**verified**: DARKLAND.EXE, see
+  exe.md). The local reputation is the saved games'. The city
   size words (*inferred*: 3..4 small, 5..6 moderate, 7..8 large; Kassel,
   size 5, is "Moderate-Sized" on the screenshot).
 - **Character information**: the background is `ARMBACK.PIC`, with the
@@ -1019,10 +1041,11 @@ land).
       the starting money comes from
 - [ ] Saved games: the current screen (0x82), the local reputations
       (presumably in the locations array), everything else
-- [ ] Information screens: the fame and reputation thresholds of the
-      words, the carrying capacity
-- [ ] Trade: the price rules (leader, quality, goods outside a
-      merchant's trade), what each merchant stocks
+- [ ] Information screens: the words for fame, the carrying capacity
+- [ ] Trade: which shop call is which place (two masks for some
+      guilds), what the location flags mean
+- [ ] DARKLAND.EXE: the travel speeds, the divine favor rules, the
+      seed of the merchants' stock (see exe.md)
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

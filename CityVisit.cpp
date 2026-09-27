@@ -20,9 +20,11 @@ enum option_action {
     ACTION_TRADE				// the trade screen, with merchant `target`
 };
 
-// Options that need the city to have something
+// Options that need the city to have something: a place slot, a harbor
+// or a shop (its quality in the city record is not 0)
 static const int kAlways			= -1;
-static const int kNeedsHarbor		= CITY_PLACE_COUNT;	// else a place slot
+static const int kNeedsHarbor		= CITY_PLACE_COUNT;
+static const int kNeedsShop			= kNeedsHarbor + 1;	// + city_shop
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -242,10 +244,10 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "...signs with pictures portray the various guilds and crafts."
     { "MILCR00", 0, NULL, {
         TODO,								// Soldier's Road
-        GO(SCREEN_BLACKSMITH),
-        GO(SCREEN_SWORDSMITH),
-        GO(SCREEN_ARMORER),
-        GO(SCREEN_BOWYER),					// bowyers and gunsmiths
+        GO_IF(SCREEN_BLACKSMITH, kNeedsShop + SHOP_BLACKSMITH),
+        GO_IF(SCREEN_SWORDSMITH, kNeedsShop + SHOP_SWORDSMITH),
+        GO_IF(SCREEN_ARMORER, kNeedsShop + SHOP_ARMORER),
+        GO_IF(SCREEN_BOWYER, kNeedsShop + SHOP_BOWYER),	// and gunsmiths
         TODO,								// placeholder
         GO(SCREEN_OTHER),					// a specific building
         GO(SCREEN_CRAFTS),
@@ -427,10 +429,10 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     // "Walking along the dark streets, you peer down each one..."
     { "MILCR00", 1, NULL, {
         TODO,
-        GO(SCREEN_BLACKSMITH),
-        GO(SCREEN_SWORDSMITH),
-        GO(SCREEN_ARMORER),
-        GO(SCREEN_BOWYER),
+        GO_IF(SCREEN_BLACKSMITH, kNeedsShop + SHOP_BLACKSMITH),
+        GO_IF(SCREEN_SWORDSMITH, kNeedsShop + SHOP_SWORDSMITH),
+        GO_IF(SCREEN_ARMORER, kNeedsShop + SHOP_ARMORER),
+        GO_IF(SCREEN_BOWYER, kNeedsShop + SHOP_BOWYER),
         TODO,
         GO(SCREEN_OTHER),
         GO(SCREEN_CRAFTS),
@@ -521,6 +523,7 @@ CityVisit::CityVisit(GameData& data)
     fParty(NULL),
     fClock(NULL),
     fInfo(NULL),
+    fReputations(NULL),
     fNight(false),
     fCity(-1),
     fScreen(SCREEN_START),
@@ -580,7 +583,14 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
         if (!Choose(option))
             return LEAVE_CITY;
         if (fPendingTrade >= 0) {
-            fTrade.SetMerchant(merchant_kind(fPendingTrade));
+            const int reputation = fReputations != NULL
+                && fCity < int(fReputations->size()) ? (*fReputations)[fCity] : 0;
+            fTrade.SetPlace(fCity, reputation);
+            // the same stock all day long
+            const uint32 day = fClock != NULL ? uint32(fClock->Year()) * 400
+                + fClock->Month() * 32 + fClock->Day() : 0;
+            fTrade.SetMerchant(merchant_kind(fPendingTrade),
+                uint32(fCity) * 7919 + uint32(fPendingTrade) * 104729 + day);
             fTrade.Run(window);
             fPendingTrade = -1;
             _Show(fScreen, false);
@@ -728,7 +738,9 @@ CityVisit::_HiddenOptions(int screen) const
     for (int i = 0; i < kMaxOptions; i++) {
         const option_rule& rule = RuleFor(rules, i);
         bool hide = rule.action == ACTION_HIDE;
-        if (rule.needs == kNeedsHarbor)
+        if (rule.needs >= kNeedsShop)
+            hide = c.shopQuality[rule.needs - kNeedsShop] == 0;
+        else if (rule.needs == kNeedsHarbor)
             hide = c.harbor == CITY_HARBOR_NONE;
         else if (rule.needs != kAlways)
             hide = c.places[rule.needs].empty();

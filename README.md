@@ -42,9 +42,9 @@ The goal is twofold:
   city's places can be visited (square, fortress, market, churches,
   cathedral, monastery, university, town hall, barracks, guilds, slum,
   docks, a grove to wait in); the arms-making guilds' shops buy and sell
-  (the item exchange scrolls; stock and prices rebuilt from the item
-  list and a screenshot); what happens in the other places is not
-  implemented yet. Time
+  with the game's own rules for stock and prices, decoded from the
+  executable; what happens in the other places is not implemented yet.
+  Time
   passes (traveling, sleeping at the inn) and the city shows its night
   cards after Compline. The
   other places (market, churches, guilds...) and the options' effects
@@ -195,6 +195,7 @@ MsgFile.*         Reader for the menu cards (.MSG files in MSGFILES)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
 TextSupport.*     Text rendering with the game fonts
 docs/formats.md   Reverse-engineered data format notes
+docs/exe.md       Notes on DARKLAND.EXE: structure, decoded rules
 ```
 
 The repository also uses, as a git submodule, [libjgame](https://github.com/jackburton79/libjgame), a game library by the same author
