@@ -9,6 +9,7 @@
 
 #include "SupportDefs.h"
 
+#include <functional>
 #include <string>
 
 class GameTime {
@@ -25,6 +26,11 @@ public:
     uint16			Day() const		{ return fDay; }	// 1-based
     uint16			Hour() const	{ return fHour; }
     uint16			Minute() const	{ return fMinute; }
+
+    // Called after time passes (at least a minute), with whether a day
+    // began: the game changes the party then (see PassTime()).
+    typedef std::function<void(bool newDay)> listener;
+    void			SetListener(const listener& handler)	{ fListener = handler; }
 
     void			AddMinutes(uint32 minutes);
     void			AddHours(uint32 hours)	{ AddMinutes(hours * 60); }
@@ -46,4 +52,5 @@ private:
     uint16			fDay;
     uint16			fHour;
     uint16			fMinute;
+    listener		fListener;
 };

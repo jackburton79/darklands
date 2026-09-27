@@ -94,6 +94,8 @@ implemented yet. See the roadmap below.
       pharmacists, the Leihhaus)
 - [x] The inn: the price of a meal and a night, sleeping, the stables
 - [x] Trade with the artificers' and clothmakers' guilds
+- [x] The party recovers as time passes (endurance, divine favor,
+      strength), by the game's rules
 - [x] The Fugger and Medici banks: letters of credit
 - [x] The physician: his skill, treating wounds, alchemical components
 - [ ] What happens in the other places (training, audiences...), the

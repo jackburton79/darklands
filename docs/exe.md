@@ -347,6 +347,18 @@ segment base 0xA6B50), $URBAN01.MSG at night (file 0xA7545). **verified**
   the carries, after calling the functions that make time pass (0E76:
   255A, and 09C0:1F95 for more than 2 hours); 1367:0680 adds days. They
   are called about 2200 times, mostly by the card flows.
+- **The passing of time**, 0E76:255A(hours), called by every
+  `AddHours`, once: for each party member (status byte 1; 3 is reset
+  to 0 and skipped), endurance is set to its maximum − 4 if more is
+  missing, else raised by 1 if 3 or 4 are missing. If the hour plus the
+  hours reaches 24: divine favor + clamp(1, 5, Religion / (random(5) +
+  20)); strength + 1 if the party's best Healing (0E76:14A4(13)) is at
+  least random(150); agility, perception and charisma + 1 each if
+  random(100) <= 10. Then divine favor, strength, perception, agility
+  and charisma are cut to their maximum plus the bonus of an active
+  potion (0E76:4E0C: events of kind 0x48; none here). **verified**
+  (code); see `PassTime()` in `Character.cpp`. (A day's gains come once
+  per call, whatever its length.)
 - The hour names are "Matins", "Latins", "Prime", "Terce", "Sexts",
   "Nones", "Vespers", "Compline" (290E:0B01...): "Latins" and "Sexts"
   are the game's spelling, not the manual scan's.

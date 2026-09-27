@@ -25,6 +25,7 @@ Game::Game(GameData& data)
     fParty.leader = 0;
     fParty.cash = money{ 0, 0, 0 };
     fSeed = 0;
+    fRandom.seed(std::random_device{}());
 }
 
 
@@ -92,6 +93,11 @@ Game::Run()
     CityVisit visit(fData);
     visit.SetParty(&fParty);
     visit.SetClock(&fTime);
+    // the party recovers as time passes
+    fTime.SetListener([this](bool newDay) {
+        PassTime(fParty, newDay,
+            [this](int n) { return int(fRandom() % uint32(n)); });
+    });
     visit.SetSeed(fSeed);
     visit.SetReputations(&fReputations);
     MapViewer map(fData);

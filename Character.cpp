@@ -143,3 +143,47 @@ AddToAttribute(character& member, int attribute, int amount)
     value = std::min(value, int(member.maxAttributes[attribute]));
     member.attributes[attribute] = uint8(value);
 }
+
+
+// Each member, in party order: endurance comes back to 4 under its
+// maximum at once, then by a point while 3 or 4 are missing. When a day
+// begins: divine favor + clamp(1, 5, Religion / (20 + random(5))),
+// strength + 1 if random(150) is at most the party's best Healing, and
+// agility, perception and charisma + 1 each if random(100) is at most
+// 10. Then divine favor, strength, perception, agility and charisma are
+// kept under their maximum (plus the bonus of a potion: none here).
+void
+PassTime(party& members, bool newDay, const std::function<int(int)>& random)
+{
+    int bestHealing = 0;
+    for (const character& member : members.members)
+        bestHealing = std::max(bestHealing, int(member.skills[kSkillHealing]));
+    for (character& member : members.members) {
+        uint8* current = member.attributes;
+        const uint8* maximum = member.maxAttributes;
+        const int missing = maximum[ATTRIBUTE_ENDURANCE]
+            - current[ATTRIBUTE_ENDURANCE];
+        if (missing > 4)
+            current[ATTRIBUTE_ENDURANCE] = uint8(maximum[ATTRIBUTE_ENDURANCE] - 4);
+        else if (missing > 2)
+            current[ATTRIBUTE_ENDURANCE]++;
+        if (newDay) {
+            const int religion = member.skills[kSkillReligion];
+            current[ATTRIBUTE_DIVINE_FAVOR] = uint8(current[ATTRIBUTE_DIVINE_FAVOR]
+                + std::max(1, std::min(religion / (random(5) + 20), 5)));
+            if (bestHealing >= random(150))
+                current[ATTRIBUTE_STRENGTH]++;
+            if (random(100) <= 10)
+                current[ATTRIBUTE_AGILITY]++;
+            if (random(100) <= 10)
+                current[ATTRIBUTE_PERCEPTION]++;
+            if (random(100) <= 10)
+                current[ATTRIBUTE_CHARISMA]++;
+        }
+        static const int kCapped[] = { ATTRIBUTE_DIVINE_FAVOR,
+            ATTRIBUTE_STRENGTH, ATTRIBUTE_PERCEPTION, ATTRIBUTE_AGILITY,
+            ATTRIBUTE_CHARISMA };
+        for (int attribute : kCapped)
+            current[attribute] = std::min(current[attribute], maximum[attribute]);
+    }
+}

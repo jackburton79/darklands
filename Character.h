@@ -7,6 +7,7 @@
 
 #include "SupportDefs.h"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -91,6 +92,11 @@ std::string MoneyText(uint32 pfennigs);
 // Adds to a character's current attribute, as DARKLAND.EXE does
 // (0E76:0A72): the result stays within 1..99 and at most the maximum.
 void AddToAttribute(character& member, int attribute, int amount);
+// What the passing of time does to the party (DARKLAND.EXE 0E76:255A,
+// at every AddHours()): endurance comes back, and when a day begins
+// divine favor, strength and some attributes too. `random(n)` is 0..n-1.
+void PassTime(party& members, bool newDay,
+    const std::function<int(int)>& random);
 
 static const size_t kCharacterRecordSize = 554;	// 0x22A
 static const int kMaxPartySize = 5;

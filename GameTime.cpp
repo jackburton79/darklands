@@ -57,6 +57,7 @@ GameTime::AddMinutes(uint32 minutes)
     total = fHour + total / 60;
     fHour = uint16(total % 24);
     uint32 days = total / 24;
+    const bool newDay = days > 0;
     while (days > 0) {
         days--;
         if (++fDay > kDaysInMonth[fMonth]) {
@@ -67,6 +68,8 @@ GameTime::AddMinutes(uint32 minutes)
             }
         }
     }
+    if (minutes > 0 && fListener)
+        fListener(newDay);
 }
 
 
