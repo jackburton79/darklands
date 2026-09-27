@@ -404,7 +404,19 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
   the highest Religion *value*, which the code uses as the member's index
   (so usually a member past the end of the party); the reimplementation
   uses the most religious member.
-- The night church ($CITYC01.MSG, code at file 0xB9249) is not decoded.
+- **At night** ($CITYC01.MSG, file 0xB9249, state 0x35; the same segment
+  base 0xB9230 for its tables): Mass at Matins in cities of size 7 or
+  more, at Latins always, at Prime 5, Nones 4, Vespers 6, never at
+  Terce, Sexts and Compline (file 0xB93CF); it gives Religion / 60 +
+  Speak Latin / 40 + 1 divine favor, the same wait, card 2; otherwise
+  card 1 with the next Mass (Prime, or Vespers at Prime in towns of size
+  4). The altar boy (file 0xB9572) names the next Mass by bell: Matins
+  (at Matins, size 7 or more), Terce (at Prime, size 5 or more), Vespers
+  (at Prime in size 4, at Nones in size 4 or more), Compline (at
+  Vespers, size 6 or more), else Prime; at Terce, Sexts and Compline it
+  reads an unset variable (the night card is not shown then). Sanctuary
+  shows card 4 and goes to state 0x81 (not decoded); leaving goes to the
+  churches (0x13).
 
 ## Reputation
 

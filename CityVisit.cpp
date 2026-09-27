@@ -23,6 +23,7 @@ enum option_action {
     ACTION_MASS,				// the church's options
     ACTION_CONFESSION,
     ACTION_DONATION,
+    ACTION_ALTAR_BOY,
     ACTION_SLEEP,				// the inn's options
     ACTION_STABLES,
     ACTION_REDEEM,				// the banks: `target` is the result
@@ -379,6 +380,11 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYC00", 5, NULL, { GO(SCREEN_CHURCH) } },
     { "CITYC00", 6, NULL, { GO(SCREEN_CHURCH) } },
     { "CITYC00", 7, NULL, { GO(SCREEN_CHURCH) } },
+    // The church at night: "Finally, the Mass is sung", "the next Mass
+    // will not be sung until $NamedOneName", the altar boy's answer
+    { "CITYC01", 2, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC01", 1, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC01", 3, NULL, { GO(SCREEN_CHURCH) } },
     // "...the innkeeper carefully bows. 'Sirs, most regrettably, I fear
     // that we have no room.'" The game offers neither the meal nor the
     // room, nor the storage.
@@ -585,8 +591,11 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         HIDE								// a relic as a quest reward
     } },
     // "You come to $cityChurch... It is dark."
+    // (DARKLAND.EXE, file 0xB9249)
     { "CITYC01", 0, NULL, {
-        TODO, TODO, TODO,					// mass, altar boy, sanctuary
+        DO(ACTION_MASS),
+        DO(ACTION_ALTAR_BOY),
+        TODO_IF(kNeedsBadReputation),		// seek sanctuary
         GO(SCREEN_CHURCHES)					// leave the church
     } },
     // "It is dark at the monastery."
@@ -664,6 +673,9 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },					// the church's night results
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { "URBAN01", 3, NULL, {					// "no rooms available"
@@ -942,6 +954,9 @@ CityVisit::Choose(int option)
         case ACTION_DONATION:
             _Show(_Donation());
             return true;
+        case ACTION_ALTAR_BOY:
+            _Show(_AltarBoy());
+            return true;
         default:
             fPreviousScreen = fScreen;
             _Show(SCREEN_NOT_IMPLEMENTED);
@@ -1160,32 +1175,72 @@ CityVisit::_Reputation() const
 
 
 // Mass: said at some hours only, more of them in bigger cities; every
-// member gains Religion / 8 + Speak Latin / 35 + 1 divine favor, and it
-// lasts until the start of the bell after the next one. Otherwise the
-// priest tells when the next Mass is.
+// member gains divine favor, Religion / 8 + Speak Latin / 35 + 1 by day
+// (1838:0214), Religion / 60 + Speak Latin / 40 + 1 at night (file
+// 0xB93AA), and it lasts until the start of the bell after the next
+// one. Otherwise the priest, or the altar boy, tells when the next Mass
+// is.
 int
 CityVisit::_Mass()
 {
+    const bool night = fNight;		// the church's night card
     if (fClock == NULL || fParty == NULL)
-        return SCREEN_NO_MASS;
+        return night ? SCREEN_NIGHT_NO_MASS : SCREEN_NO_MASS;
     // the smallest city size with a Mass, by bell (1 Matins .. 8
     // Compline); 99: none
     static const int kMassSize[9] = { 99, 99, 0, 5, 6, 7, 4, 6, 99 };
+    static const int kNightMassSize[9] = { 99, 7, 0, 5, 99, 99, 4, 6, 99 };
     const int size = fData.Cities().CityAt(uint32(fCity)).size;
     const int bell = fClock->Hour() / 3 + 1;
-    if (size < kMassSize[bell]) {
-        const int next = bell >= 3 && bell <= 5 && size > 3 ? 18 : 6;
+    if (size < (night ? kNightMassSize : kMassSize)[bell]) {
+        int next = 6;
+        if (night)
+            next = bell == 3 && size > 3 ? 18 : 6;
+        else
+            next = bell >= 3 && bell <= 5 && size > 3 ? 18 : 6;
         fVariables["NamedOneName"] = GameTime(1400, 0, 1, uint16(next)).BellName();
-        return SCREEN_NO_MASS;
+        return night ? SCREEN_NIGHT_NO_MASS : SCREEN_NO_MASS;
     }
     for (character& member : fParty->members) {
-        AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
-            member.skills[kSkillReligion] / 8
-                + member.skills[kSkillSpeakLatin] / 35 + 1);
+        const int religion = member.skills[kSkillReligion];
+        const int latin = member.skills[kSkillSpeakLatin];
+        AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR, night
+            ? religion / 60 + latin / 40 + 1 : religion / 8 + latin / 35 + 1);
     }
     const int end = (bell + 1) * 3;
     fClock->AddHours(uint32((end - fClock->Hour() + 24) % 24));
-    return SCREEN_MASS;
+    return night ? SCREEN_NIGHT_MASS : SCREEN_MASS;
+}
+
+
+// The altar boy at night (file 0xB9572) names the next Mass, by bell and
+// city size. (At Terce, Sexts and Compline the game reads an unset
+// variable; the church shows its night card only at other bells.)
+int
+CityVisit::_AltarBoy()
+{
+    int next = 6;
+    if (fClock != NULL) {
+        const int size = fData.Cities().CityAt(uint32(fCity)).size;
+        switch (fClock->Hour() / 3 + 1) {
+            case 1:
+                next = size >= 7 ? 0 : 6;
+                break;
+            case 3:
+                next = size >= 5 ? 9 : size == 4 ? 18 : 6;
+                break;
+            case 6:
+                next = size >= 4 ? 18 : 6;
+                break;
+            case 7:
+                next = size >= 6 ? 21 : 6;
+                break;
+            default:
+                break;
+        }
+    }
+    fVariables["NamedOneName"] = GameTime(1400, 0, 1, uint16(next)).BellName();
+    return SCREEN_ALTAR_BOY;
 }
 
 

@@ -70,6 +70,9 @@ public:
         SCREEN_SMALL_DONATION,
         SCREEN_DONATION,
         SCREEN_LARGE_DONATION,
+        SCREEN_NIGHT_MASS,		// the church at night: $CITYC01.MSG cards
+        SCREEN_NIGHT_NO_MASS,	// 2, 1 and 3
+        SCREEN_ALTAR_BOY,
         SCREEN_UNWELCOME,		// the inn, for a wanted party: $URBAN00/01
         SCREEN_STABLES,			// cards 3, 1 and 7
         SCREEN_STABLES_SALE,
@@ -154,6 +157,7 @@ private:
     // The church's options (DARKLAND.EXE 1838:0214, 03CC, 067C): they
     // change the party and the time, and return the result screen.
     int				_Mass();
+    int				_AltarBoy();
     int				_Confession();
     int				_Donation();
     // The inn (DARKLAND.EXE, file 0xA6B5E): the price of a meal and a
