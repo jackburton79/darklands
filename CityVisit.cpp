@@ -42,7 +42,9 @@ enum option_action {
     ACTION_SNEAK,				// the market at night
     ACTION_BRIBE,
     ACTION_PAY_FINE,			// the night watch
-    ACTION_RUN
+    ACTION_RUN,
+    ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
+                                // party outside the game's day
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -352,11 +354,13 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // towns, by a rule on the game's year; going to a guild takes an
     // hour)
     { "CIVCR00", 0, NULL, {
-        { ACTION_GO, CityVisit::SCREEN_PHYSICIAN, kNeedsPhysician, 60 },
-        { ACTION_GO, CityVisit::SCREEN_ALCHEMIST, kNeedsAlchemist, 60 },
+        { ACTION_NIGHT_WALK, CityVisit::SCREEN_PHYSICIAN, kNeedsPhysician, 60 },
+        { ACTION_NIGHT_WALK, CityVisit::SCREEN_ALCHEMIST, kNeedsAlchemist, 60 },
         HIDE,								// jewelers
-        WAIT(SCREEN_ARTIFICER, kAnHourMoreAtNight),	// tinkers
-        WAIT(SCREEN_CLOTHMAKER, kAnHourMoreAtNight),
+        { ACTION_NIGHT_WALK, CityVisit::SCREEN_ARTIFICER, kAlways,
+            kAnHourMoreAtNight },			// tinkers
+        { ACTION_NIGHT_WALK, CityVisit::SCREEN_CLOTHMAKER, kAlways,
+            kAnHourMoreAtNight },
         HIDE, HIDE,							// placeholders
         GO(SCREEN_ARMS_CRAFTS),
         GO(SCREEN_SIDE_STREET),
@@ -1086,6 +1090,25 @@ CityVisit::Choose(int option)
         case ACTION_ALCHEMIST_SHOP:
             _Show(_AlchemistShop());
             return true;
+        case ACTION_NIGHT_WALK: {
+            // DARKLAND.EXE, e.g. file 0xA47A2 and 0xA4596: at night the
+            // tinkers' and clothmakers' streets cost an hour more first;
+            // then the watch stops the party if random(100) is over the
+            // chance, and paying its fine leads back here
+            if (fClock != NULL && !IsGameDay(*fClock)) {
+                if (rule.minutes == kAnHourMoreAtNight)
+                    fClock->AddHours(1);
+                if (int(fRandom() % 100) > _NightWalkChance()) {
+                    fWatchReturn = fScreen;
+                    _Show(SCREEN_NIGHT_WATCH);
+                    return true;
+                }
+            }
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _Show(rule.target);
+            return true;
+        }
         case ACTION_SNEAK:
             _Show(_Sneak());
             return true;
@@ -2158,4 +2181,23 @@ CityVisit::_SetChosen(int member)
     fVariables["His"] = female ? "Her" : "His";
     fVariables["him"] = female ? "her" : "him";
     fVariables["himself"] = female ? "herself" : "himself";
+}
+
+
+// Walking at night unseen (file 0xA4596): the party's average Stealth
+// (0E76:1600) + the best Streetwise - a hazard, within 1..99; the hazard
+// (1462:0000(15, 1, 5)) is random(14) within 1..15, more where the
+// location's state or marks say so (not kept here)
+int
+CityVisit::_NightWalkChance()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 1;
+    int stealth = 0;
+    for (const character& member : fParty->members)
+        stealth += member.skills[kSkillStealth];
+    stealth /= int(fParty->members.size());
+    const int hazard = std::max(1, std::min(int(fRandom() % 14), 15));
+    return std::max(1, std::min(stealth + _BestSkill(kSkillStreetwise)
+        - hazard, 99));
 }

@@ -217,6 +217,7 @@ private:
     uint32			_Bribe() const;
     uint32			_Fine() const;
     int				_SneakChance() const;
+    int				_NightWalkChance();
     int				_Slowest() const;
     int				_Sneak();
     int				_BribeGuards();

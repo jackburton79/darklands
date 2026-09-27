@@ -293,6 +293,16 @@ one for n hours, 0E76:2A32 adds hours to it).
   random(100) <= 100 − |reputation|), a small lesson in Streetwise, an
   hour, card 3, the side streets; else card 4 (the slowest has fallen
   behind: $ChosenOneName), without running.
+- **Walking at night** (e.g. the crafts' streets, file 0xA4596 and the
+  handlers at 0xA455A...): outside the game's day, the watch stops the
+  party (state 0x3C, returning to the crafts, DS:E7D8 = 0x1A) if
+  random(100) is over clamp(1, 99, the party's average Stealth
+  (0E76:1600) + the best Streetwise − 1462:0000(15, 1, 5)); that hazard
+  is clamp(1, a, random(a − 1)) with a = 15, raised by the location's
+  state (+0x14 = 1: · 5 / 4, 2: · 6 / 4) and marks 0x12, 0x13 (· 6 / 5).
+  The tinkers' and clothmakers' streets cost their extra night hour
+  first. About 35 handlers use this check (the guilds at night, the
+  jewelers, other places): only the crafts' are reproduced.
 - Not reproduced: the burglary, potions, saints, fights, the load's
   effect on speed.
 
