@@ -67,9 +67,13 @@ ReadCharacter(const uint8* record)
 }
 
 
+// 8 RGB triplets per party slot
+static const int kColorsSize = 24;
+
+
 party
 MakeParty(const std::vector<character>& characters, const uint8* indices,
-    const uint8* images, int leader)
+    const uint8* images, int leader, const uint8* colors)
 {
     party p;
     p.leader = 0;
@@ -89,6 +93,10 @@ MakeParty(const std::vector<character>& characters, const uint8* indices,
         p.members.push_back(characters[index]);
         const char* image = (const char*)&images[slot * 4];
         p.images.push_back(std::string(image, strnlen(image, 4)));
+        if (colors != NULL) {
+            p.colors.push_back(std::vector<uint8>(colors + slot * kColorsSize,
+                colors + (slot + 1) * kColorsSize));
+        }
     }
     return p;
 }

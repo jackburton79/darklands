@@ -77,6 +77,9 @@ struct party {
     std::vector<character> members;
     std::vector<std::string> images;	// per member, e.g. "F60": picks the
                                         // pictures (F60STAT.PIC...)
+    // Per member, the colors of its battle figure: 8 RGB triplets, 6-bit
+    // (palette indices 235..242 of its sprites). Empty if unknown.
+    std::vector<std::vector<uint8>> colors;
     int leader;							// index into members
     money cash;
     uint16 fame;
@@ -119,6 +122,8 @@ character ReadCharacter(const uint8* record);
 
 // Builds a party from the party table of CHARACTR.TMP or a saved game:
 // `indices` are kMaxPartySize little-endian words (0xFFFF: none),
-// `images` kMaxPartySize 4-byte codes.
+// `images` kMaxPartySize 4-byte codes, `colors` (NULL: none, as in
+// CHARACTR.TMP) kMaxPartySize times 24 bytes.
 party MakeParty(const std::vector<character>& characters,
-    const uint8* indices, const uint8* images, int leader);
+    const uint8* indices, const uint8* images, int leader,
+    const uint8* colors = NULL);

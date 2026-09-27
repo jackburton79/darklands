@@ -184,8 +184,9 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # Print a battlefield map as text (e.g. ICITY.000, IWILDGEN.101)
 ./darklands --battlemap ICITY.000
 
-# Show a battlefield map from above (provisional; arrow keys, Esc)
-./darklands --battle IWILDGEN.101
+# Show a battlefield map from above (provisional; arrow keys, Esc), with
+# the party of a saved game and four enemies (their sprite set, e.g. M03)
+./darklands --battle IWILDGEN.101 M03 DKSAVE0.SAV
 
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
 ./darklands --messages [name]

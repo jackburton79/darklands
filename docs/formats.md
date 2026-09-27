@@ -853,7 +853,9 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
     0xF1    2     character count N
     0xF3    2·5   party: character indices (as in CHARACTR.TMP)
     0xFD    4·5   party: image codes
-    0x111   24·5  party: colors
+    0x111   24·5  party: colors, per slot 8 RGB triplets (6-bit): the
+                  colors 235..242 of its battle figure (see "Battle
+                  sprites")
     0x189   554·N character records
     ...     2     event count E
             48·E  event records
@@ -1344,11 +1346,15 @@ byte of all 333 files.
   11 palettes of `BKGNDPAL.DAT` to 164..234, the palette [DS:C7DD]
   (copied from DS:9085; what sets it is not known); 40 colors from the
   level's data (segment 20A5, offset 0x33FC, right after the map) to
-  80..119. **verified** (code). The enemies' chunks of `ENEMYPAL.DAT`
+  80..119. **verified** (code). These 40 colors are 120 bytes, the size
+  of the party's colors in the saved games (0x111, 5 slots · 8 colors):
+  presumably member k's colors at 80 + 8k, the figures' pixels 235..242
+  drawn with them (*inferred*; with that, the saved party's figures get
+  plausible clothes, **verified** visually). The enemies' chunks of `ENEMYPAL.DAT`
   fill 32..79 (see "Enemies"); 0..15 are taken as the EGA colors
   (*inferred*), index 5 being the figures' dark outline and shadow,
   probably drawn as a darkening (*inferred*). The party's figures use
-  235..242, presumably their clothing colors (not decoded). With this
+  235..242, their colors (see above). With this
   palette the dragons (16..31) and the spell clouds of `BATTLEGR.IMG`
   (243..254: fire) look right.
   **verified** visually
@@ -1371,7 +1377,7 @@ wolf). Not decoded.
       +0x2E, +0x30..) and the enemies' flags
 - [ ] Battles: the maps of `IMAPS.CAT` (the wall, object and ground
       values, the records after the grids) and how the game draws them; `TACANIM.DB`; the `.IMC`
-      header; the colors 235..242 (party)
+      header; which of the 8 directions is which
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
 - [x] Palettes: which indices `BKGNDPAL.DAT` patches — 164..234, in
       the battles

@@ -17,6 +17,7 @@
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "PICImage.h"
+#include "SaveFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
 #include "TextSupport.h"
@@ -362,6 +363,46 @@ ExtractPictures(GameData& data, const std::string& fileName,
 }
 
 
+// A battlefield map with the party at the bottom left and four enemies
+// at the top right: a provisional view (BattleView)
+static int
+ShowBattle(GameData& data, const std::string& mapName, const std::string& enemy,
+    const std::string& saveName)
+{
+    std::unique_ptr<Catalog> maps(data.OpenCatalog("IMAPS.CAT"));
+    std::unique_ptr<Stream> stream(maps->GetStream(mapName));
+    if (!stream)
+        throw std::runtime_error("no map " + mapName);
+    const party members = saveName.empty()
+        ? CharacterFile(data.PathFor("CHARACTR.TMP")).Party()
+        : SaveFile(saveName.find('/') != std::string::npos
+            ? saveName : data.PathFor("SAVES/" + saveName)).Party();
+
+    BattleView view(data);
+    view.SetMap(std::unique_ptr<BattleMap>(new BattleMap(stream.get())),
+        mapName);
+    for (size_t i = 0; i < members.members.size(); i++) {
+        int x = 6;
+        int y = 33;
+        if (view.FindFreeCell(x, y)) {
+            view.AddPartyMember(int(i), members.images[i],
+                i < members.colors.size() ? members.colors[i]
+                    : std::vector<uint8>(), x, y, 0);
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        int x = 33;
+        int y = 6;
+        if (view.FindFreeCell(x, y))
+            view.AddEnemy(enemy, x, y, 4);
+    }
+    view.Scroll(0, BattleMap::kSize);	// the party, at the bottom
+    GameWindow window("Darklands");
+    view.Run(window);
+    return 0;
+}
+
+
 static void
 ExtractAll(GameData& data, const Catalog& catalog,
     const std::string& outputDir)
@@ -410,8 +451,12 @@ Usage()
         "  --enemies                     list DARKLAND.ENM\n"
         "  --battlemap <name>            dump a battlefield map of IMAPS.CAT\n"
         "                                (e.g. ICITY.000)\n"
-        "  --battle <name>               show a battlefield map (provisional\n"
-        "                                view; arrow keys scroll, Esc quits)\n"
+        "  --battle <name> [enemy] [save]\n"
+        "                                show a battlefield map (provisional\n"
+        "                                view; arrow keys scroll, Esc quits),\n"
+        "                                the party of a saved game (default:\n"
+        "                                CHARACTR.TMP) and four enemies (their\n"
+        "                                sprites, e.g. E03, M03; default E03)\n"
         "  --messages [name]             list MSGFILES, or dump a card deck\n"
         "                                (e.g. PARTY02, or a path to a .MSG file)\n"
         "  --card <name> [card] [city] [picture]\n"
@@ -475,16 +520,8 @@ int main(int argc, char **argv)
                 Usage();
                 return 1;
             }
-            std::unique_ptr<Catalog> maps(data.OpenCatalog("IMAPS.CAT"));
-            std::unique_ptr<Stream> stream(maps->GetStream(argv[arg + 1]));
-            if (!stream)
-                throw std::runtime_error(std::string("no map ") + argv[arg + 1]);
-            BattleView view(data);
-            view.SetMap(std::unique_ptr<BattleMap>(new BattleMap(stream.get())),
-                argv[arg + 1]);
-            GameWindow window("Darklands");
-            view.Run(window);
-            return 0;
+            return ShowBattle(data, argv[arg + 1], extra > 1 ? argv[arg + 2] : "E03",
+                extra > 2 ? argv[arg + 3] : "");
         }
         if (command == "--locations") {
             DumpLocations(data.Locations());

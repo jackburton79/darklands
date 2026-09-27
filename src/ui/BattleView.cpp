@@ -2,12 +2,17 @@
 
 #include "BattleMap.h"
 #include "Bitmap.h"
+#include "Catalog.h"
 #include "GameData.h"
+#include "ImcFile.h"
 #include "ScreenSupport.h"
+#include "Stream.h"
 
 #include <SDL.h>
 
 #include <algorithm>
+#include <cstdlib>
+#include <stdexcept>
 
 static const int kScreenWidth	= 320;
 static const int kScreenHeight	= 200;
@@ -27,15 +32,22 @@ static const int kRockWall		= 1;
 static const int kHouseWall		= 2;
 static const int kMasonryWall	= 6;
 
+// The party's figures use colors 235..242; the battle puts each member's
+// 8 colors at 80 + 8 · member (docs/formats.md, "Battle sprites")
+static const uint8 kPartySpriteColors	= 235;
+static const uint8 kPartyColors			= 80;
+static const int kFigureColors			= 8;
+
 
 BattleView::BattleView(GameData& data)
     :
+    fData(data),
     fBuffer(new Bitmap(kScreenWidth, kScreenHeight, 8)),
+    fPalette(data.SpritePalette("")),
     fOrigin(0, 0),
     fPlace(PLACE_WILDERNESS)
 {
-    const GFX::Palette palette = data.SpritePalette("");
-    fBuffer->SetColors(palette.colors, 0, 256);
+    fBuffer->SetColors(fPalette.colors, 0, 256);
 }
 
 
@@ -49,6 +61,7 @@ void
 BattleView::SetMap(std::unique_ptr<BattleMap> map, const std::string& name)
 {
     fMap = std::move(map);
+    fFigures.clear();
     fOrigin = GFX::point(0, 0);
     if (name.compare(0, 5, "ICITY") == 0 || name.compare(0, 8, "IWILDGAT") == 0
             || name.compare(0, 8, "IWILDWAL") == 0) {
@@ -59,6 +72,89 @@ BattleView::SetMap(std::unique_ptr<BattleMap> map, const std::string& name)
         fPlace = PLACE_BUILDING;
     else
         fPlace = PLACE_WILDERNESS;
+}
+
+
+void
+BattleView::AddPartyMember(int member, const std::string& image,
+    const std::vector<uint8>& colors, int x, int y, int direction)
+{
+    figure f = { _LoadSprites(image), x, y, direction,
+        kPartyColors + kFigureColors * member };
+    for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
+        GFX::Color& color = fPalette.colors[f.colors + i];
+        color.r = uint8((colors[3 * i] << 2) | (colors[3 * i] >> 4));
+        color.g = uint8((colors[3 * i + 1] << 2) | (colors[3 * i + 1] >> 4));
+        color.b = uint8((colors[3 * i + 2] << 2) | (colors[3 * i + 2] >> 4));
+    }
+    if (colors.empty()) {
+        // unknown (a new party): gray clothes
+        for (int i = 0; i < kFigureColors; i++)
+            fPalette.colors[f.colors + i] = fPalette.colors[kGray + 2 + i % 6];
+    }
+    fBuffer->SetColors(fPalette.colors, 0, 256);
+    fFigures.push_back(f);
+}
+
+
+void
+BattleView::AddEnemy(const std::string& image, int x, int y, int direction)
+{
+    figure f = { _LoadSprites(image), x, y, direction, -1 };
+    // the enemies of different kinds may share palette indices: the last
+    // one's colors win
+    fData.ApplyEnemyColors(fPalette, image);
+    fBuffer->SetColors(fPalette.colors, 0, 256);
+    fFigures.push_back(f);
+}
+
+
+bool
+BattleView::FindFreeCell(int& x, int& y) const
+{
+    if (!fMap)
+        return false;
+    for (int ring = 0; ring < BattleMap::kSize; ring++) {
+        for (int dy = -ring; dy <= ring; dy++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                if (std::max(std::abs(dx), std::abs(dy)) != ring)
+                    continue;
+                const int cx = x + dx;
+                const int cy = y + dy;
+                if (!_IsOpen(cx, cy))
+                    continue;
+                bool taken = false;
+                for (const figure& f : fFigures)
+                    taken = taken || (f.x == cx && f.y == cy);
+                if (!taken) {
+                    x = cx;
+                    y = cy;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+
+// The combat animation ("CB") of a sprite set: "E03" in E00C.CAT, "F60"
+// in F60C.CAT. The first one: which one goes with a weapon is not decoded.
+std::shared_ptr<ImcFile>
+BattleView::_LoadSprites(const std::string& image)
+{
+    const bool enemy = !image.empty() && (image[0] == 'E' || image[0] == 'M');
+    const std::string catalogName = enemy
+        ? image.substr(0, 1) + "00C.CAT" : image + "C.CAT";
+    std::unique_ptr<Catalog> catalog(fData.OpenCatalog(catalogName));
+    const std::string prefix = image + "CB";
+    for (int32 i = 0; i < catalog->CountEntries(); i++) {
+        if (catalog->EntryAt(i).filename.compare(0, prefix.size(), prefix) != 0)
+            continue;
+        std::unique_ptr<Stream> stream(catalog->GetStreamAt(uint32(i)));
+        return std::shared_ptr<ImcFile>(new ImcFile(stream.get()));
+    }
+    throw std::runtime_error("no battle sprites for " + image);
 }
 
 
@@ -134,6 +230,15 @@ BattleView::Draw()
             _DrawCell(x, y, left, top);
         }
     }
+
+    // from the back to the front
+    std::vector<const figure*> order;
+    for (const figure& f : fFigures)
+        order.push_back(&f);
+    std::stable_sort(order.begin(), order.end(),
+        [](const figure* a, const figure* b) { return a->y < b->y; });
+    for (const figure* f : order)
+        _DrawFigure(*f);
     return fBuffer;
 }
 
@@ -243,5 +348,34 @@ BattleView::_DrawCell(int x, int y, int left, int top)
                 break;
         }
         fBuffer->FillRect(edge, color);
+    }
+}
+
+
+// Its feet near the bottom of its cell, centered
+void
+BattleView::_DrawFigure(const figure& f)
+{
+    const sprite& picture = f.sprites->SpriteAt(0,
+        f.direction % ImcFile::kDirectionCount);
+    const int left = f.x * kCellSize + kCellSize / 2 - picture.width / 2
+        - fOrigin.x;
+    const int top = f.y * kCellSize + kCellSize - 2 - picture.height
+        - fOrigin.y;
+    for (int y = 0; y < picture.height; y++) {
+        const int screenY = top + y;
+        if (screenY < 0 || screenY >= kScreenHeight)
+            continue;
+        for (int x = 0; x < picture.width; x++) {
+            const int screenX = left + x;
+            uint8 pixel = picture.pixels[y * picture.width + x];
+            if (pixel == 0 || screenX < 0 || screenX >= kScreenWidth)
+                continue;
+            if (f.colors >= 0 && pixel >= kPartySpriteColors
+                    && pixel < kPartySpriteColors + kFigureColors) {
+                pixel = uint8(f.colors + pixel - kPartySpriteColors);
+            }
+            fBuffer->PutPixel(screenX, screenY, pixel);
+        }
     }
 }

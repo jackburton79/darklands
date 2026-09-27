@@ -49,6 +49,10 @@ public:
     // ENEMYPAL.DAT
     GFX::Palette		SpritePalette(const std::string& image,
                             int palette = 0);
+    // Patches the chunks of an enemy's palette into colors (nothing if
+    // image is not an enemy's)
+    void				ApplyEnemyColors(GFX::Palette& colors,
+                            const std::string& image, int palette = 0);
     const Catalog&		MessageCatalog();	// MSGFILES
 
     // A card deck from MSGFILES, by name: "PARTY02", "PARTY02.MSG" and

@@ -179,6 +179,15 @@ GameData::SpritePalette(const std::string& image, int palette)
         }
     }
 
+    ApplyEnemyColors(colors, image, palette);
+    return colors;
+}
+
+
+void
+GameData::ApplyEnemyColors(GFX::Palette& colors, const std::string& image,
+    int palette)
+{
     const EnemyFile& enemies = Enemies();
     for (uint32 i = 0; i < enemies.CountTypes(); i++) {
         const enemy_type& type = enemies.TypeAt(i);
@@ -196,7 +205,6 @@ GameData::SpritePalette(const std::string& image, int palette)
         }
         break;
     }
-    return colors;
 }
 
 
