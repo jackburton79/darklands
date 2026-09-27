@@ -23,6 +23,7 @@ enum character_attribute {
 };
 
 static const int kSkillCount = 19;
+static const int kWeaponSkillCount = 7;	// the first skills: edged..missile
 // Skills the game's rules use, in the record's order (see docs/formats.md)
 static const int kSkillAlchemy		= 7;
 static const int kSkillReligion		= 8;

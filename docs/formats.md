@@ -1072,13 +1072,14 @@ is not decoded yet. The seed and the battlefield type probably choose
 among the stored maps of `IMAPS.CAT` (see below) rather than generate a
 field from nothing. *inferred*
 
-`ftype` looks like an index into the 82 enemies of `DARKLAND.ENM` and
-`fqual` like the variant within the enemy's group: `ftype1: 3` would be
-the "Guard" (types 5..9, `fqual1: 1` → "Guard2"), `ftype2: 0` the
-"Sergeant". *inferred*, not checked against DARKLAND.EXE. That does not
-match the skeleton of `LEVEL0.ENM`, which an earlier revision of this
-document took for the same fight: whether the dump and `LEVEL0.ENM`
-describe the same battle is open.
+`ftype` is an index into the 82 enemies of `DARKLAND.ENM` and `fqual`
+the variant within the enemy's group: `ftype1: 3` is the "Guard" (types
+5..9, `fqual1: 1` → "Guard2"), `ftype2: 0` the "Sergeant". **verified**:
+the night watch's battle in DARKLAND.EXE passes exactly these foes
+(exe.md, "The market at night and the night watch"). TAC.TXT's
+battlefield type, 43, is a city's but not one the watch uses (0x11,
+0x13, 0x15, 0x56): another city fight with the same foes, perhaps. It is not the skeleton of `LEVEL0.ENM`,
+which an earlier revision of this document took for the same fight.
 
 ### Enemies (`DARKLAND.ENM`)
 

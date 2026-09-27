@@ -303,8 +303,33 @@ one for n hours, 0E76:2A32 adds hours to it).
   The tinkers' and clothmakers' streets cost their extra night hour
   first. About 35 handlers use this check (the guilds at night, the
   jewelers, other places): only the crafts' are reproduced.
-- Not reproduced: the burglary, potions, saints, fights, the load's
-  effect on speed.
+- **Attacking the watch** (the fifth option; the options' actions go
+  through a switch at file 0xBF30E: 0 pay 0xBF5C0, 1 run 0xBF61A, 2
+  potion 0xBF71A, 3 saint 0xBF81E, 4 fight 0xBF914; the table at DS:EA14,
+  segment 1838 at file 0xBF0B0, holds their help texts, e.g. "Enter
+  Combat"): they flee (card 7, then on as after the fine) if
+  random(100) <= c, c = |reputation| / 10 + the party's average Charisma
+  / 10 (0E76:1800(5): the average of an attribute) + the leader's best
+  weapon skill / 2 (0E76:01C0(−1)) + the fame / 20 (0E76:1326(4)), 0
+  under 75, at most 90 (1367:0066). Else (file 0xBF3A2) a battle:
+  0E76:2278 gets the battlefield type (0x13, 0x11, 0x15 or 0x56 by the
+  state the party came from), a seed (that state + the location) and
+  the foes, **the same as TAC.TXT prints**: ftype1 3, fqual1 1, fnum1 die(5)
+  + 3 (4..8 of enemy 3, "Guard", at variant 1), ftype2 0, fqual2 2, fnum2
+  1 (a "Sergeant" at variant 2), ftype3 −1: so ftype is an enemy of
+  DARKLAND.ENM and fqual the variant of its group. 0E76:19D0(location,
+  −15, −25) lowers the reputation by 15 + random(10) with a chance of
+  100 − |reputation| %. The battle's result (file 0xBF440): 0 card 8
+  ("the unconscious and bleeding night watch", then on as before; and
+  0E76:2C4E(−2, location, 0x1E, 0x12, ...), not decoded), 1 card 9, 2
+  card 10 (a retreat), 3 card 11 (the dungeon). **verified** (code).
+  Reproduced with BattleView; the map among ICITY.000..003 and the
+  starting places are not the game's (not decoded), the fallen get up
+  with 1 Endurance or Strength (death is not implemented), a retreat is
+  Esc and leads to the side streets (inferred), the dungeon is not
+  implemented.
+- Not reproduced: the burglary, potions, saints, the load's effect on
+  speed.
 
 ## The alchemist
 
@@ -598,7 +623,8 @@ Where the battle code starts; the rules are not decoded yet.
   it opens darkland.enm, darkland.lst and imaps.cat (DS:13A2, pushed at
   file 0x16EEA), then switches on its first argument, 0..0x89, through
   the jump table at file 0x16F34: the battlefield type, TAC.TXT's
-  `bfldtype` (*inferred*). Each case calls, with the same arguments,
+  `bfldtype` (**verified** with the night watch's battle, below).
+  Each case calls, with the same arguments,
   the entry (offset 0 unless noted) of segment 1432 in one of seven
   overlays; that function builds the battlefield. **verified** (code):
 

@@ -1,5 +1,8 @@
 #include "CityVisit.h"
 
+#include "BattleMap.h"
+#include "BattleView.h"
+#include "Catalog.h"
 #include "Character.h"
 #include "CityFile.h"
 #include "DescriptionFile.h"
@@ -9,6 +12,8 @@
 #include "ExeData.h"
 #include "ListFile.h"
 #include "ScreenSupport.h"
+#include "EnemyFile.h"
+#include "Stream.h"
 
 #include <stdexcept>
 
@@ -43,6 +48,8 @@ enum option_action {
     ACTION_BRIBE,
     ACTION_PAY_FINE,			// the night watch
     ACTION_RUN,
+    ACTION_FIGHT,				// attack the night watch
+    ACTION_WATCH_RETURN,		// on where paying the fine would lead
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
 };
@@ -162,12 +169,14 @@ struct screen_rules {
 #define WATCH_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine),	/* the fine of $Money1 */ \
         DO(ACTION_RUN),						/* run away */ \
-        TODO, TODO, TODO					/* potion, saint, fight */ \
+        TODO, TODO,							/* potion, saint */ \
+        DO(ACTION_FIGHT)					/* attack them */ \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
         HIDE,								/* no running again */ \
-        TODO, TODO, TODO \
+        TODO, TODO, \
+        DO(ACTION_FIGHT) \
     }
 
 // The option lists are those of the cards (see `darklands --messages`);
@@ -467,6 +476,16 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "Dashing down narrow lanes and alleys, you outdistance the night
     // watch."
     { "NIGHT00", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "When the night watch sees your naked steel, they gasp... and flee"
+    { "NIGHT00", 7, NULL, { DO(ACTION_WATCH_RETURN) } },
+    // "You look with regret on the unconscious and bleeding night watch."
+    { "NIGHT00", 8, NULL, { DO(ACTION_WATCH_RETURN) } },
+    // "You fall back around a corner, sheath your weapons..." (the side
+    // streets: inferred)
+    { "NIGHT00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "The night watch strips you of weapons, armor..." (the dungeon is
+    // not implemented)
+    { "NIGHT00", 11, NULL, { GO(SCREEN_NOT_IMPLEMENTED) } },
     // "You carefully select which items to leave with the innkeeper...",
     // "You sort through the various goods...": the cache, then an hour
     { "URBAN00", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
@@ -790,6 +809,10 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },					// fighting the watch
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { "URBAN01", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { "URBAN01", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { NULL, 0, NULL, {} },					// the alchemist
@@ -904,7 +927,8 @@ CityVisit::CityVisit(GameData& data)
     fPendingCache(false),
     fTreatmentOffered(false),
     fStoneOffered(false),
-    fWatchReturn(SCREEN_NOT_IMPLEMENTED)
+    fWatchReturn(SCREEN_NOT_IMPLEMENTED),
+    fPendingBattle(false)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -973,6 +997,7 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
                 uint32(fCity) * 7919 + uint32(fPendingTrade) * 104729 + day);
             fTrade.Run(window);
             fPendingTrade = -1;
+    fPendingBattle = false;
             _Show(fScreen, false);
         }
         if (fPendingCache) {
@@ -982,6 +1007,8 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             fPendingCache = false;
             _Show(fScreen, false);
         }
+        if (fPendingBattle)
+            _RunBattle(window);
         if (fPendingResidence) {
             // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
             // a day costs the inn's price
@@ -1121,6 +1148,15 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_RUN:
             _Show(_RunFromWatch());
+            return true;
+        case ACTION_FIGHT: {
+            const int next = _FightWatch();
+            if (next >= 0)
+                _Show(next);
+            return true;
+        }
+        case ACTION_WATCH_RETURN:
+            _Show(fWatchReturn);
             return true;
         case ACTION_LEAVE_PHYSICIAN:
             _Show(_LeavePhysician(false));
@@ -2164,6 +2200,120 @@ CityVisit::_RunFromWatch()
             _SetChosen(slowest);
     }
     return SCREEN_NIGHT_WATCH_CAUGHT;
+}
+
+
+// Attacking the watch (file 0xBF914): they flee (card 7) if random(100)
+// is at most the chance: |reputation| / 10 + the party's average
+// Charisma / 10 (0E76:1800) + the leader's best weapon skill / 2
+// (0E76:01C0) + the fame / 20 (0E76:1326), 0 under 75, at most 90. Else
+// (file 0xBF3A2) the local reputation falls by 15..24 with a chance of
+// 100 - |reputation| % (0E76:19D0), and the battle begins.
+int
+CityVisit::_FightWatch()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return fWatchReturn;
+    int charisma = 0;
+    for (const character& member : fParty->members)
+        charisma += member.attributes[ATTRIBUTE_CHARISMA];
+    charisma /= int(fParty->members.size());
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    int weaponSkill = 0;
+    for (int s = 0; s < kWeaponSkillCount; s++)
+        weaponSkill = std::max(weaponSkill, int(leader.skills[s]));
+    int chance = std::abs(_Reputation()) / 10 + charisma / 10
+        + weaponSkill / 2 + fParty->fame / 20;
+    if (chance < 75)
+        chance = 0;
+    chance = std::min(chance, 90);
+    if (int(fRandom() % 100) <= chance)
+        return SCREEN_WATCH_SCARED;
+
+    if (fReputations != NULL && fCity >= 0
+            && fCity < int(fReputations->size())) {
+        int16& reputation = (*fReputations)[fCity];
+        if (int(fRandom() % 100) <= 100 - std::abs(int(reputation))) {
+            reputation = int16(std::max(-99,
+                reputation - 15 - int(fRandom() % 10)));
+        }
+    }
+    fPendingBattle = true;
+    return -1;
+}
+
+
+// The battle with the watch (file 0xBF3A2): die(5) + 3 of enemy 3 (the
+// "Guard" types) at variant 1 and one of enemy 0 ("Sergeant") at
+// variant 2, as TAC.TXT prints them. On a city map: which one the game
+// picks (from the battlefield type) and where everybody starts are not
+// decoded, so the map is one of ICITY.000..003 and the watch starts
+// near the party.
+void
+CityVisit::_RunBattle(GameWindow& window)
+{
+    fPendingBattle = false;
+    BattleView view(fData);
+    {
+        std::unique_ptr<Catalog> maps(fData.OpenCatalog("IMAPS.CAT"));
+        const std::string name = "ICITY.00" + std::to_string(fRandom() % 4);
+        std::unique_ptr<Stream> stream(maps->GetStream(name));
+        if (!stream)
+            throw std::runtime_error("CityVisit: no map " + name);
+        view.SetMap(std::unique_ptr<BattleMap>(new BattleMap(stream.get())),
+            name);
+    }
+    for (size_t i = 0; i < fParty->members.size(); i++) {
+        int x = 12;
+        int y = 20;
+        if (view.FindFreeCell(x, y)) {
+            view.AddPartyMember(int(i), fParty->members[i], fParty->images[i],
+                i < fParty->colors.size() ? fParty->colors[i]
+                    : std::vector<uint8>(), x, y, 2);
+        }
+    }
+    const EnemyFile& enemies = fData.Enemies();
+    const uint32 guard = enemies.EnemyAt(3).type + 1;
+    const uint32 sergeant = enemies.EnemyAt(0).type + 2;
+    const int guards = int(fRandom() % 5) + 4;
+    for (int i = 0; i <= guards; i++) {
+        int x = 20;
+        int y = 20;
+        if (view.FindFreeCell(x, y))
+            view.AddEnemy(i < guards ? guard : sergeant, x, y, 6);
+    }
+    view.Scroll(0, 12);
+    const battle_outcome outcome = view.Run(window);
+
+    // the party's wounds: the fallen get up with 1 (death is not
+    // implemented)
+    for (size_t i = 0; i < fParty->members.size(); i++) {
+        const fighter& f = view.FigureFighter(int(i));
+        character& member = fParty->members[i];
+        member.attributes[ATTRIBUTE_ENDURANCE] = uint8(std::max(f.endurance, 1));
+        member.attributes[ATTRIBUTE_STRENGTH] = uint8(std::max(f.strength, 1));
+    }
+    ResolveBattle(outcome);
+}
+
+
+// file 0xBF43C: won, card 8 then on as before; lost, card 11 (the
+// dungeon); fled, card 10
+void
+CityVisit::ResolveBattle(int outcome)
+{
+    fPendingBattle = false;
+    switch (outcome) {
+        case BATTLE_WON:
+            _Show(SCREEN_WATCH_BEATEN);
+            break;
+        case BATTLE_LOST:
+            _Show(SCREEN_WATCH_PRISON);
+            break;
+        default:
+            _Show(SCREEN_WATCH_RETREAT);
+            break;
+    }
 }
 
 

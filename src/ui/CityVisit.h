@@ -86,7 +86,11 @@ public:
         SCREEN_NIGHT_WATCH_MARKET,	// after the market (1),
         SCREEN_NIGHT_WATCH_AGAIN,	// "Not you again" (2),
         SCREEN_NIGHT_WATCH_CAUGHT,	// a member fell behind (4),
-        SCREEN_WATCH_ESCAPED,	// you outdistanced them (3)
+        SCREEN_WATCH_ESCAPED,	// you outdistanced them (3),
+        SCREEN_WATCH_SCARED,	// they flee from your steel (7),
+        SCREEN_WATCH_BEATEN,	// they lie beaten (8),
+        SCREEN_WATCH_RETREAT,	// you retreated from the fight (10),
+        SCREEN_WATCH_PRISON,	// they took you to the dungeon (11)
         SCREEN_STORE,			// items left with the innkeeper: cards 5
         SCREEN_RECOVER,			// and 6
         SCREEN_FUGGER,			// the market's banks: $FUGGE00.MSG,
@@ -169,6 +173,10 @@ public:
     bool			PendingCache() const		{ return fPendingCache; }
     std::map<int, std::vector<cache_item> >& Caches()	{ return fCaches; }
     ResidenceView&	Residence()				{ return fResidence; }
+    // After Choose(): whether the party fights the night watch (Run() then
+    // shows the battle, and ResolveBattle() its outcome)
+    bool			PendingBattle() const	{ return fPendingBattle; }
+    void			ResolveBattle(int outcome);	// a battle_outcome
     // The inn's price of a meal and a night for the party, in pfennigs
     uint32			InnPrice() const;
 
@@ -223,6 +231,8 @@ private:
     int				_BribeGuards();
     int				_PayFine();
     int				_RunFromWatch();
+    int				_FightWatch();
+    void			_RunBattle(GameWindow& window);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
@@ -276,5 +286,6 @@ private:
     std::map<int, uint32> fAlchemistAngryUntil;
     std::map<std::pair<int, int>, uint32> fMarks;	// (kind, city): until
     int				fWatchReturn;	// where paying the fine leads
+    bool			fPendingBattle;
     std::unique_ptr<ExeData> fNames;
 };
