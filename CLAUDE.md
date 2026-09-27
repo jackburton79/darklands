@@ -47,6 +47,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --map [prefix]           # full map render, with city names
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
+./darklands --enemies                # dump DARKLAND.ENM
 ./darklands --messages [PARTY02]     # list MSGFILES / dump a card deck
 ./darklands --card PARTY02 0 Köln    # show a card (CardView)
 ```
@@ -58,6 +59,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),
   `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
+  `EnemyFile` (DARKLAND.ENM, the enemy types and enemies),
   `ExeData` (the people's names, read from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.

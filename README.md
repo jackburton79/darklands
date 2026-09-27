@@ -74,6 +74,7 @@ implemented yet. See the roadmap below.
 - [x] Parse `DARKLAND.LOC` (`--locations`)
 - [x] Decode the game fonts (`FONTS.FNT`) and label cities on the map
 - [x] Parse the city descriptions (`DARKLAND.CTY`, `--cities`)
+- [x] Parse the enemies (`DARKLAND.ENM`, `--enemies`)
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
 - [x] Party travel on the map (pathfinding, no travel time yet) and a
@@ -172,6 +173,9 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # List the cities with their rulers, neighbors and places
 ./darklands --cities
 
+# List the enemy types (attributes, skills) and the enemies
+./darklands --enemies
+
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
 ./darklands --messages [name]
 
@@ -186,7 +190,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 
 ```
 darklands.cpp     Program entry point: the game, image viewer, --extract,
-                  --map, --locations, --cities, --messages, --card
+                  --map, --locations, --cities, --enemies, --messages,
+                  --card
 Game.*            The game: new or loaded, cities and the world map in turn
 GameTime.*        The game's date and time (monastic hours, Julian calendar)
 Character.*       A character (554-byte records) and the party
@@ -211,6 +216,7 @@ MapFile.*         Reader for the world map file (DARKLAND.MAP)
 LocationFile.*    Reader for the map locations (DARKLAND.LOC)
 CityFile.*        Reader for the cities (DARKLAND.CTY)
 DescriptionFile.* Reader for the city descriptions (DARKLAND.DSC)
+EnemyFile.*       Reader for the enemies (DARKLAND.ENM)
 MsgFile.*         Reader for the menu cards (.MSG files in MSGFILES)
 FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
 TextSupport.*     Text rendering with the game fonts

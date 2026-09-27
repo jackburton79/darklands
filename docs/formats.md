@@ -196,7 +196,8 @@ implementation.
 - Applying **all** chunks in file order produces plausible enemy
   graphics for the whole bestiary catalog; multiple chunks may claim the
   same palette range with different colors, so per-enemy chunk selection
-  must happen elsewhere — probably the `.ENM` enemy files. *unresolved*
+  must happen elsewhere — probably `DARKLAND.ENM`, whose 71 types match
+  the 71 chunks (see "Enemies"). *unresolved*
 - `BKGNDPAL.DAT` does **not** follow this layout — see next section.
 
 ## Background palettes (`BKGNDPAL.DAT`)
@@ -1022,11 +1023,13 @@ in the game character set. Only three are used: "Error Message" and
 two travel messages (entering a robber knight's territory, a blighted
 land).
 
-## Battle data family (`BATTLEGR.IMG`, `LEVEL*.ENM`, `*.IMC`, ...)
+## Battle data family (`DARKLAND.ENM`, `IMAPS.CAT`, `*.IMG`, `*.IMC`, ...)
 
-The tactical (combat) side of the game is data-driven: battlefield
-definitions, enemy definitions with encounter placement, and enemy battle
-sprites live in separate files. A debug dump of the tactical module ships
+The tactical (combat) side of the game is data-driven: the enemies
+(`DARKLAND.ENM`), the battlefield maps (`IMAPS.CAT`), graphics
+(`BATTLEGR.IMG`, `COMMONSP.IMG`) and the battle sprites of enemies and
+party (`*.IMC` in `E00C`, `M00C`, `A00C`, `C00C`, `F01C`, `F60C.CAT`,
+indexed by `TACANIM.DB`) live in separate files. A debug dump of the tactical module ships
 with the game (`TAC.TXT`, dated 09/15/92 — the debug code is still in
 DARKLAND.EXE) and names most of the structures; see also
 [exe.md](exe.md).
@@ -1060,19 +1063,79 @@ V:-2 S:-2 R:-2 D-2 E:-2     five stat modifiers
 FurnRemove / WallRemove     x/y lists (5 / 7 entries max)
 ```
 
-**Battlefields are procedurally generated** (terrain + month + seed →
-tile grid with furniture and walls), not stored images. BATTLEGR.IMG
-contains no pictures (see below). The debug text gives the field names
-and print order of the TacParams, ActivationRecord and LevelRecord
-structures; their exact binary layout is not decoded yet. The printed
-battle (4 skeletons + 1 other, level 0) is LEVEL0.ENM's content
-(M03 = Skeleton) — the dump and the data file describe the same fight,
-which makes it a ready-made test vector for the future decoder.
+The debug text gives the field names and print order of the TacParams,
+ActivationRecord and LevelRecord structures; their exact binary layout
+is not decoded yet. The seed and the battlefield type probably choose
+among the stored maps of `IMAPS.CAT` (see below) rather than generate a
+field from nothing. *inferred*
 
-### Enemy definitions (`LEVEL0/1/2.ENM`)
+`ftype` looks like an index into the 82 enemies of `DARKLAND.ENM` and
+`fqual` like the variant within the enemy's group: `ftype1: 3` would be
+the "Guard" (types 5..9, `fqual1: 1` → "Guard2"), `ftype2: 0` the
+"Sergeant". *inferred*, not checked against DARKLAND.EXE. That does not
+match the skeleton of `LEVEL0.ENM`, which an earlier revision of this
+document took for the same fight: whether the dump and `LEVEL0.ENM`
+describe the same battle is open.
 
-Per-battle-level enemy definitions (291, 871, 581 bytes). *Partially
-decoded — exact stat offsets unknown.*
+### Enemies (`DARKLAND.ENM`)
+
+16452 bytes, no header: 71 enemy types, then 82 enemies. **verified**:
+71 × 204 + 82 × 24 = 16452 exactly, and every record's name falls at the
+same offset. The counts are not stored in the file. See `EnemyFile.cpp`
+and `./darklands --enemies`.
+
+    enemy type, 204 (0xCC) bytes:
+    +0x00   4     image code, NUL-terminated ("E00", "M03"): the sprite
+                  set in E00C.CAT / M00C.CAT
+    +0x04   10    name ("Sergeant1", "Skeleton2", "7 Hd Drag"),
+                  NUL-padded
+    +0x0E   1     in a group's first type: the number of types in the
+                  group (its variants); 0xFF in the others
+    +0x0F   2     unknown (1..6 / 1..3)
+    +0x11   1     increasing with the type, 0x00..0x47: unknown
+                  (a palette or sprite index?)
+    +0x12   2     unknown (0..2)
+    +0x14   7     attributes, in the character order (End, Str, Agl,
+                  Per, Int, Chr, DF)
+    +0x1B   19    skills, in the character order (EdgW, ImpW, FlaW,
+                  PolW, Thrw, Bows, Msle, Alch, ...)
+    +0x2E   2     word, 8..20: unknown
+    +0x30   ...   mostly zero; bytes at +0x92..+0xB8 look like two
+                  groups of 6 bytes (weapons? `06 13 01 14 ff ff`) and
+                  runs of 0xFE / 0xFF. Not decoded.
+
+    enemy, 24 (0x18) bytes:
+    +0x00   2     the first type of its group
+    +0x02   12    name as the game shows it ("Guard", "Raubritter");
+                  "Castle Guard" fills the field, with no NUL
+    +0x0E   8     zero
+    +0x16   2     flags (0x00, 0x01, 0x03, 0x07, 0x3F, 0x4F, 0x81):
+                  not decoded
+
+- **verified**: the `variants` byte splits the 71 types into 38 groups
+  that cover them exactly; the types of a group share the image code;
+  every enemy points at the first type of a group. Several enemies share
+  a group ("Guard", "Schulz", "Hussite", "Trooper" are all types 5..9).
+- The variants are stronger versions of the type: Sergeant1..5 have
+  End 22, 26, 30... and weapon skills 20, 28... *inferred* to be
+  TAC.TXT's `fqual`.
+- The values look right for the creatures: the skeletons have 75 in the
+  four melee weapon skills, the dragons 80 in all seven weapon skills,
+  Baphomet 99 in the three missile skills; DF is 99 for everyone.
+  *inferred*
+- The 71 types match the 71 palette chunks of `ENEMYPAL.DAT` (see
+  "Palette chunk files"): chunk *i* is probably type *i*'s colors.
+  *inferred*, not checked.
+
+
+### Level files (`LEVEL0/1/2.ENM`)
+
+Small files (291, 871, 581 bytes), probably left over from testing (like
+TAC.TXT) or per-level battle records: they hold copies of
+`DARKLAND.ENM` types (the bytes of "Skeleton2" — attributes
+`28 28 28 19 14 14 63`, skills `4b 4b 4b 4b ...` — appear in
+`LEVEL0.ENM`), rearranged. *inferred*. *Partially decoded — exact
+stat offsets unknown.*
 
     offset  size  description
     0x00    1     enemy record count N (1, 3, 2 in the three files)
@@ -1110,10 +1173,21 @@ decoded — exact stat offsets unknown.*
   files; "Raubritter" (E10) matches the encounter deck `$RAUBI0` of
   BATTLEGR.IMG.
 
-### Battlefield definitions (`BATTLEGR.IMG`)
+### Battlefield maps (`IMAPS.CAT`)
 
-21236 bytes. *Structure only partially understood — the file is tabular,
-not graphic.*
+An ordinary catalog of about 150 maps, named by setting:
+`ICITY.000`..`ICITY.801` (cities), `IMINEGEN.*` / `IMINSPEC.*` (mines),
+`IWILDGEN`, `IWILDMTN`, `IWILDMSH`, `IWILDSPC`, `IWILDSAB`, `IWILDGAT`,
+`IWILDWAL` (the wilderness: plains, mountains, marshes...),
+`IFORTMON.*` (fortresses and monasteries), `IMISCTOM.*` (tombs). Entries
+are 2.5..3 KB. **verified** (the catalog listing). The contents are not
+decoded: they look compressed (`ICITY.000` starts
+`a1 8b 00 ff 80 fc f8 ad ...`, with no visible structure). *inferred*
+
+### Battlefield graphics (`BATTLEGR.IMG`, `COMMONSP.IMG`)
+
+`BATTLEGR.IMG`: 21236 bytes. *Not decoded; whether it is graphics or
+tables is open.*
 
     0x00   4     dword (LE) 0x5160 = 20832: offset of a final section
     0x04   ...   main body
@@ -1127,8 +1201,15 @@ not graphic.*
   source of TAC.TXT's `bfldtype`.
 - Much of the body is 4-bit data (values ≤ 0x0F in the quantized
   columns): plausible nibble-packed battlefield layout/zone data for
-  the procedural generator. Earlier readings (increasing u16 offset
-  table, 0x7D-byte records) were **wrong** — discarded.
+  the procedural generator. *inferred*
+- But the file starts like `COMMONSP.IMG` (4078 bytes): a dword (0x5160
+  here, 0x0FD0 there, both inside the file) followed by runs of
+  increasing u16 values (`0d 18 25 2d 35 ...`, `12 16 1a 27 34 ...`),
+  which look like offset tables. The `.IMG` extension and the
+  `COMMONSP` name ("common sprites") suggest graphics: tiles and objects
+  of the battlefield. The deck names above may be leftover memory, like
+  the filler of the `LEVEL*.ENM` files. *inferred*; this reopens an
+  earlier reading (0x7D-byte records) that had been discarded.
 - Fragments near the file end suggest mode/config strings (`EX_EMS`,
   `EX_DISK`, `EXITS`, `...GRAPHI`).
 - **not decoded**: record layout, the meaning of the nibble data, the
@@ -1136,16 +1217,24 @@ not graphic.*
   the `battlegr` string at file 0x191FDC (DGROUP offset 0x121C) are the
   way in.
 
-### Enemy battle sprites (`*.IMC` in `E00C.CAT` / `M00C.CAT`)
+### Battle sprites (`*.IMC`, `TACANIM.DB`)
 
 The battle animations. `E00C.CAT` holds the human enemies, `M00C.CAT`
-the monsters/undead; both are ordinary `.CAT` catalogs whose entries are
-`.IMC` files.
+the monsters/undead; `A00C`, `C00C`, `F01C`, `F60C.CAT` hold the party's
+figures (same naming: `A00CBA2.IMC`, ...). All are ordinary `.CAT`
+catalogs whose entries are `.IMC` files.
+
+`TACANIM.DB` (546 bytes) lists the sprite sets: per entry a
+NUL-terminated code (`A00`, `C00`, `F01`, `F60`, `E00`..`E17`,
+`M00`..), three words and four bytes (`05 02 06 03` for the humans,
+`0a 04 0a 04` for M00, the wolf). The first two bytes match the frame
+counts of the IMC headers below (5 and 2 for humanoids, 10 and 4 for
+beasts). *inferred*: the index of the animations.
 
 **Naming**: `E10WKS2.IMC` = enemy E10, animation set `WK`, weapon `S2`;
 `M03DY.IMC` = monster M03 (Skeleton), death animation.
 
-- `E##`/`M##` — enemy index, matching the image codes in `LEVEL*.ENM`
+- `E##`/`M##` — enemy index, matching the image codes of `DARKLAND.ENM`
 - `WK` / `CB` — the two animation sets per enemy (walking vs combat;
   *inferred*). Enemies have one file per weapon they can use (sword,
   axe, mace, flail, hammer, club, crossbow, bow, polearm, lance...);
@@ -1194,8 +1283,12 @@ the monsters/undead; both are ordinary `.CAT` catalogs whose entries are
       in the game data? In which files?
 - [x] `.PIC`: do any images embed a palette? Yes: the `M0` chunk
 - [ ] `.PIC`: is the high byte of the magic word at 0x08 always 0x00?
-- [ ] Palettes: which palette chunk(s) apply to a given enemy, and where
-      is that mapping stored? (probably `.ENM`)
+- [ ] Palettes: which palette chunk(s) apply to a given enemy? (probably
+      chunk *i* for type *i* of `DARKLAND.ENM`: both are 71)
+- [ ] `DARKLAND.ENM`: the unknown fields of the types (+0x0F..+0x13,
+      +0x2E, +0x30..) and the enemies' flags
+- [ ] Battles: the format of `IMAPS.CAT`'s maps, of `BATTLEGR.IMG` /
+      `COMMONSP.IMG`, of `TACANIM.DB` and of the `.IMC` sprites
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
 - [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects
       one of its 11 palettes

@@ -2,6 +2,7 @@
 
 #include "Catalog.h"
 #include "CityFile.h"
+#include "EnemyFile.h"
 #include "DescriptionFile.h"
 #include "FontFile.h"
 #include "ListFile.h"
@@ -78,6 +79,15 @@ GameData::Cities()
     if (!fCities)
         fCities.reset(new CityFile(PathFor("DARKLAND.CTY")));
     return *fCities;
+}
+
+
+const EnemyFile&
+GameData::Enemies()
+{
+    if (!fEnemies)
+        fEnemies.reset(new EnemyFile(PathFor("DARKLAND.ENM")));
+    return *fEnemies;
 }
 
 

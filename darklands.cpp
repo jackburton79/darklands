@@ -5,6 +5,7 @@
 #include "CityFile.h"
 #include "CityLabels.h"
 #include "CityVisit.h"
+#include "EnemyFile.h"
 #include "Game.h"
 #include "GameData.h"
 #include "GraphicsDefs.h"
@@ -83,6 +84,33 @@ DumpCities(const CityFile& cities)
             if (!c.places[p].empty())
                 std::cout << "    " << kPlaceNames[p] << ": " << c.places[p] << std::endl;
         }
+    }
+}
+
+
+static void
+DumpEnemies(const EnemyFile& enemies)
+{
+    for (uint32 i = 0; i < enemies.CountTypes(); i++) {
+        const enemy_type& t = enemies.TypeAt(i);
+        std::cout << std::setw(2) << i << "  " << t.image << "  "
+            << std::left << std::setw(10) << t.name << std::right;
+        if (t.variants != 0)
+            std::cout << "  variants " << int(t.variants);
+        std::cout << std::endl << "    attributes";
+        for (int a = 0; a < ATTRIBUTE_COUNT; a++)
+            std::cout << " " << int(t.attributes[a]);
+        std::cout << std::endl << "    skills";
+        for (int s = 0; s < kSkillCount; s++)
+            std::cout << " " << int(t.skills[s]);
+        std::cout << std::endl;
+    }
+    for (uint32 i = 0; i < enemies.CountEnemies(); i++) {
+        const enemy& e = enemies.EnemyAt(i);
+        std::cout << std::setw(2) << i << "  " << std::left << std::setw(12)
+            << e.name << std::right << "  type " << std::setw(2) << e.type
+            << " (" << enemies.TypeAt(e.type).name << ")  flags 0x"
+            << std::hex << e.flags << std::dec << std::endl;
     }
 }
 
@@ -234,6 +262,7 @@ Usage()
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
+        "  --enemies                     list DARKLAND.ENM\n"
         "  --messages [name]             list MSGFILES, or dump a card deck\n"
         "                                (e.g. PARTY02, or a path to a .MSG file)\n"
         "  --card <name> [card] [city] [picture]\n"
@@ -274,6 +303,10 @@ int main(int argc, char **argv)
             return DoMapMode(data, extra > 0 ? argv[arg + 1] : "map");
         if (command == "--cities") {
             DumpCities(data.Cities());
+            return 0;
+        }
+        if (command == "--enemies") {
+            DumpEnemies(data.Enemies());
             return 0;
         }
         if (command == "--locations") {
