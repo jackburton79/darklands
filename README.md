@@ -41,7 +41,8 @@ The goal is twofold:
   leaves for the world map, travels and arrives at other cities. The
   city's places can be visited (square, fortress, market, churches,
   cathedral, monastery, university, town hall, barracks, guilds, slum,
-  docks, a grove to wait in); the arms-making guilds' shops buy and sell
+  docks, a grove to wait in); the arms-making guilds' shops and the
+  market's merchants buy and sell
   with the game's own rules for stock and prices, decoded from the
   executable; in a city church the party can hear Mass, confess and
   donate, gaining divine favor by the game's own rules; what happens in
@@ -88,6 +89,8 @@ implemented yet. See the roadmap below.
 - [x] Trade with the arms-making guilds (swordsmith, blacksmith,
       armorer, bowyer)
 - [x] The city church: Mass, confession, donations (divine favor)
+- [x] Trade at the market (everyday goods, foreign traders,
+      pharmacists, the Leihhaus)
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback

@@ -33,6 +33,8 @@ static const int kNeedsShop			= kNeedsHarbor + 1;	// + city_shop
 // a bad local reputation (-10 or less) for sanctuary
 static const int kNeedsDonation		= -2;
 static const int kNeedsBadReputation = -3;
+// or a flag of the city record: the market's Leihhaus (1893:00FD)
+static const int kNeedsPawnshop		= -4;
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -167,12 +169,16 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_SIDE_STREET)
     } },
     // "The $marketplace... is the bustling center of all business"
+    // (DARKLAND.EXE, segment 1893: the merchants open the trade screen
+    // directly; the game may first offer a quest, or bring guards on a
+    // wanted party, and draws an event after trading: not reproduced)
     { "MARKE00", 0, NULL, {
-        TODO, TODO, TODO,					// merchants, foreign traders,
-                                            // pharmacists
+        TRADE(MERCHANT_GOODS),				// everyday items
+        TRADE(MERCHANT_FOREIGN),			// the foreign traders
+        TRADE(MERCHANT_HERBALIST),			// the pharmacists' stalls
         TODO, TODO, TODO,					// Fugger, Medici, Hanse
-        TODO_IF(CITY_PAWNSHOP),				// the Leihhaus
-        TODO,								// placeholder
+        { ACTION_TRADE, MERCHANT_PAWNSHOP, kNeedsPawnshop, 0 },
+        HIDE,								// placeholder
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -785,6 +791,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
         else if (rule.needs == kNeedsBadReputation)
             hide = _Reputation() > -10;
+        else if (rule.needs == kNeedsPawnshop)
+            hide = (c.flags & CITY_HAS_PAWNSHOP) == 0;
         else if (rule.needs >= kNeedsShop)
             hide = c.shopQuality[rule.needs - kNeedsShop] == 0;
         else if (rule.needs == kNeedsHarbor)

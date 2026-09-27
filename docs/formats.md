@@ -447,7 +447,11 @@ Record (relative offsets, little-endian):
                   0xFFFF = inland
     +0x54   2     4 in every record
     +0x56   2     unknown; equals the record index or index + 1
-    +0x58   10    unknown (small values, then larger words)
+    +0x58   6     unknown (small values)
+    +0x5E   2     flags: 0x200 = the market has a Leihhaus (**verified**:
+                  DARKLAND.EXE 0E76:1A8E reads it, 57 cities); the
+                  other bits are read too, not decoded
+    +0x60   2     unknown
     +0x62   9     the quality of the city's shops, 0 if it has none:
                   blacksmith, goods merchant, swordsmith, armorer,
                   gunsmith, bowyer, artificer, jeweler, clothmaker

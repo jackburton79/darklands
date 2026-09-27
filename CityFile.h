@@ -47,6 +47,12 @@ enum city_shop {
     CITY_SHOP_COUNT
 };
 
+// Bits of city::flags (DARKLAND.EXE, 0E76:1A8E); the others are not
+// decoded
+enum city_flag {
+    CITY_HAS_PAWNSHOP		= 0x0200	// the market's Leihhaus
+};
+
 // Which sea a port city is on.
 enum city_harbor {
     CITY_HARBOR_NORTH_SEA	= 0,
@@ -65,6 +71,7 @@ struct city {
     uint16 y2;
     std::vector<uint16> neighbors;	// indices of nearby cities
     uint16 harbor;				// see city_harbor
+    uint16 flags;				// see city_flag
     uint8 shopQuality[CITY_SHOP_COUNT];	// the quality of its goods; 0: the
                                         // city has no such shop
     std::string places[CITY_PLACE_COUNT];

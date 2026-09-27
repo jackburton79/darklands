@@ -26,7 +26,7 @@ program's own (pre-relocation) addresses. Disassembly with
   puts every called offset on a function prologue (`C8 xx xx 00` or
   `55 8B EC`). Found so far: 0E76 → 0x578B0, 1367 → 0x5C7C0,
   18E7 → 0x65C30 (the trade code), 1838 → 0xB8840 (the city
-  church), 12F7 → 0x3E020, 146D → 0x1CE20,
+  church), 1893 → 0x9F620 (the market), 12F7 → 0x3E020, 146D → 0x1CE20,
   150B → 0x8D110, 1551 → 0x1DC60, 18BF → 0x43CA0.
 - Calls between overlays often go through RTLink's own mechanism, not
   direct far calls: callers of a function can be missing from a search.
@@ -114,6 +114,36 @@ All in segment 18E7 (file base 0x65C30); see `TradeView.cpp`.
   sellable item.
 - The prices on the manual's screenshot (p. 29) do not follow these
   rules: it shows a pre-release version.
+
+## The market
+
+$MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
+(code); see `CityVisit.cpp`.
+
+- **The card** (1893:0002): options 0..2 (everyday merchants, foreign
+  traders, pharmacists) are always there; 3, 4, 5 (Fugger, Medici,
+  Hanse) need the location properties 0x0C, 0x0D, 0x0E (DARKLAND.LOC
+  record bytes +0x15, +0x16, +0x17); 6 (the Leihhaus) needs property
+  0x1F, bit 0x200 of the city record's word at +0x5E (57 cities; not the
+  place name: Groningen names a Leihhaus but has no bit). A party wanted
+  in the city (0x9C0:20F3) sees card 1 instead of 0. Each option has
+  two functions: a chance (the table at DS:EA14, e.g. 1893:089A: 100 −
+  [DS:586C] · 6 / 10, [DS:586C] being set for a wanted party; *inferred*:
+  the chance of not being recognized) and the action (the switch at
+  1893:0266).
+- **The merchants**: the actions 1893:045A, 08F2, 0D9C, 13CE open the
+  trade screen through 0E76:21AA (type, name, mask): everyday items
+  (1, NULL: "Goods Merchant", 0x0002C100), foreign traders (−1,
+  "Foreign Trader", 0x003F843F), pharmacists (−1, "herbalist",
+  0x00000400), the Leihhaus (−2, "Pawnshop", 0x2C3EC3FF). So the goods
+  merchant's quality is the city's shop 1, the foreign traders' and
+  herbalist's 25, the pawnshop's 10 (see Trade). No time passes.
+- Not reproduced: before trading, a wanted party may be caught
+  (random(100) under the chance: state 1), and quests may be offered
+  (0E76:3404 (3 or 10, 0, location): cards 2 and 3); after trading, a
+  random(100) draws an event (under 2 and under 14: other decks, one
+  hour), unless a quest is pending. The cards 7..10 (the merchants'
+  descriptions) are not shown by this code.
 
 ## Time and travel
 

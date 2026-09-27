@@ -46,12 +46,18 @@ static const uint8 kDisabledColor	= 8;	// EGA dark gray
 static const uint8 kHighlightColor	= 140;
 
 static const char* kMerchantNames[MERCHANT_COUNT] = {
-    "Swordsmith", "Blacksmith", "Armorer", "Bowyer"
+    "Swordsmith", "Blacksmith", "Armorer", "Bowyer",
+    "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop"
 };
 
 // DARKLAND.EXE, see docs/exe.md. The shop type (its quality in the
-// city record) and the item categories it deals in, as the guild shops
-// open the trade screen (the same mask by day and at night)
+// city record; kAnyShop: quality 25, kPawnshop: 10) and the item
+// categories it deals in, as the guild shops (the same mask by day and at
+// night) and the market (1893:06AF, 0B51, 1039, 13FA) open the trade
+// screen
+static const int kAnyShop	= -1;
+static const int kPawnshop	= -2;
+
 static const struct {
     int shop;
     uint32 goods;			// item_definition::flags bits
@@ -59,8 +65,25 @@ static const struct {
     { SHOP_SWORDSMITH, 0x040000FF },
     { SHOP_BLACKSMITH, 0x040000FF },
     { SHOP_ARMORER, 0x040000FF },
-    { SHOP_BOWYER, 0x083C0030 }
+    { SHOP_BOWYER, 0x083C0030 },
+    { SHOP_GOODS_MERCHANT, 0x0002C100 },
+    { kAnyShop, 0x003F843F },
+    { kAnyShop, 0x00000400 },
+    { kPawnshop, 0x2C3EC3FF }
 };
+
+
+// The quality of a shop's goods (DARKLAND.EXE, 18E7:1C30)
+static int
+ShopQuality(GameData& data, int cityIndex, merchant_kind kind)
+{
+    const int shop = kMerchants[kind].shop;
+    if (shop == kPawnshop)
+        return 10;
+    if (shop == kAnyShop || cityIndex < 0)
+        return 25;
+    return data.Cities().CityAt(uint32(cityIndex)).shopQuality[shop];
+}
 
 // The chance (percent) that a merchant has an item, by city size - 1
 // (1 outside cities) and rarity (0..11): the table at 290E:399B
@@ -163,8 +186,7 @@ TradeView::CityHasMerchant(GameData& data, int cityIndex, merchant_kind kind)
 {
     if (cityIndex < 0 || cityIndex >= int(data.Cities().CountCities()))
         return false;
-    return data.Cities().CityAt(uint32(cityIndex))
-        .shopQuality[kMerchants[kind].shop] != 0;
+    return ShopQuality(data, cityIndex, kind) != 0;
 }
 
 
@@ -286,11 +308,7 @@ TradeView::MerchantQuality(uint16 code) const
     if (IsAmmunition(definition.type) || definition.flags == ITEM_COMPONENT
             || (definition.type >= 0x17 && definition.type <= 0x19))
         return 25;
-    int shopQuality = 25;
-    if (fCity >= 0)
-        shopQuality = fData.Cities().CityAt(uint32(fCity))
-            .shopQuality[kMerchants[fKind].shop];
-    return uint8((definition.quality + shopQuality) / 2);
+    return uint8((definition.quality + ShopQuality(fData, fCity, fKind)) / 2);
 }
 
 

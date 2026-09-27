@@ -34,6 +34,10 @@ enum merchant_kind {
     MERCHANT_BLACKSMITH,
     MERCHANT_ARMORER,
     MERCHANT_BOWYER,
+    MERCHANT_GOODS,			// the market: everyday items,
+    MERCHANT_FOREIGN,		// the foreign traders,
+    MERCHANT_HERBALIST,		// the pharmacists,
+    MERCHANT_PAWNSHOP,		// the Leihhaus
     MERCHANT_COUNT
 };
 
@@ -53,8 +57,8 @@ public:
     // Starts a session with a merchant: its stock (drawn with `seed`),
     // the leader bargaining for the first member.
     void			SetMerchant(merchant_kind kind, uint32 seed = 0);
-    // Whether the city has that merchant (the quality of its shop is 0
-    // if not).
+    // Whether the city has that merchant (the quality of its guild shop
+    // is 0 if not; the market's merchants are in every city).
     static bool		CityHasMerchant(GameData& data, int cityIndex,
                         merchant_kind kind);
 
