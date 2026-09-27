@@ -22,6 +22,7 @@
 
 class BattleMap;
 class ExeData;
+class Font;
 class Bitmap;
 class GameData;
 class GameWindow;
@@ -29,6 +30,13 @@ class ImcFile;
 class ImgFile;
 struct character;
 struct battle_cell;
+
+enum battle_outcome {
+    BATTLE_GOING_ON = 0,
+    BATTLE_WON,					// every enemy is down
+    BATTLE_LOST,				// every party member is down
+    BATTLE_LEFT					// Esc, before the end
+};
 
 class BattleView {
 public:
@@ -83,9 +91,13 @@ public:
     // it; false if there is none.
     bool			FindFreeCell(int& x, int& y) const;
 
-    // Runs until Esc; the arrow keys scroll, 1..5 select a member, a
-    // click selects or moves, the space bar stops or starts the enemies.
-    void			Run(GameWindow& window);
+    // BATTLE_GOING_ON while both sides have someone standing
+    battle_outcome	Outcome() const;
+
+    // Runs until the battle ends (then a message waits for a key or a
+    // click) or Esc; the arrow keys scroll, 1..5 select a member, a click
+    // selects or moves, the space bar stops or starts the enemies.
+    battle_outcome	Run(GameWindow& window);
 
     // Moves the view by cells, within the map
     void			Scroll(int dx, int dy);
@@ -131,6 +143,7 @@ private:
     std::vector<battle_position> _Occupied(const figure* except) const;
     bool			_PlanEnemy(figure& enemy);
     void			_DrawFigure(const figure& f);
+    void			_DrawMessage(const std::string& text);
     uint8			_GroundColor(const battle_cell& cell) const;
     bool			_IsOpen(int x, int y) const;
     void			_DrawCell(int x, int y, int left, int top);
@@ -142,6 +155,7 @@ private:
     std::vector<figure> fFigures;
     int				fSelected;		// index into fFigures, or -1
     std::unique_ptr<ImgFile> fPictures;		// BATTLEGR.IMG
+    std::unique_ptr<Font> fFont;
     std::mt19937	fRandom;
     int				fTicks;
     bool			fEnemiesActive;

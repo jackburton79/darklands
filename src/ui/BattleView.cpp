@@ -11,6 +11,7 @@
 #include "ImgFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
+#include "TextSupport.h"
 
 #include <SDL.h>
 
@@ -50,6 +51,8 @@ static const Uint32 kFrameTicks			= 60;
 // (43.. are the same in red: when the game uses which is not known)
 static const int kMaxDamagePicture		= 42;
 
+static const uint32 kFontIndex			= 2;	// FONTS.FNT, as the cards
+
 
 BattleView::BattleView(GameData& data)
     :
@@ -59,6 +62,7 @@ BattleView::BattleView(GameData& data)
     fPalette(data.SpritePalette("")),
     fSelected(-1),
     fPictures(new ImgFile(data.PathFor("BATTLEGR.IMG"))),
+    fFont(new Font(data.Fonts(), kFontIndex)),
     fRandom(std::random_device()()),
     fTicks(0),
     fEnemiesActive(true),
@@ -473,14 +477,42 @@ BattleView::_LoadSprites(const std::string& image, const char* set,
 }
 
 
-void
+battle_outcome
+BattleView::Outcome() const
+{
+    bool partyStanding = false;
+    bool enemyStanding = false;
+    bool enemies = false;
+    for (const figure& f : fFigures) {
+        const bool standing = f.stats.status == FIGHTER_ACTIVE;
+        if (f.member < 0) {
+            enemies = true;
+            enemyStanding = enemyStanding || standing;
+        } else
+            partyStanding = partyStanding || standing;
+    }
+    if (!partyStanding)
+        return BATTLE_LOST;
+    if (enemies && !enemyStanding)
+        return BATTLE_WON;
+    return BATTLE_GOING_ON;
+}
+
+
+battle_outcome
 BattleView::Run(GameWindow& window)
 {
     bool dirty = true;
     Uint32 lastStep = 0;
     for (;;) {
+        const battle_outcome outcome = Outcome();
         if (dirty) {
-            window.Show(Draw());
+            Draw();
+            if (outcome == BATTLE_WON)
+                _DrawMessage("Victory! The enemies are down.");
+            else if (outcome == BATTLE_LOST)
+                _DrawMessage("The party has fallen.");
+            window.Show(fBuffer);
             dirty = false;
         }
         const Uint32 now = SDL_GetTicks();
@@ -494,8 +526,11 @@ BattleView::Run(GameWindow& window)
             continue;
         switch (event.type) {
             case SDL_QUIT:
-                return;
+                SDL_PushEvent(&event);	// for the screen below, which quits
+                return outcome != BATTLE_GOING_ON ? outcome : BATTLE_LEFT;
             case SDL_MOUSEBUTTONUP:
+                if (outcome != BATTLE_GOING_ON)
+                    return outcome;
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     Clicked(GameWindow::ToScreen(event.button.x,
                         event.button.y));
@@ -504,9 +539,11 @@ BattleView::Run(GameWindow& window)
                 }
                 break;
             case SDL_KEYDOWN:
+                if (outcome != BATTLE_GOING_ON)
+                    return outcome;
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
-                        return;
+                        return BATTLE_LEFT;
                     case SDLK_SPACE:
                         SetEnemiesActive(!fEnemiesActive);
                         break;
@@ -594,6 +631,32 @@ BattleView::Draw()
         _DrawFigure(*f);
     }
     return fBuffer;
+}
+
+
+// A framed line in the middle of the screen, and how to go on
+void
+BattleView::_DrawMessage(const std::string& text)
+{
+    const std::string lines[2] = { text, "(press a key)" };
+    int width = 0;
+    for (const std::string& line : lines) {
+        width = std::max(width,
+            int(fFont->StringWidth(Font::ToGameCharset(line))));
+    }
+    const int height = 2 * fFont->Height() + 12;
+    const int left = (kScreenWidth - width) / 2 - 8;
+    const int top = (kScreenHeight - height) / 2;
+    fBuffer->FillRect(GFX::rect(left, top, width + 16, height), kGray + 1);
+    fBuffer->StrokeRect(GFX::rect(left, top, width + 16, height),
+        kYellow + 7);
+    for (int i = 0; i < 2; i++) {
+        const std::string line = Font::ToGameCharset(lines[i]);
+        const int x = (kScreenWidth - fFont->StringWidth(line)) / 2;
+        fFont->RenderString(line, fBuffer,
+            GFX::point(x, top + 5 + i * (fFont->Height() + 2)),
+            i == 0 ? kYellow + 7 : kGray + 7);
+    }
 }
 
 

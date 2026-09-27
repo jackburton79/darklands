@@ -406,7 +406,8 @@ ShowBattle(GameData& data, const std::string& mapName, const std::string& enemy,
     }
     view.Scroll(0, BattleMap::kSize);	// the party, at the bottom
     GameWindow window("Darklands");
-    view.Run(window);
+    static const char* kOutcomes[] = { "", "won", "lost", "left" };
+    std::cout << "battle " << kOutcomes[view.Run(window)] << std::endl;
     return 0;
 }
 

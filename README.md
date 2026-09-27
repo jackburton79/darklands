@@ -192,7 +192,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # the party of a saved game and four enemies (their sprite set, e.g. M03);
 # 1..5 or a click select a member, a click on a cell sends it there; the
 # enemies close in (the space bar stops or starts them) and the figures
-# next to a foe fight it, with DARKLAND.EXE's melee rules
+# next to a foe fight it, with DARKLAND.EXE's melee rules, until one side
+# is down
 ./darklands --battle IWILDGEN.101 M03 DKSAVE0.SAV
 
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
