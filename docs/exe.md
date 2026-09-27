@@ -651,6 +651,54 @@ Where the battle code starts; the rules are not decoded yet.
   driver function is not decoded; the driver's own table of offsets is
   at MGRAPHIC.EXE file 0x22A. The battle code (files 0x3C000..0x54000)
   calls 047C:0553, 055A, 05A5, 073D, 0744, 1120 and others.
+- **Combatants**: DARKLAND.EXE keeps a debug panel of the combat
+  variables (file 0x4A4C6): it prints the names at DS:1C68.. (a table of
+  pointers at DS:1F2C) and, for combatant i, the values of the 128-byte
+  record at DS:9C55 + 128 · i (the party slots come first: the status
+  byte DS:9C69 of "Runtime and globals" is its field +0x14) and of
+  arrays indexed by i. In the order printed, **verified** (code):
+
+  | name | where |
+  |---|---|
+  | ManX, ManY, xpos, ypos, destx, desty | record +0, +2, +4, +6, +8, +0xA (words) |
+  | Orders | record +0x10 (word) |
+  | Status | record +0x14 |
+  | SeqNum, TrueDirn, Facing, Seq | record +0x18, +0x19, +0x1A, +0x1B |
+  | Target | record +0x4A |
+  | StrikeSpd | record +0x1F |
+  | MissileWpn | record +0x22 |
+  | HitResults | DS:CA57 + i |
+  | HitChance | DS:D493 + i |
+  | CombatSeqIP | DS:CA64 + i |
+  | HitBy | DS:CAA7 + i |
+  | OrigFacing | DS:D3FE + i |
+  | Automove | DS:A6D3 + i |
+  | WeaponHighStr, WeaponMinStr | record +0x57, +0x56 |
+  | CloseUpMove | DS:D41B + i |
+  | PCMeleeAttack, PCMissileAttack | record +0x20, +0x21 |
+
+  A second page (file 0x4AA08, names from DS:1F60) prints the rest,
+  **verified** (code): Endurance +0x5D, Max Endur +0x64, Strength +0x5E,
+  Max Str +0x65, Agility +0x5F, Perception +0x60, Intell +0x61,
+  Charisma +0x62, Favor +0x63, PCLevel DS:A6B4 + i, MeleeWeapon +0x51,
+  WeaponSpd +0x52, WeaponHndPen +0x53, WeaponDmg +0x54, WeaponMinStr
+  +0x56, WeaponQual +0x0D, WeaponSkill +0x59, MeleeWeapQual +0x58,
+  ShieldQual +0x5B, ShieldType +0x5C, ArmorStr(0) +0x4D, ArmorStr(1)
+  +0x4E, Armor(0) +0x4B (StrikeResult is computed; Armor(1) is past the
+  part read). The record follows the character record (formats.md):
+  the attributes at +0x5D and +0x64, the weapon at +0x51, the vitals
+  armor at +0x4B, the shield at +0x5C are the same fields; the bytes
+  +0x52..+0x5B, not decoded there, hold the weapon's figures.
+- **HitChance** (file 0x43CA2, for combatant i, when it is 0xFF): with
+  bit 1 of Orders (0x2) set, 6000 / d, where d = (200 − WeaponSkill −
+  Agility) / 2 + (WeaponSpd + 15) · 2; then − 30 if Orders has both bits
+  0x6, else + 60 with both bits 0x22, else + 120 with both bits 0xA; + 30
+  if (Max Endur + Max Str) / 2 < [+0x49] ≤ Max Endur + Max Str, else
+  + 100 if [+0x49] > (Max Endur + Max Str) · 3 / 2 ([+0x49]: the load
+  carried? *inferred*). Without bit 0x2 it is 100, and field +0x1D gets
+  150 − WeaponSkill / 2 − Agility / 2 (at least 0). **verified** (code).
+  The bigger the number, the faster and more skilled the fighter: more
+  a rate of strikes than a chance (*inferred*).
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",
