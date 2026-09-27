@@ -75,6 +75,8 @@ public:
     bool			Sell();			// the member's highlighted item
     void			BarterForNextMember();
     void			SetMember(int member);
+    // Ctrl+F1..F5: another member leads, and bargains (file 0x68E44)
+    void			SetLeader(int member);
 
     // The highlighted item of a scroll, which becomes the active one.
     void			Select(scroll which, int index);

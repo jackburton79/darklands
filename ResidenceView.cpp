@@ -161,7 +161,10 @@ ResidenceView::Run(GameWindow& window)
                 if (key == SDLK_ESCAPE || key == SDLK_l)
                     return;
                 fMessage.clear();
-                if (key >= SDLK_F1 && key <= SDLK_F5 && fInfo != NULL)
+                const bool ctrl = (event.key.keysym.mod & KMOD_CTRL) != 0;
+                if (ctrl && key >= SDLK_F1 && key <= SDLK_F5)
+                    SetLeader(int(key - SDLK_F1));
+                else if (key >= SDLK_F1 && key <= SDLK_F5 && fInfo != NULL)
                     fInfo->Run(window, int(key - SDLK_F1));
                 else if (key == SDLK_F6 && fInfo != NULL)
                     fInfo->Run(window, InfoView::kPartyPage);
@@ -211,6 +214,14 @@ ResidenceView::SelectMember(int member)
 {
     if (fParty != NULL && member >= 0 && member < int(fParty->members.size()))
         fMember = member;
+}
+
+
+void
+ResidenceView::SetLeader(int member)
+{
+    if (fParty != NULL && member >= 0 && member < int(fParty->members.size()))
+        fParty->leader = member;
 }
 
 

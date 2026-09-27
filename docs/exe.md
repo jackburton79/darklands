@@ -117,6 +117,10 @@ All in segment 18E7 (file base 0x65C30); see `TradeView.cpp`.
   sellable item.
 - The prices on the manual's screenshot (p. 29) do not follow these
   rules: it shows a pre-release version.
+- **Ctrl+F1..F5** makes that member the leader (file 0x68E44, if the
+  member's status byte is not 0), who then bargains; the residence does
+  the same (file 0x6FF70, status 1); the map ignores the keys, combat
+  refuses them (file 0x4B7E0). No card-screen handler was found.
 
 ## The market
 

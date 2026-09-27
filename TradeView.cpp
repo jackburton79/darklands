@@ -259,6 +259,12 @@ TradeView::Run(GameWindow& window)
                 const SDL_Keycode key = event.key.keysym.sym;
                 if (key == SDLK_ESCAPE || key == SDLK_l)
                     return;
+                if ((event.key.keysym.mod & KMOD_CTRL) != 0
+                        && key >= SDLK_F1 && key <= SDLK_F5) {
+                    SetLeader(int(key - SDLK_F1));
+                    dirty = true;
+                    break;
+                }
                 switch (key) {
                     case SDLK_UP:		MoveSelection(-1); break;
                     case SDLK_DOWN:		MoveSelection(1); break;
@@ -454,6 +460,14 @@ TradeView::BarterForNextMember()
 {
     if (fParty != NULL && !fParty->members.empty())
         SetMember((fMember + 1) % int(fParty->members.size()));
+}
+
+
+void
+TradeView::SetLeader(int member)
+{
+    if (fParty != NULL && member >= 0 && member < int(fParty->members.size()))
+        fParty->leader = member;
 }
 
 

@@ -75,6 +75,8 @@ public:
     // Actions, as the keys and options of the screen
     void			SelectMember(int member);
     int				Member() const			{ return fMember; }
+    // Ctrl+F1..F5: another member leads (file 0x6FF70)
+    void			SetLeader(int member);
     // Whether the selected member can take up an activity now; Choose()
     // returns false if not.
     bool			Available(activity what) const;
