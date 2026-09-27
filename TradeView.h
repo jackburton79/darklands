@@ -34,6 +34,8 @@ enum merchant_kind {
     MERCHANT_BLACKSMITH,
     MERCHANT_ARMORER,
     MERCHANT_BOWYER,
+    MERCHANT_ARTIFICER,		// the tinkers' guild
+    MERCHANT_CLOTHMAKER,
     MERCHANT_GOODS,			// the market: everyday items,
     MERCHANT_FOREIGN,		// the foreign traders,
     MERCHANT_HERBALIST,		// the pharmacists,

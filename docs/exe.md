@@ -145,6 +145,30 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   hour), unless a quest is pending. The cards 7..10 (the merchants'
   descriptions) are not shown by this code.
 
+## The crafts' guilds
+
+$CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
+`CityVisit.cpp`.
+
+- **The card**: the physician (option 0), the alchemists (1), the
+  tinkers (3), the clothmakers (4) and the ways out are on; the jewelers
+  (2) and the placeholders (5, 6) are off, so the game never offers the
+  jewelers from here by day. In cities of size 3 or less the physician is
+  missing when (location property 0x21 + year) % 3 is 0, the alchemist
+  when property 0x21 is even; in size 4, the alchemist when it is a
+  multiple of 3. Property 0x21 of a city is the city record's word +0x56
+  plus a global, DS:9C4A (not decoded; not reproduced).
+- Going to a guild (e.g. the tinkers, file 0xA47A2) takes an hour (one
+  more if 1367:072A says it is night), unless a random(100) over a chance
+  brings an encounter (state 0x3C; not reproduced).
+- **The guild shops**: every guild's "buy and sell" opens the trade
+  screen, then one hour passes and the guild's card is shown again (the
+  swordsmith at file 0xCED6A, 0xD0833 at night; the same for the
+  others). The tinkers are the artificers' guild ($ARTIF00, trade at file
+  0xD74B9: type 6, mask 0x0000800E), the clothmakers type 8, mask
+  0x04000000 (file 0xAD2C9). The night crafts card is $CIVCR01, where
+  the tinkers and the clothmakers are off.
+
 ## The inn
 
 $URBAN00.MSG by day (file 0xA6B5E, the option switch at file 0xA6DB6,

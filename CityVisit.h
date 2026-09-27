@@ -59,6 +59,8 @@ public:
         SCREEN_BLACKSMITH,		// $BLACK00/01.MSG, $ARMOR00/01.MSG,
         SCREEN_ARMORER,			// $BOWYE00/01.MSG
         SCREEN_BOWYER,
+        SCREEN_ARTIFICER,		// the crafts' guilds: $ARTIF00/01.MSG,
+        SCREEN_CLOTHMAKER,		// $CLOTH00/01.MSG
         SCREEN_MASS,			// the church's result cards, $CITYC00.MSG
         SCREEN_NO_MASS,			// cards 2..7
         SCREEN_CONFESSION,

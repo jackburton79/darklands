@@ -46,7 +46,8 @@ static const uint8 kDisabledColor	= 8;	// EGA dark gray
 static const uint8 kHighlightColor	= 140;
 
 static const char* kMerchantNames[MERCHANT_COUNT] = {
-    "Swordsmith", "Blacksmith", "Armorer", "Bowyer",
+    "Swordsmith", "Blacksmith", "Armorer", "Bowyer", "Artificier",
+    "Clothmaker",
     "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop",
     "Stablemaster"
 };
@@ -67,6 +68,8 @@ static const struct {
     { SHOP_BLACKSMITH, 0x040000FF },
     { SHOP_ARMORER, 0x040000FF },
     { SHOP_BOWYER, 0x083C0030 },
+    { SHOP_ARTIFICER, 0x0000800E },
+    { SHOP_CLOTHMAKER, 0x04000000 },
     { SHOP_GOODS_MERCHANT, 0x0002C100 },
     { kAnyShop, 0x003F843F },
     { kAnyShop, 0x00000400 },

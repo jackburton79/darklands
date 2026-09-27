@@ -77,19 +77,20 @@ struct screen_rules {
 #define DO(action)			{ action, 0, kAlways, 0 }
 #define DO_IF(action, needs) { action, 0, needs, 0 }
 
-// The guilds' shops by day and by night
-#define SHOP_OPTIONS(merchant) { \
-        TRADE(merchant),					/* buy and sell goods */ \
+// The guilds' shops by day and by night: trading takes an hour, then
+// the guild's card again (DARKLAND.EXE, e.g. file 0xCED6A, 0xD0833)
+#define SHOP_OPTIONS(merchant, back) { \
+        { ACTION_TRADE, merchant, kAlways, 60 },	/* buy and sell goods */ \
         TODO, TODO,							/* politics, the masters */ \
         HIDE, HIDE, HIDE,					/* the leader's secret */ \
-        GO(SCREEN_ARMS_CRAFTS)				/* leave */ \
+        GO(back)							/* leave */ \
     }
-#define NIGHT_SHOP_OPTIONS(merchant) { \
-        TRADE(merchant),					/* awaken somebody to trade */ \
+#define NIGHT_SHOP_OPTIONS(merchant, back) { \
+        { ACTION_TRADE, merchant, kAlways, 60 },	/* awaken somebody */ \
         TODO,								/* awaken the guild leader */ \
         HIDE, HIDE, HIDE,					/* the leader's home, saboteurs */ \
         TODO, TODO, TODO, TODO,				/* placeholders */ \
-        GO(SCREEN_ARMS_CRAFTS)				/* leave */ \
+        GO(back)							/* leave */ \
     }
 
 // The option lists are those of the cards (see `darklands --messages`);
@@ -266,10 +267,16 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_GATE)
     } },
     // "...the picture signs that proclaim $PlaceName's guilds and crafts"
+    // (DARKLAND.EXE, file 0xA42D5: the jewelers are never offered by
+    // day; the physician and the alchemist are missing from some small
+    // towns, by a rule on the game's year; going to a guild takes an
+    // hour)
     { "CIVCR00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// physician, astrologists,
-                                            // jewelers, tinkers, clothmakers
-        TODO, TODO,							// placeholders
+        TODO, TODO,							// physician, astrologists
+        HIDE,								// jewelers
+        WAIT(SCREEN_ARTIFICER, 60),			// tinkers
+        WAIT(SCREEN_CLOTHMAKER, 60),
+        HIDE, HIDE,							// placeholders
         GO(SCREEN_ARMS_CRAFTS),
         GO(SCREEN_SIDE_STREET),
         GO(SCREEN_MAIN_STREET)
@@ -322,10 +329,13 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "The sounds of hammers ringing on steel... fill Swordsmith's Lane."
     // The shops of the four arms-making guilds have the same options;
     // the guild politics and the leader's secrets belong to quests.
-    { "SWORD00", 0, NULL, SHOP_OPTIONS(MERCHANT_SWORDSMITH) },
-    { "BLACK00", 0, NULL, SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
-    { "ARMOR00", 0, NULL, SHOP_OPTIONS(MERCHANT_ARMORER) },
-    { "BOWYE00", 0, NULL, SHOP_OPTIONS(MERCHANT_BOWYER) },
+    { "SWORD00", 0, NULL, SHOP_OPTIONS(MERCHANT_SWORDSMITH, SCREEN_ARMS_CRAFTS) },
+    { "BLACK00", 0, NULL, SHOP_OPTIONS(MERCHANT_BLACKSMITH, SCREEN_ARMS_CRAFTS) },
+    { "ARMOR00", 0, NULL, SHOP_OPTIONS(MERCHANT_ARMORER, SCREEN_ARMS_CRAFTS) },
+    { "BOWYE00", 0, NULL, SHOP_OPTIONS(MERCHANT_BOWYER, SCREEN_ARMS_CRAFTS) },
+    // "Tinkers' Square..."; the clothmakers' guild
+    { "ARTIF00", 0, NULL, SHOP_OPTIONS(MERCHANT_ARTIFICER, SCREEN_CRAFTS) },
+    { "CLOTH00", 0, NULL, SHOP_OPTIONS(MERCHANT_CLOTHMAKER, SCREEN_CRAFTS) },
     // The church's results: "the Mass is sung", "the next Mass will be
     // at $NamedOneName", confession, the priest's thanks for small,
     // middling and large donations
@@ -527,10 +537,12 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     } },
     { NULL, 0, NULL, {} },					// other locations
     // "The swordsmiths' courtyards are silent..."
-    { "SWORD01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_SWORDSMITH) },
-    { "BLACK01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
-    { "ARMOR01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_ARMORER) },
-    { "BOWYE01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BOWYER) },
+    { "SWORD01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_SWORDSMITH, SCREEN_ARMS_CRAFTS) },
+    { "BLACK01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BLACKSMITH, SCREEN_ARMS_CRAFTS) },
+    { "ARMOR01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_ARMORER, SCREEN_ARMS_CRAFTS) },
+    { "BOWYE01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BOWYER, SCREEN_ARMS_CRAFTS) },
+    { "ARTIF01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_ARTIFICER, SCREEN_CRAFTS) },
+    { "CLOTH01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_CLOTHMAKER, SCREEN_CRAFTS) },
     { NULL, 0, NULL, {} },					// the church's results
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
