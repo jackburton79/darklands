@@ -196,8 +196,8 @@ implementation.
 - Applying **all** chunks in file order produces plausible enemy
   graphics for the whole bestiary catalog; multiple chunks may claim the
   same palette range with different colors, so per-enemy chunk selection
-  must happen elsewhere — probably `DARKLAND.ENM`, whose 71 types match
-  the 71 chunks (see "Enemies"). *unresolved*
+  must happen elsewhere: in the palette fields of the enemy types of
+  `DARKLAND.ENM` (see "Enemies"). **verified**
 - `BKGNDPAL.DAT` does **not** follow this layout — see next section.
 
 ## Background palettes (`BKGNDPAL.DAT`)
@@ -1091,9 +1091,10 @@ and `./darklands --enemies`.
                   NUL-padded
     +0x0E   1     in a group's first type: the number of types in the
                   group (its variants); 0xFF in the others
-    +0x0F   2     unknown (1..6 / 1..3)
-    +0x11   1     increasing with the type, 0x00..0x47: unknown
-                  (a palette or sprite index?)
+    +0x0F   1     palette count P: the type's alternative palettes
+    +0x10   1     chunks per palette C (1..3)
+    +0x11   1     first chunk in ENEMYPAL.DAT: palette p is chunks
+                  first + p·C .. first + p·C + C - 1
     +0x12   2     unknown (0..2)
     +0x14   7     attributes, in the character order (End, Str, Agl,
                   Per, Int, Chr, DF)
@@ -1123,9 +1124,13 @@ and `./darklands --enemies`.
   four melee weapon skills, the dragons 80 in all seven weapon skills,
   Baphomet 99 in the three missile skills; DF is 99 for everyone.
   *inferred*
-- The 71 types match the 71 palette chunks of `ENEMYPAL.DAT` (see
-  "Palette chunk files"): chunk *i* is probably type *i*'s colors.
-  *inferred*, not checked.
+- The palette fields (named by vvendigo's `reader_enm.py`) tile
+  `ENEMYPAL.DAT`: each group's chunks start where the previous group's
+  end, except a one-chunk gap before the Kobold; the types of a group
+  share them. **verified**. The chunks' start indices fit the sprites'
+  colors (the skeleton's chunk starts at 32 and its sprites use 32..45).
+  Baphomet's chunks (71, 72) are past the end of the file, which has 71.
+  Which of its palettes an enemy wears is not known.
 
 
 ### Level files (`LEVEL0/1/2.ENM`)
@@ -1222,59 +1227,77 @@ tables is open.*
 The battle animations. `E00C.CAT` holds the human enemies, `M00C.CAT`
 the monsters/undead; `A00C`, `C00C`, `F01C`, `F60C.CAT` hold the party's
 figures (same naming: `A00CBA2.IMC`, ...). All are ordinary `.CAT`
-catalogs whose entries are `.IMC` files.
-
-`TACANIM.DB` (546 bytes) lists the sprite sets: per entry a
-NUL-terminated code (`A00`, `C00`, `F01`, `F60`, `E00`..`E17`,
-`M00`..), three words and four bytes (`05 02 06 03` for the humans,
-`0a 04 0a 04` for M00, the wolf). The first two bytes match the frame
-counts of the IMC headers below (5 and 2 for humanoids, 10 and 4 for
-beasts). *inferred*: the index of the animations.
+catalogs whose entries are `.IMC` files: 333 in all. See `ImcFile.cpp`;
+`./darklands --extract E00C.CAT <dir>` exports each one as a sheet (a
+row per frame, a column per direction). The format was worked out with
+the help of vvendigo's notes and Python readers
+(https://github.com/vvendigo/Darklands, `reader_drle.py`,
+`reader_imc.py`), then checked against all the files.
 
 **Naming**: `E10WKS2.IMC` = enemy E10, animation set `WK`, weapon `S2`;
 `M03DY.IMC` = monster M03 (Skeleton), death animation.
 
-- `E##`/`M##` — enemy index, matching the image codes of `DARKLAND.ENM`
-- `WK` / `CB` — the two animation sets per enemy (walking vs combat;
-  *inferred*). Enemies have one file per weapon they can use (sword,
-  axe, mace, flail, hammer, club, crossbow, bow, polearm, lance...);
-  weapon codes match the 2-char code table in DARKLAND.EXE. E10 (a
-  mounted raubritter) has only lance (`S2`) files; E07 has six weapons.
-- `DY` — one per enemy, much smaller (1.1–2.6 KB vs 3.6–21 KB): the
-  death animation. *inferred* from the name and size
-- `P##` codes (e.g. `PE04` in LEVEL2.ENM) never appear as catalog
-  prefixes: the mounted variant *is* the `CB` set. *inferred*
+- `E##`/`M##` — the sprite set, the image codes of `DARKLAND.ENM`
+- `WK` / `CB` — walking and combat (*inferred*). Enemies have one file
+  per weapon they can use (sword, axe, mace, flail, hammer, club,
+  crossbow, bow, polearm, lance...); E10 (a mounted raubritter) has
+  only lance (`S2`) files; E07 has six weapons.
+- `DY` — one per set, the death animation. *inferred* from the name
+- Some files are the same animation under several names: `M73WKD7`,
+  `M73WKP7` and `M73CBD7` are byte-identical. **verified**
+- There are no `M99` (Baphomet) files.
 
-**Header** (first bytes of every entry; *partially decoded*):
+**Compression**: the whole file is compressed with the LZ77 scheme of
+LZEXE. **verified**: the decoder ends on the end mark exactly at the last
+byte of all 333 files.
 
-    +0x00   2     varies per enemy family (1f 81, 4f 99, 67 01, 3f 90...):
-                  unknown — version or bitfield
-    +0x02   2     **frame count** (word): 5 for all humanoid animations,
-                  10 for wolves/beasts, 4/7/8 for others, 22 and 32 for
-                  the two dragons (M90, M73) — correlates with creature
-                  anatomy. **verified** across ~150 entries of both
-                  catalogs
-    +0x04   2     secondary per-frame count: 2 for all humanoids,
-                  3–4 for beasts, 13–14 for dragons. **verified**
-    +0x06   ...   further header fields (fe ff / ff 01 / fc ...),
-                  then a byte that looks like a 1-bit mask (e3, f8, fc,
-                  ff...) — WK/CB files cluster on e3/e2/f8, DY files on
-                  ff/7f/3f: plausible per-frame transparency mask,
-                  bit-packed. *inferred*
-    +0x12   ...   animation data
+    flag bits: 16-bit little-endian words, lowest bit first; the next
+    word is read as soon as the last bit of one is taken
+    1           a literal byte follows
+    0 0 b1 b0   copy (b1 b0) + 2 bytes from (256 - next byte) back
+    0 1         two bytes lo, hi: copy from
+                0x2000 - (lo | (hi & 0xF8) << 5) back;
+                length (hi & 7) + 2, or if that is 2, a length byte n:
+                n = 0 the end, n = 1 nothing (a segment change in
+                LZEXE), else n + 1 bytes
 
-- The body is dominated by values in the f0–ff band plus small
-  positives — not PIC-LZW entropy, not nibbles: plausibly a signed-byte
-  delta/RLE scheme (a third compression in the game). *inferred,
-  unverified*
-- **Identical lengths across nominally different files** (`M73WKD7` /
-  `M73WKP7` / `M73CBD7` / `M73CBP7` all 13584; `M11WKDX`/`M11WKPT`
-  both 9374): for some enemies the weapon suffix is nominal and the
-  files may share content. `cmp` a pair to check.
-- **Frame sizes and the exact animation layout are not decoded.**
-  Next steps: stride analysis on one animation (repeated 4-byte
-  windows), then try decoders on a single frame: PIC-LZW, nibble-RLE,
-  signed-byte RLE.
+**Decompressed data**:
+
+    0x00    60 or 80  header, not decoded (80 bytes for WK and CB, 60 for
+                  DY; words 0 and 1 are 5, 2 for the humans, like
+                  TACANIM.DB)
+    H+0x00  2     frame count F
+    H+0x02  2     data size: the bytes after the frame table
+    H+0x04  16·F  8·F words: the offset of each picture, in 16-byte
+                  paragraphs from the end of the table; picture
+                  frame · 8 + direction
+    ...           the pictures, each at a paragraph boundary:
+                  width (byte), height (byte), then per row: pixel
+                  count (byte), blank pixels on the left (byte), the
+                  pixels
+
+- **verified**: in every file exactly one of the two header sizes makes
+  the data size match (60 or 80 bytes decide nothing else), every row
+  fits in its picture's width, and the pictures follow one another with
+  under 16 bytes of padding.
+- Frame counts: 9 for most walks, 7 for most combat sets, 2..4 for the
+  deaths. The 8 pictures of a frame are the 8 directions (the sheets
+  show one figure turning; *verified* visually, which direction comes
+  first is not).
+- Index 0 is transparent (the pixels a row skips).
+- **Colors** (**verified** visually, on the exported sheets): 0..15 are
+  the EGA colors, except 5, the figures' dark outline and their shadow
+  on the ground, probably drawn as a darkening (*inferred*); 104..175
+  `COMNCLRS.DAT` (skin, steel...); 32..79 the enemy's chunks of
+  `ENEMYPAL.DAT` (see "Enemies"); the party's figures use 235..242,
+  presumably their clothing colors from the character records (not
+  decoded). 16..31 (the dragons) are taken as the gray ramp of the VGA
+  default palette, *inferred*.
+
+`TACANIM.DB` (546 bytes = 39 × 14): per sprite set, a 4-byte code
+(`A00`, `C00`, `F01`, `F60`, `E00`..`E17`, `M00`..), three words and
+four bytes (`05 02 06 03` for the humans, `0a 04 0a 04` for M00, the
+wolf). Not decoded.
 
 ## Open questions
 
@@ -1283,12 +1306,13 @@ beasts). *inferred*: the index of the animations.
       in the game data? In which files?
 - [x] `.PIC`: do any images embed a palette? Yes: the `M0` chunk
 - [ ] `.PIC`: is the high byte of the magic word at 0x08 always 0x00?
-- [ ] Palettes: which palette chunk(s) apply to a given enemy? (probably
-      chunk *i* for type *i* of `DARKLAND.ENM`: both are 71)
-- [ ] `DARKLAND.ENM`: the unknown fields of the types (+0x0F..+0x13,
+- [x] Palettes: which palette chunks apply to a given enemy — the
+      palette fields of its `DARKLAND.ENM` type
+- [ ] `DARKLAND.ENM`: the unknown fields of the types (+0x12, +0x13,
       +0x2E, +0x30..) and the enemies' flags
 - [ ] Battles: the format of `IMAPS.CAT`'s maps, of `BATTLEGR.IMG` /
-      `COMMONSP.IMG`, of `TACANIM.DB` and of the `.IMC` sprites
+      `COMMONSP.IMG` and of `TACANIM.DB`; the `.IMC` header; the party's
+      sprite colors (235..242)
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
 - [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects
       one of its 11 palettes

@@ -4,10 +4,12 @@
 #include "CityFile.h"
 #include "EnemyFile.h"
 #include "DescriptionFile.h"
+#include "FileStream.h"
 #include "FontFile.h"
 #include "ListFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
+#include "PICImage.h"
 #include "Palette.h"
 #include "Stream.h"
 #include "WorldMap.h"
@@ -130,6 +132,57 @@ GameData::EnemyPalette()
         fEnemyPalette = std::move(palette);
     }
     return *fEnemyPalette;
+}
+
+
+GFX::Palette
+GameData::SpritePalette(const std::string& image, int palette)
+{
+    GFX::Palette colors = PICImage::EGAPalette();
+    // Index 5 is the figures' outline and shadow: probably drawn darker
+    // than the ground rather than as a color (inferred), dark here
+    colors.colors[5].r = colors.colors[5].g = colors.colors[5].b = 16;
+    // 16..31: the gray ramp of the VGA default palette (inferred)
+    static const uint8 kGrays[16] = {
+        0, 5, 8, 11, 14, 17, 20, 24, 28, 32, 36, 40, 45, 50, 56, 63
+    };
+    for (int i = 0; i < 16; i++) {
+        GFX::Color& color = colors.colors[16 + i];
+        color.r = color.g = color.b = uint8((kGrays[i] << 2) | (kGrays[i] >> 4));
+    }
+
+    // COMNCLRS.DAT: 72 colors from index 104 (the cards use 128..159 of
+    // them, docs/formats.md)
+    std::unique_ptr<Stream> stream(new FileStream(PathFor("COMNCLRS.DAT").c_str(),
+        FileStream::READ_ONLY));
+    uint8 common[72 * 3];
+    if (stream->ReadAt(0, common, sizeof(common)) != (ssize_t)sizeof(common))
+        throw std::runtime_error("COMNCLRS.DAT: truncated file");
+    for (int i = 0; i < 72; i++) {
+        GFX::Color& color = colors.colors[104 + i];
+        color.r = uint8((common[3 * i] << 2) | (common[3 * i] >> 4));
+        color.g = uint8((common[3 * i + 1] << 2) | (common[3 * i + 1] >> 4));
+        color.b = uint8((common[3 * i + 2] << 2) | (common[3 * i + 2] >> 4));
+    }
+
+    const EnemyFile& enemies = Enemies();
+    for (uint32 i = 0; i < enemies.CountTypes(); i++) {
+        const enemy_type& type = enemies.TypeAt(i);
+        if (type.image != image)
+            continue;
+        if (palette < 0 || palette >= type.paletteCount)
+            palette = 0;
+        PaletteFile chunks(PathFor("ENEMYPAL.DAT"));
+        for (int c = 0; c < type.paletteChunks; c++) {
+            // Baphomet's chunks are past the end of the file
+            const uint32 chunk = type.firstPaletteChunk
+                + palette * type.paletteChunks + c;
+            if (chunk < chunks.CountChunks())
+                chunks.ApplyChunk(colors, chunk);
+        }
+        break;
+    }
+    return colors;
 }
 
 

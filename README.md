@@ -75,6 +75,7 @@ implemented yet. See the roadmap below.
 - [x] Decode the game fonts (`FONTS.FNT`) and label cities on the map
 - [x] Parse the city descriptions (`DARKLAND.CTY`, `--cities`)
 - [x] Parse the enemies (`DARKLAND.ENM`, `--enemies`)
+- [x] Decode the battle sprites (`.IMC`, `--extract E00C.CAT <dir>`)
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
 - [x] Party travel on the map (pathfinding, no travel time yet) and a
@@ -203,6 +204,7 @@ src/formats/        Readers for the game's files (no SDL)
   CityFile.*        The cities (DARKLAND.CTY)
   DescriptionFile.* The city descriptions (DARKLAND.DSC)
   EnemyFile.*       The enemies (DARKLAND.ENM)
+  ImcFile.*         The battle sprites (.IMC in E00C.CAT, M00C.CAT...)
   ListFile.*        The item, saint and formula lists (DARKLAND.LST)
   MsgFile.*         The menu cards (.MSG files in MSGFILES)
   CharacterFile.*   The new game's characters (CHARACTR.TMP)

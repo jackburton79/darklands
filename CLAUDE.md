@@ -45,6 +45,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --load DKSAVE1.SAV       # the game, from a saved game
 ./darklands EINFO.CAT                # browse a catalog's images
 ./darklands --extract EINFO.CAT out/ # export them as BMP (out/ must exist)
+./darklands --extract E00C.CAT out/  # battle sprites, as sheets
 ./darklands --map [prefix]           # full map render, with city names
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
@@ -67,6 +68,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),
   `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
   `EnemyFile` (DARKLAND.ENM, the enemy types and enemies),
+  `ImcFile` (the battle sprites, `GameData::SpritePalette()` for their
+  colors),
   `ExeData` (the people's names, read from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.

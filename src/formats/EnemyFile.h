@@ -19,6 +19,11 @@ struct enemy_type {
     std::string name;
     uint8 variants;				// in a group's first type: the group's
                                 // type count; 0 in the others
+    // Its colors: paletteCount alternative palettes of paletteChunks
+    // chunks each, from chunk firstPaletteChunk of ENEMYPAL.DAT
+    uint8 paletteCount;
+    uint8 paletteChunks;
+    uint8 firstPaletteChunk;
     uint8 attributes[ATTRIBUTE_COUNT];
     uint8 skills[kSkillCount];
 };

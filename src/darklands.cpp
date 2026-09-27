@@ -10,6 +10,7 @@
 #include "GameData.h"
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
+#include "ImcFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "PICImage.h"
@@ -17,6 +18,7 @@
 #include "TextSupport.h"
 #include "WorldMap.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <iomanip>
@@ -227,21 +229,66 @@ ShowCard(GameData& data, const std::string& deck, uint32 cardIndex,
 }
 
 
+// A battle sprite as one sheet: a row per frame, a column per direction
+static Bitmap*
+SpriteSheet(const ImcFile& sprites, GFX::Palette palette)
+{
+    int cellWidth = 0;
+    int cellHeight = 0;
+    for (int f = 0; f < sprites.CountFrames(); f++) {
+        for (int d = 0; d < ImcFile::kDirectionCount; d++) {
+            const imc_sprite& sprite = sprites.SpriteAt(f, d);
+            cellWidth = std::max(cellWidth, sprite.width + 2);
+            cellHeight = std::max(cellHeight, sprite.height + 2);
+        }
+    }
+    // index 0 is transparent: show it as a green ground
+    palette.colors[0] = GFX::Color{ 40, 90, 40, 0 };
+    Bitmap* bitmap = new Bitmap(cellWidth * ImcFile::kDirectionCount,
+        cellHeight * sprites.CountFrames(), 8);
+    bitmap->SetColors(palette.colors, 0, 256);
+    bitmap->Clear(0);
+    for (int f = 0; f < sprites.CountFrames(); f++) {
+        for (int d = 0; d < ImcFile::kDirectionCount; d++) {
+            const imc_sprite& sprite = sprites.SpriteAt(f, d);
+            for (int y = 0; y < sprite.height; y++) {
+                for (int x = 0; x < sprite.width; x++) {
+                    const uint8 pixel = sprite.pixels[y * sprite.width + x];
+                    if (pixel != 0) {
+                        bitmap->PutPixel(uint16(d * cellWidth + 1 + x),
+                            uint16(f * cellHeight + 1 + y), pixel);
+                    }
+                }
+            }
+        }
+    }
+    return bitmap;
+}
+
+
 static void
-ExtractAll(const Catalog& catalog, const std::string& outputDir,
-    const GFX::Palette& palette)
+ExtractAll(GameData& data, const Catalog& catalog,
+    const std::string& outputDir)
 {
     for (int32 i = 0; i < catalog.CountEntries(); i++) {
         Stream* stream = NULL;
         try {
             const catalog_entry& entry = catalog.EntryAt(i);
             stream = catalog.GetStreamAt(uint32(i));
-            PICImage image(stream);
-            Bitmap* bitmap = image.Image(&palette);
-            const std::string name = outputDir + "/" + entry.filename + ".bmp";
-            bitmap->Save(name.c_str());
+            Bitmap* bitmap;
+            const std::string& name = entry.filename;
+            if (name.size() > 4 && name.compare(name.size() - 4, 4, ".IMC") == 0) {
+                // "E00CBA2.IMC": the sprite set is "E00"
+                bitmap = SpriteSheet(ImcFile(stream),
+                    data.SpritePalette(name.substr(0, 3)));
+            } else {
+                PICImage image(stream);
+                bitmap = image.Image(&data.EnemyPalette());
+            }
+            const std::string output = outputDir + "/" + name + ".bmp";
+            bitmap->Save(output.c_str());
             bitmap->Release();
-            std::cout << entry.filename << " -> " << name << std::endl;
+            std::cout << name << " -> " << output << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "entry " << i << ": " << e.what() << std::endl;
         }
@@ -258,7 +305,8 @@ Usage()
         "  --start <city>                play, from a city (name or index)\n"
         "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
         "  <catalog>                     dump a catalog's entries\n"
-        "  --extract <catalog> <outdir>  export a catalog's images as BMP\n"
+        "  --extract <catalog> <outdir>  export a catalog's images as BMP (the\n"
+        "                                battle sprites as sheets, e.g. E00C.CAT)\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
@@ -362,7 +410,7 @@ int main(int argc, char **argv)
             }
             std::unique_ptr<Catalog> catalog(data.OpenCatalog(argv[arg + 1]));
             // output dir must exist
-            ExtractAll(*catalog, argv[arg + 2], data.EnemyPalette());
+            ExtractAll(data, *catalog, argv[arg + 2]);
             return 0;
         }
     } catch (const std::exception& e) {

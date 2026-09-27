@@ -18,6 +18,7 @@ static const size_t kImageLength	= 4;
 static const size_t kTypeNameOffset	= 0x04;
 static const size_t kTypeNameLength	= 10;
 static const size_t kVariantsOffset	= 0x0E;
+static const size_t kPaletteOffset	= 0x0F;	// count, chunks, first chunk
 static const size_t kAttributesOffset = 0x14;
 static const size_t kSkillsOffset	= 0x1B;
 
@@ -62,6 +63,9 @@ EnemyFile::EnemyFile(const std::string& fileName)
             // 0xFF in the group's other types
             t.variants = record[kVariantsOffset] == 0xFF
                 ? 0 : record[kVariantsOffset];
+            t.paletteCount = record[kPaletteOffset];
+            t.paletteChunks = record[kPaletteOffset + 1];
+            t.firstPaletteChunk = record[kPaletteOffset + 2];
             memcpy(t.attributes, &record[kAttributesOffset],
                 sizeof(t.attributes));
             memcpy(t.skills, &record[kSkillsOffset], sizeof(t.skills));
