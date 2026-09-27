@@ -25,6 +25,7 @@ class Bitmap;
 class Font;
 class GameData;
 class GameWindow;
+class InfoView;
 class PartySidebar;
 struct item;
 struct party;
@@ -65,6 +66,8 @@ public:
     // The party (not owned): buying and selling change its money and the
     // members' items.
     void			SetParty(party* members);
+    // The information screens that F1..F6 open (not owned; NULL: none)
+    void			SetInfoView(InfoView* info)	{ fInfo = info; }
     // Where the trade happens: a city (index into DARKLAND.CTY, or -1),
     // the party's reputation there and the location's flags.
     void			SetPlace(int cityIndex, int reputation, uint8 flags = 0);
@@ -149,6 +152,7 @@ private:
     GFX::Palette	fPalette;
 
     party*			fParty;
+    InfoView*		fInfo;
     int				fCity;
     int				fReputation;
     uint8			fLocationFlags;

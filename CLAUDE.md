@@ -79,7 +79,8 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
   same structure as `MapViewer`. `PartySidebar`: the character boxes.
   `InfoView`: the F6 party and F1..F5 character screens, opened from
-  `CardView` and `MapViewer` (modal `Run(window, page)`).
+  `CardView`, `MapViewer`, `ResidenceView` and `TradeView` (modal
+  `Run(window, page)`).
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

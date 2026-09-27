@@ -5,6 +5,7 @@
 #include "CityFile.h"
 #include "FileStream.h"
 #include "GameData.h"
+#include "InfoView.h"
 #include "ListFile.h"
 #include "PICImage.h"
 #include "Palette.h"
@@ -141,6 +142,7 @@ TradeView::TradeView(GameData& data)
     fData(data),
     fBuffer(NULL),
     fParty(NULL),
+    fInfo(NULL),
     fCity(-1),
     fReputation(0),
     fLocationFlags(0),
@@ -271,6 +273,12 @@ TradeView::Run(GameWindow& window)
                 if ((event.key.keysym.mod & KMOD_CTRL) != 0
                         && key >= SDLK_F1 && key <= SDLK_F5) {
                     SetLeader(int(key - SDLK_F1));
+                    dirty = true;
+                    break;
+                }
+                if (key >= SDLK_F1 && key <= SDLK_F6 && fInfo != NULL) {
+                    fInfo->Run(window, key == SDLK_F6 ? InfoView::kPartyPage
+                        : int(key - SDLK_F1));
                     dirty = true;
                     break;
                 }
