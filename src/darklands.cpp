@@ -119,26 +119,47 @@ DumpEnemies(const EnemyFile& enemies)
 }
 
 
-// A battlefield map as text, one character per cell (the meanings are
-// inferred, see docs/formats.md), then the cells' bytes
+// A battlefield map as text: three characters per cell, the walls
+// between them as their types (a wall is on the side of one cell or
+// both); "##" a closed cell, a hex digit an object. Then the cells' bytes.
 static void
 DumpBattleMap(const BattleMap& map)
 {
-    for (int y = 0; y < BattleMap::kSize; y++) {
+    static const char* kDigits = "0123456789ABCDEF";
+    for (int y = 0; y <= BattleMap::kSize; y++) {
+        std::string walls;
         for (int x = 0; x < BattleMap::kSize; x++) {
-            const battle_cell& cell = map.CellAt(x, y);
-            char c = ' ';
-            if (cell.bytes[3] & 0x80)
-                c = '#';			// a building's inside
-            else if (cell.bytes[3] != 0)
-                c = '+';			// a wall
-            else if (cell.bytes[0] != 0)
-                c = 'o';			// an object
-            else if (cell.ground != 0)
-                c = '.';			// open ground
-            std::cout << c;
+            int wall = 0;
+            if (y > 0)
+                wall = map.CellAt(x, y - 1).Wall(SIDE_NEXT_ROW);
+            if (y < BattleMap::kSize && wall == 0)
+                wall = map.CellAt(x, y).Wall(SIDE_PREVIOUS_ROW);
+            walls += '+';
+            walls += std::string(2, wall != 0 ? kDigits[wall] : ' ');
         }
-        std::cout << std::endl;
+        std::cout << walls << '+' << std::endl;
+        if (y == BattleMap::kSize)
+            break;
+
+        std::string cells;
+        for (int x = 0; x <= BattleMap::kSize; x++) {
+            int wall = 0;
+            if (x > 0)
+                wall = map.CellAt(x - 1, y).Wall(SIDE_NEXT_COLUMN);
+            if (x < BattleMap::kSize && wall == 0)
+                wall = map.CellAt(x, y).Wall(SIDE_PREVIOUS_COLUMN);
+            cells += wall != 0 ? kDigits[wall] : ' ';
+            if (x == BattleMap::kSize)
+                break;
+            const battle_cell& cell = map.CellAt(x, y);
+            if (cell.Closed())
+                cells += "##";
+            else if (cell.Object() != 0)
+                cells += std::string(1, kDigits[cell.Object()]) + " ";
+            else
+                cells += "  ";
+        }
+        std::cout << cells << std::endl;
     }
     std::cout << std::endl << "cells (x y: bytes 0..3, ground):" << std::endl;
     for (int y = 0; y < BattleMap::kSize; y++) {

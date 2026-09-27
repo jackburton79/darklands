@@ -1194,12 +1194,46 @@ the end mark at their last byte. **verified**. *Partially decoded*:
     0x0000  6400  40 x 40 cells of 4 bytes, row by row
     0x1900  1600  40 x 40 bytes
     0x1F40  5308  records, not decoded (0x1F40: 00 00 fe ff fe ff ...
+                  in every map; the code reads cell coordinates, y and
+                  x, from bytes 0x1F5C and 0x1F5D of a record)
                   in every map; then 14-byte records?)
 
 - The first and last rows and columns of both grids are the same in
   every map: a border. **verified**
 - See `BattleMap.cpp`; `./darklands --battlemap ICITY.000` prints a map
-  as text and the bytes of its cells. How the game picks a map is in
+  as text (walls as their type numbers, `##` closed cells, objects as a
+  hex digit) and the bytes of its cells. How the game picks a map is in
+  [exe.md](exe.md), "Battles".
+- **Cells**: the 4 bytes are the cell's 4 sides. DARKLAND.EXE (file
+  0x5222A, while it removes walls: TAC.TXT's "WallRemove") clears the
+  low nibble of byte 0 of cell (x, y) with byte 1 of (x, y + 1), byte 1
+  with byte 0 of (x, y - 1), byte 2 with byte 3 of (x - 1, y), byte 3
+  with byte 2 of (x + 1, y). **verified** (code). Which way is north on
+  the screen is not known yet.
+- **Walls**: the low nibble of a side is its wall, 0 for none. The two
+  cells of a side agree in 94% of the cases; otherwise the wall is on
+  one side only, and the maps store some walls on one face only (a
+  fortress room has walls on the sides toward y - 1 and x + 1 but not on
+  the others). *inferred*. The types follow the settings (counts over
+  all maps): 1 in the mines (163000 sides), the mountains and the
+  wilderness: rock; 2 in the cities (8800), the town gates and walls:
+  houses; 6 in the fortresses, monasteries and tombs (3400): masonry;
+  3, 7, 8, 9 are rare (with 2 or 6: doors, gates?); 4 and 5 appear 2..5
+  times. The meanings are *inferred* from where they appear.
+- **Closed cells**: bit 7 of byte 3 is set exactly when the ground byte
+  is 0 (in all 229000 cells of the 143 maps). **verified**. They are the
+  insides of houses, the rock: the cells one cannot enter (*inferred*).
+- **Objects**: the high nibble of byte 0, only on open cells.
+  **verified**. 11, 12, 13 are common in the wilderness (trees?), 14 in
+  the marshes, 1..4 in the wilderness too; the cities and fortresses
+  use most values a few times (furniture: TAC.TXT's "FurnRemove"?).
+  *inferred*. The high nibbles of bytes 1 and 2 are almost always 0.
+- **Ground** (the second grid): 0 in closed cells; 0x10 open ground,
+  with variants 0x11..0x19 in the wilderness; 0x40..0x44 inside the
+  fortresses (floors?), 0x20 and 0x30 rare. *inferred*
+- See `BattleMap.cpp`; `./darklands --battlemap ICITY.000` prints a map
+  as text (walls as their type numbers, `##` closed cells, objects as a
+  hex digit) and the bytes of its cells. How the game picks a map is in
   [exe.md](exe.md), "Battles".
 - Printed as text, `ICITY.000` is a town: blocks of houses (cells whose
   byte 3 has bit 7 set, 0x80 / 0x81) with walls on one side (byte 3 =
@@ -1325,8 +1359,8 @@ wolf). Not decoded.
       palette fields of its `DARKLAND.ENM` type
 - [ ] `DARKLAND.ENM`: the unknown fields of the types (+0x12, +0x13,
       +0x2E, +0x30..) and the enemies' flags
-- [ ] Battles: the maps of `IMAPS.CAT` (the cells, the records after
-      the grids) and how the game draws them; `TACANIM.DB`; the `.IMC`
+- [ ] Battles: the maps of `IMAPS.CAT` (the wall, object and ground
+      values, the records after the grids) and how the game draws them; `TACANIM.DB`; the `.IMC`
       header; the colors 235..242 (party) and 240..254 (clouds)
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
 - [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects

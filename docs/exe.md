@@ -626,6 +626,13 @@ Where the battle code starts; the rules are not decoded yet.
   at 0x1CE20 = 0x1CA70 + (0x146D - 0x1432) · 16. **verified** (the
   relocations end at the found bases; no target reads more arguments
   than its case pushes, 10 or 11 words)
+- **From the map to the battle**: the builders load the map (13308 =
+  0x33FC bytes, e.g. the wilderness at file 0x289D0 into a buffer at
+  [DS:DF7F]:[DS:DF81], through 05D9:019A, which loads a catalog entry at
+  segment:offset), change it, and write it to LEVEL0.FLR (1262:0D0A).
+  The tactical code reads and writes the level%d.flr files at segment
+  20A5, offset 0 (file 0x141EE and nearby), and addresses a cell as
+  20A5:(y · 40 + x) · 4 (e.g. file 0x5222A). **verified** (code)
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",
