@@ -18,10 +18,13 @@
 #include "MsgFile.h"
 #include "TradeView.h"
 
+#include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
 
+class ExeNames;
 class GameData;
 class GameTime;
 class GameWindow;
@@ -79,6 +82,15 @@ public:
         SCREEN_MEDICI_REDEEMED,
         SCREEN_FUGGER_DEPOSIT,	// or bought
         SCREEN_MEDICI_DEPOSIT,
+        SCREEN_PHYSICIAN,		// $PHYSI00.MSG: the physician,
+        SCREEN_PHYSICIAN_SHUT,	// his door shut on a wanted party,
+        SCREEN_PHYSICIAN_PRICE,	// his price for the wounded,
+        SCREEN_PHYSICIAN_SKILL,	// what the party learns of his skill,
+        SCREEN_PHYSICIAN_UNSURE,
+        SCREEN_PHYSICIAN_IDIOT,
+        SCREEN_PHYSICIAN_NO_TRADE,
+        SCREEN_PHYSICIAN_TREATED,
+        SCREEN_PHYSICIAN_POOR,	// not enough money for the treatment
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -89,6 +101,7 @@ public:
     };
 
     explicit		CityVisit(GameData& data);	// throws if data is missing
+                    ~CityVisit();
 
     // The party in the city and the game's clock (not owned). Set them
     // before Enter() or Run(). At night the streets and the gate show
@@ -144,6 +157,15 @@ private:
     // 0xC4634; the Medici's are the same)
     int				_Redeem(int result);
     void			_Deposit();
+    // The physician (DARKLAND.EXE, file 0xA2E6A)
+    int				_PhysicianSkill();
+    int				_Wounded() const;
+    uint32			_TreatmentPrice();
+    int				_BestHealer() const;
+    int				_DiscussTreatments();
+    int				_AskAid();
+    int				_Components();
+    int				_Treatment();
     int				_Reputation() const;
     std::vector<int> _HiddenOptions(int screen) const;
 
@@ -162,4 +184,10 @@ private:
     int				fScreen;
     int				fPreviousScreen;	// where "not implemented" goes back
     std::mt19937	fRandom;
+    // the physicians met, by city: their skill (the game keeps them as
+    // people of the city), and until when they treat no one again
+    std::map<int, int>	fPhysicianSkill;
+    std::map<int, uint32> fTreatedUntil;	// in hours, see HourStamp()
+    bool			fTreatmentOffered;
+    std::unique_ptr<ExeNames> fNames;
 };

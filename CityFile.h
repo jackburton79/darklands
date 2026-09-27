@@ -72,6 +72,8 @@ struct city {
     std::vector<uint16> neighbors;	// indices of nearby cities
     uint16 harbor;				// see city_harbor
     uint16 flags;				// see city_flag
+    uint16 peopleSeed;			// +0x56: DARKLAND.EXE seeds the names and
+                                // skills of the city's people with it
     uint8 shopQuality[CITY_SHOP_COUNT];	// the quality of its goods; 0: the
                                         // city has no such shop
     std::string places[CITY_PLACE_COUNT];

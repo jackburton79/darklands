@@ -58,6 +58,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),
   `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
+  `ExeNames` (the people's names, read from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column

@@ -49,14 +49,14 @@ static const char* kMerchantNames[MERCHANT_COUNT] = {
     "Swordsmith", "Blacksmith", "Armorer", "Bowyer", "Artificier",
     "Clothmaker",
     "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop",
-    "Stablemaster"
+    "Stablemaster", "Physician"
 };
 
 // DARKLAND.EXE, see docs/exe.md. The shop type (its quality in the
 // city record; kAnyShop: quality 25, kPawnshop: 10) and the item
 // categories it deals in, as the guild shops (the same mask by day and at
-// night), the market (1893:06AF, 0B51, 1039, 13FA) and the inn's
-// stables (file 0xA71B4) open the trade screen
+// night), the market (1893:06AF, 0B51, 1039, 13FA), the inn's stables
+// (file 0xA71B4) and the physician (file 0xA3604) open the trade screen
 static const int kAnyShop	= -1;
 static const int kPawnshop	= -2;
 
@@ -74,7 +74,8 @@ static const struct {
     { kAnyShop, 0x003F843F },
     { kAnyShop, 0x00000400 },
     { kPawnshop, 0x2C3EC3FF },
-    { kAnyShop, ITEM_HORSE }
+    { kAnyShop, ITEM_HORSE },
+    { kAnyShop, ITEM_COMPONENT }			// type 9 (file 0xA3604)
 };
 
 

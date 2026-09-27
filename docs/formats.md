@@ -446,7 +446,9 @@ Record (relative offsets, little-endian):
     +0x52   2     harbor: 0 = North Sea port, 1 = Baltic port,
                   0xFFFF = inland
     +0x54   2     4 in every record
-    +0x56   2     unknown; equals the record index or index + 1
+    +0x56   2     the seed of the city's people (**verified**: DARKLAND.EXE
+                  adds a global to it for their names and skills, see
+                  exe.md); equals the record index or index + 1
     +0x58   6     unknown (small values)
     +0x5E   2     flags: 0x200 = the market has a Leihhaus (**verified**:
                   DARKLAND.EXE 0E76:1A8E reads it, 57 cities); the

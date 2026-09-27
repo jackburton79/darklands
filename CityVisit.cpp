@@ -6,6 +6,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
+#include "ExeNames.h"
 #include "ListFile.h"
 #include "ScreenSupport.h"
 
@@ -25,7 +26,11 @@ enum option_action {
     ACTION_SLEEP,				// the inn's options
     ACTION_STABLES,
     ACTION_REDEEM,				// the banks: `target` is the result
-    ACTION_DEPOSIT				// the number typed in; `target`: the bank
+    ACTION_DEPOSIT,				// the number typed in; `target`: the bank
+    ACTION_DISCUSS_TREATMENTS,	// the physician's options
+    ACTION_ASK_AID,
+    ACTION_COMPONENTS,
+    ACTION_TREATMENT
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -45,6 +50,11 @@ static const int kNeedsInnPrice		= -5;
 // or a letter of credit to redeem, or two florins to buy one with
 static const int kNeedsBankNotes	= -6;
 static const int kNeedsFlorins		= -7;
+// or the physician: in the city (small towns may have none), wounds to
+// treat, a treatment offered
+static const int kNeedsPhysician	= -8;
+static const int kNeedsWounded		= -9;
+static const int kNeedsTreatment	= -10;
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -282,7 +292,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // towns, by a rule on the game's year; going to a guild takes an
     // hour)
     { "CIVCR00", 0, NULL, {
-        TODO, TODO,							// physician, astrologists
+        { ACTION_GO, CityVisit::SCREEN_PHYSICIAN, kNeedsPhysician, 60 },
+        TODO,								// astrologists
         HIDE,								// jewelers
         WAIT(SCREEN_ARTIFICER, 60),			// tinkers
         WAIT(SCREEN_CLOTHMAKER, 60),
@@ -410,6 +421,33 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "FUGGE00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_FUGGER, kAlways, 0 } } },
     { "MEDIC00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_MEDICI, kAlways, 0 } } },
 #undef BANK_OPTIONS
+    // "Among various guilds and merchant townhouses, you find the home of
+    // $NamedOneName, a respected physician..." (file 0xA2E6A)
+    { "PHYSI00", 0, NULL, {
+        DO(ACTION_DISCUSS_TREATMENTS),		// try to determine his skill
+        DO_IF(ACTION_ASK_AID, kNeedsWounded),	// his aid in healing wounds
+        TODO,								// be his students
+        DO(ACTION_COMPONENTS),				// alchemical components
+        DO_IF(ACTION_TREATMENT, kNeedsTreatment),	// pay $Money1
+        GO(SCREEN_CRAFTS),					// leave
+        HIDE								// (night only)
+    } },
+    // "...a chamberpot's load of offal" (a reputation of -40 or less)
+    { "PHYSI00", 3, NULL, { GO(SCREEN_CRAFTS) } },
+    // "...since $Number1 of you suffer, the overall cost will be $Money1"
+    { "PHYSI00", 2, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...decides that $NamedOneName has $Text1 skill"
+    { "PHYSI00", 8, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...unable to yet determine the competence of this person"
+    { "PHYSI00", 9, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...$NamedOneName is a complete idiot" (and the party leaves)
+    { "PHYSI00", 10, NULL, { GO(SCREEN_CRAFTS) } },
+    // "I have no need for additional medicines"
+    { "PHYSI00", 12, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...the physician uses leeches to draw out the vile humors"
+    { "PHYSI00", 13, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...your purse lacks enough money for everyone"
+    { "PHYSI00", 14, NULL, { GO(SCREEN_PHYSICIAN) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -610,6 +648,15 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     // "The stableboy assures you..." (no trade at night)
     { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
     { NULL, 0, NULL, {} },					// stables, sale: not at night
+    { NULL, 0, NULL, {} },					// the physician
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// the banks and the League
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -659,6 +706,15 @@ RulesFor(int screen, bool night)
 }
 
 
+// Hours since a fixed date, to compare times (months counted as 31 days)
+static uint32
+HourStamp(const GameTime& time)
+{
+    return ((uint32(time.Year()) * 12 + time.Month()) * 31 + time.Day()) * 24
+        + time.Hour();
+}
+
+
 static const option_rule&
 RuleFor(const screen_rules& rules, int option)
 {
@@ -688,7 +744,8 @@ CityVisit::CityVisit(GameData& data)
     fCity(-1),
     fScreen(SCREEN_START),
     fPreviousScreen(SCREEN_START),
-    fRandom(std::random_device()())
+    fRandom(std::random_device()()),
+    fTreatmentOffered(false)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -816,6 +873,18 @@ CityVisit::Choose(int option)
             _Deposit();
             _Show(rule.target);
             return true;
+        case ACTION_DISCUSS_TREATMENTS:
+            _Show(_DiscussTreatments());
+            return true;
+        case ACTION_ASK_AID:
+            _Show(_AskAid());
+            return true;
+        case ACTION_COMPONENTS:
+            _Show(_Components());
+            return true;
+        case ACTION_TREATMENT:
+            _Show(_Treatment());
+            return true;
         case ACTION_MASS:
             _Show(_Mass());
             return true;
@@ -908,6 +977,23 @@ CityVisit::_Show(int screen, bool withScene)
     // reputation of -40 or less)
     if (screen == SCREEN_INN && _Reputation() <= -40)
         screen = SCREEN_UNWELCOME;
+    // the physician shuts his door to a wanted party
+    if (screen == SCREEN_PHYSICIAN && _Reputation() <= -40)
+        screen = SCREEN_PHYSICIAN_SHUT;
+    if (screen == SCREEN_PHYSICIAN || screen == SCREEN_PHYSICIAN_SHUT) {
+        if (fScreen == SCREEN_CRAFTS)	// a new visit
+            fTreatmentOffered = false;
+        _PhysicianSkill();
+        // his name (1367:0DB4 with the city's number + 800); the game adds
+        // its seed global to both, not known here (0)
+        if (fNames == NULL)
+            fNames.reset(new ExeNames(fData.PathFor("DARKLAND.EXE")));
+        fVariables["NamedOneName"] = fNames->MaleName(uint16(
+            fData.Cities().CityAt(uint32(fCity)).peopleSeed + 0x320));
+        if (fParty != NULL && !fParty->members.empty())
+            fVariables["ChosenOneName"]
+                = fParty->members[_BestHealer()].shortName;
+    }
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
         screen = SCREEN_FUGGER_COLD;
@@ -959,7 +1045,20 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fParty == NULL || fParty->bankNotes == 0;
         else if (rule.needs == kNeedsFlorins)
             hide = fParty == NULL || fParty->cash.florins < 2;
-        else if (rule.needs == kNeedsPawnshop)
+        else if (rule.needs == kNeedsPhysician) {
+            // DARKLAND.EXE, file 0xA433D: in towns of size 3 or less, by
+            // the city's number and the year
+            hide = c.size <= 3 && (c.peopleSeed + (fClock != NULL
+                ? fClock->Year() : 1400)) % 3 == 0;
+        } else if (rule.needs == kNeedsWounded)
+            hide = _Wounded() == 0;
+        else if (rule.needs == kNeedsTreatment) {
+            const std::map<int, uint32>::const_iterator treated
+                = fTreatedUntil.find(fCity);
+            hide = !fTreatmentOffered || (fClock != NULL
+                && treated != fTreatedUntil.end()
+                && HourStamp(*fClock) < treated->second);
+        } else if (rule.needs == kNeedsPawnshop)
             hide = (c.flags & CITY_HAS_PAWNSHOP) == 0;
         else if (rule.needs >= kNeedsShop)
             hide = c.shopQuality[rule.needs - kNeedsShop] == 0;
@@ -1180,4 +1279,155 @@ CityVisit::_Deposit()
     amount = std::min(amount, uint32(0xFFFF - fParty->bankNotes));
     fParty->cash.florins -= uint16(amount);
     fParty->bankNotes += uint16(amount);
+}
+
+
+CityVisit::~CityVisit()
+{
+}
+
+
+// The physician's skill, made when the party first meets him (file
+// 0xA2F1A): (the city's number % 10) · (city size + random(4) - 3),
+// within 1..99. The game adds its seed global to the number (0 here).
+int
+CityVisit::_PhysicianSkill()
+{
+    std::map<int, int>::const_iterator found = fPhysicianSkill.find(fCity);
+    if (found != fPhysicianSkill.end())
+        return found->second;
+    const city& c = fData.Cities().CityAt(uint32(fCity));
+    const int skill = (c.peopleSeed % 10)
+        * (c.size + int(fRandom() % 4) - 3);
+    return fPhysicianSkill[fCity] = std::max(1, std::min(skill, 99));
+}
+
+
+// The members whose strength is under its maximum
+int
+CityVisit::_Wounded() const
+{
+    int wounded = 0;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members) {
+            if (member.attributes[ATTRIBUTE_STRENGTH]
+                    < member.maxAttributes[ATTRIBUTE_STRENGTH])
+                wounded++;
+        }
+    }
+    return wounded;
+}
+
+
+// skill / 10 + 12 pfennigs for each wounded member (file 0xA33A6)
+uint32
+CityVisit::_TreatmentPrice()
+{
+    return uint32((_PhysicianSkill() / 10 + 12) * _Wounded());
+}
+
+
+// The member best at healing, who speaks with the physician (0E76:14A4)
+int
+CityVisit::_BestHealer() const
+{
+    int best = 0;
+    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
+        if (fParty->members[i].skills[kSkillHealing]
+                > fParty->members[best].skills[kSkillHealing])
+            best = int(i);
+    }
+    return best;
+}
+
+
+// Discussing treatments (file 0xA31D6): an hour; the best healer
+// judges the physician if random(100) is at most his intelligence, half
+// his charisma and the physician's skill (file 0xA333C)
+int
+CityVisit::_DiscussTreatments()
+{
+    const int skill = _PhysicianSkill();
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_PHYSICIAN_UNSURE;
+    const character& healer = fParty->members[_BestHealer()];
+    const int chance = healer.attributes[ATTRIBUTE_INTELLIGENCE]
+        + healer.attributes[ATTRIBUTE_CHARISMA] / 2 + skill;
+    if (int(fRandom() % 100) > chance)
+        return SCREEN_PHYSICIAN_UNSURE;
+    if (skill <= 1)
+        return SCREEN_PHYSICIAN_IDIOT;
+    static const char* kWords[] = { "Poor", "Modest", "Good", "Very Good",
+        "Excellent" };
+    fVariables["Text1"] = kWords[std::min(skill / 20, 4)];
+    return SCREEN_PHYSICIAN_SKILL;
+}
+
+
+// Asking his aid (file 0xA3388): an hour, then his price, and the
+// treatment is offered
+int
+CityVisit::_AskAid()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    fVariables["Number1"] = std::to_string(_Wounded());
+    fVariables["Money1"] = MoneyText(_TreatmentPrice());
+    fTreatmentOffered = true;
+    return SCREEN_PHYSICIAN_PRICE;
+}
+
+
+// Alchemical components (file 0xA35E8): he trades if random(100) is at
+// most the leader's Speak Common, charisma, (the city's number + month)
+// % 30 and the local reputation, within 0..75 (file 0xA365C); an hour
+int
+CityVisit::_Components()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_PHYSICIAN_NO_TRADE;
+    const character& leader = fParty->members[fParty->leader];
+    const city& c = fData.Cities().CityAt(uint32(fCity));
+    const int month = fClock != NULL ? fClock->Month() : 0;
+    const int chance = std::max(0, std::min(75,
+        leader.skills[kSkillSpeakCommon] + leader.attributes[ATTRIBUTE_CHARISMA]
+            + int((c.peopleSeed + month) % 30) + _Reputation()));
+    if (int(fRandom() % 100) > chance)
+        return SCREEN_PHYSICIAN_NO_TRADE;
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    fPendingTrade = MERCHANT_PHYSICIAN;
+    return SCREEN_PHYSICIAN;
+}
+
+
+// The treatment (file 0xA36C0): paid, an hour, and every wounded member
+// gains skill / 30 strength (at least 1; an idiot's treatment takes 1 or
+// 2); then he treats no one for 20 hours (0E76:2930)
+int
+CityVisit::_Treatment()
+{
+    if (fParty == NULL)
+        return SCREEN_PHYSICIAN;
+    const uint32 price = _TreatmentPrice();
+    const uint32 purse = TotalPfennigs(fParty->cash);
+    if (purse < price)
+        return SCREEN_PHYSICIAN_POOR;
+    fParty->cash = MoneyFromPfennigs(purse - price);
+    const int skill = _PhysicianSkill();
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    for (character& member : fParty->members) {
+        if (member.attributes[ATTRIBUTE_STRENGTH]
+                >= member.maxAttributes[ATTRIBUTE_STRENGTH])
+            continue;
+        const int amount = skill > 1 ? std::max(1, std::min(skill / 30, 99))
+            : int(fRandom() % 2) - 2;
+        AddToAttribute(member, ATTRIBUTE_STRENGTH, amount);
+    }
+    if (fClock != NULL)
+        fTreatedUntil[fCity] = HourStamp(*fClock) + 20;
+    return SCREEN_PHYSICIAN_TREATED;
 }

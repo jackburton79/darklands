@@ -25,7 +25,9 @@ static const int kSkillCount = 19;
 // Skills the game's rules use, in the record's order (see docs/formats.md)
 static const int kSkillReligion		= 8;
 static const int kSkillVirtue		= 9;
+static const int kSkillSpeakCommon	= 10;
 static const int kSkillSpeakLatin	= 11;
+static const int kSkillHealing		= 13;
 
 // What a character has in use: item types (item_definition::type in
 // DARKLAND.LST), 0xFF for none

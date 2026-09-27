@@ -30,6 +30,9 @@ program's own (pre-relocation) addresses. Disassembly with
   150B → 0x8D110, 1551 → 0x1DC60, 18BF → 0x43CA0.
 - Calls between overlays often go through RTLink's own mechanism, not
   direct far calls: callers of a function can be missing from a search.
+- **Overlays share segment numbers**: 1838 is the church at file
+  0xB8840 and the physician at file 0xA2E20. A segment's base is only
+  valid for the overlay it was found in.
 
 ## Finding code
 
@@ -145,6 +148,53 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   hour), unless a quest is pending. The cards 7..10 (the merchants'
   descriptions) are not shown by this code.
 
+## Names and random numbers
+
+- 06A1:29A4 `srand`, 06A1:29B6 `rand` (Microsoft C: seed = seed ·
+  0x343FD + 0x269EC3, returns bits 16..30); 0410:0008 `random(n)` =
+  (rand() · 2 · n) >> 16.
+- 1367:0DB4 (seed, kind, slot) names a person: srand(DS:9C4A + seed),
+  random(1000) thrown away, then by kind, e.g. kind 0: a man's first name
+  (108, the far pointers at 290E:235F), a space, a surname (146, at
+  290E:267F); women's names (88) are at 290E:2517. Then srand(time).
+  DS:9C4A is a global set at run time (not in the executable's data; not
+  found yet), taken as 0 here. `ExeNames.cpp` reads the lists from the
+  executable.
+- Location property 0x21 of a city is the city record's word +0x56 plus
+  DS:9C4A: the seed of its people.
+
+## The physician
+
+$PHYSI00.MSG by day (segment base 0xA2E20, the card at file 0xA2E6A,
+the options' switch at file 0xA3128). **verified** (code); see
+`CityVisit.cpp`.
+
+- **The physician** is a person of the city (0E76:2C4E, kind 0x37),
+  made at the first visit: skill = clamp(1, 99, (P % 10) · (size +
+  random(4) − 3)), P the city's property 0x21. His name is 1367:0DB4(P +
+  0x320, 0, 0). He speaks with the best healer (0E76:14A4(13) leaves its
+  index at DS:991D). Reaching him from the crafts takes an hour (file
+  0xA455A). A reputation of −40 or less: card 3, the door shut.
+- **Discussing treatments** (file 0xA31D6): an hour; if random(100) is
+  over the healer's intelligence + charisma / 2 + the skill (file
+  0xA333C), card 9; else a skill of 1 is an idiot (card 10, the party
+  leaves), otherwise card 8 with $Text1 "Poor" (under 20), "Modest"
+  (40), "Good" (60), "Very Good" (80), "Excellent".
+- **Asking his aid** (file 0xA3388), offered when a member's strength is
+  under its maximum: an hour; the price is (skill / 10 + 12) pfennigs per
+  wounded member ($Number1, $Money1, card 2); the treatment option is
+  then on.
+- **The treatment** (file 0xA36C0): card 14 if the purse is short; else
+  paid, an hour, each wounded member gains clamp(1, 99, skill / 30)
+  strength (random(2) − 2 from an idiot), card 13, and a mark (0E76:2930,
+  kind 0x36, 20 hours: 0E76:2930 adds them to the date with 1367:09EA)
+  disables the treatment until it expires.
+- **Alchemical components** (file 0xA35E8): the trade screen (type 9,
+  mask 0x400) and an hour if random(100) is at most clamp(0, 75, the
+  leader's Speak Common + charisma + (P + month) % 30 + reputation)
+  (file 0xA365C), else card 12.
+- Not reproduced: the students (training), the night card (1).
+
 ## The banks
 
 The Fuggers ($FUGGE00.MSG, file 0xC41E7) and the Medici ($MEDIC00.MSG,
@@ -186,8 +236,7 @@ $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
   jewelers from here by day. In cities of size 3 or less the physician is
   missing when (location property 0x21 + year) % 3 is 0, the alchemist
   when property 0x21 is even; in size 4, the alchemist when it is a
-  multiple of 3. Property 0x21 of a city is the city record's word +0x56
-  plus a global, DS:9C4A (not decoded; not reproduced).
+  multiple of 3 (see "Names and random numbers").
 - Going to a guild (e.g. the tinkers, file 0xA47A2) takes an hour (one
   more if 1367:072A says it is night), unless a random(100) over a chance
   brings an encounter (state 0x3C; not reproduced).
