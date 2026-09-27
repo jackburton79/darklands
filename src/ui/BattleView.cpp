@@ -38,8 +38,9 @@ static const uint8 kPartySpriteColors	= 235;
 static const uint8 kPartyColors			= 80;
 static const int kFigureColors			= 8;
 
-// A step a figure takes, in milliseconds (the game's speed is not known)
-static const Uint32 kStepTicks			= 120;
+// A frame of a walk, in milliseconds: a step takes kFramesPerStep of them
+// (the game's speed is not known)
+static const Uint32 kFrameTicks			= 60;
 
 
 BattleView::BattleView(GameData& data)
@@ -84,8 +85,8 @@ void
 BattleView::AddPartyMember(int member, const std::string& image,
     const std::vector<uint8>& colors, int x, int y, int direction)
 {
-    figure f = { _LoadSprites(image), x, y, direction,
-        kPartyColors + kFigureColors * member, member,
+    figure f = { _LoadSprites(image, "CB"), _LoadSprites(image, "WK"), 0, 0,
+        x, y, direction, kPartyColors + kFigureColors * member, member,
         std::vector<battle_position>() };
     for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
         GFX::Color& color = fPalette.colors[f.colors + i];
@@ -106,7 +107,8 @@ BattleView::AddPartyMember(int member, const std::string& image,
 void
 BattleView::AddEnemy(const std::string& image, int x, int y, int direction)
 {
-    figure f = { _LoadSprites(image), x, y, direction, -1, -1,
+    figure f = { _LoadSprites(image, "CB"), _LoadSprites(image, "WK"), 0, 0,
+        x, y, direction, -1, -1,
         std::vector<battle_position>() };
     // the enemies of different kinds may share palette indices: the last
     // one's colors win
@@ -221,6 +223,9 @@ BattleView::Tick()
     for (figure& f : fFigures) {
         if (f.path.empty())
             continue;
+        f.frame = (f.frame + 1) % f.walk->CountFrames();
+        if (f.ticks++ % kFramesPerStep != 0)
+            continue;
         const battle_position next = f.path.front();
         // another figure may have stepped in since the path was found
         bool taken = false;
@@ -228,12 +233,18 @@ BattleView::Tick()
             taken = taken || (&other != &f && other.x == next.x && other.y == next.y);
         if (taken) {
             f.path.clear();
+            f.frame = 0;
+            f.ticks = 0;
             continue;
         }
         f.direction = DirectionOf(next.x - f.x, next.y - f.y);
         f.x = next.x;
         f.y = next.y;
         f.path.erase(f.path.begin());
+        if (f.path.empty()) {
+            f.frame = 0;
+            f.ticks = 0;
+        }
     }
 }
 
@@ -254,23 +265,24 @@ BattleView::Clicked(const GFX::point& point)
 }
 
 
-// The combat animation ("CB") of a sprite set: "E03" in E00C.CAT, "F60"
-// in F60C.CAT. The first one: which one goes with a weapon is not decoded.
+// An animation of a sprite set, "CB" (combat) or "WK" (walking): "E03" in
+// E00C.CAT, "F60" in F60C.CAT. The first one: which one goes with a
+// weapon is not decoded.
 std::shared_ptr<ImcFile>
-BattleView::_LoadSprites(const std::string& image)
+BattleView::_LoadSprites(const std::string& image, const char* set)
 {
     const bool enemy = !image.empty() && (image[0] == 'E' || image[0] == 'M');
     const std::string catalogName = enemy
         ? image.substr(0, 1) + "00C.CAT" : image + "C.CAT";
     std::unique_ptr<Catalog> catalog(fData.OpenCatalog(catalogName));
-    const std::string prefix = image + "CB";
+    const std::string prefix = image + set;
     for (int32 i = 0; i < catalog->CountEntries(); i++) {
         if (catalog->EntryAt(i).filename.compare(0, prefix.size(), prefix) != 0)
             continue;
         std::unique_ptr<Stream> stream(catalog->GetStreamAt(uint32(i)));
         return std::shared_ptr<ImcFile>(new ImcFile(stream.get()));
     }
-    throw std::runtime_error("no battle sprites for " + image);
+    throw std::runtime_error("no battle sprites " + prefix);
 }
 
 
@@ -285,7 +297,7 @@ BattleView::Run(GameWindow& window)
             dirty = false;
         }
         const Uint32 now = SDL_GetTicks();
-        if (IsMoving() && now - lastStep >= kStepTicks) {
+        if (IsMoving() && now - lastStep >= kFrameTicks) {
             Tick();
             lastStep = now;
             dirty = true;
@@ -501,7 +513,8 @@ BattleView::_DrawCell(int x, int y, int left, int top)
 void
 BattleView::_DrawFigure(const figure& f)
 {
-    const sprite& picture = f.sprites->SpriteAt(0,
+    const ImcFile& sprites = f.path.empty() ? *f.sprites : *f.walk;
+    const sprite& picture = sprites.SpriteAt(f.path.empty() ? 0 : f.frame,
         f.direction % ImcFile::kDirectionCount);
     const int left = f.x * kCellSize + kCellSize / 2 - picture.width / 2
         - fOrigin.x;

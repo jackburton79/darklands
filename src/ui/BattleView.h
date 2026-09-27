@@ -50,8 +50,11 @@ public:
     battle_position	FigurePosition(int figure) const;
 
     // Moving the party: select a member (0..4, -1 none), then send it to
-    // a cell; each Tick() takes one step of its path. MoveSelectedTo()
-    // returns false if the cell cannot be reached.
+    // a cell. Each Tick() shows the next frame of the walking figures'
+    // walk; every kFramesPerStep ticks they step to the next cell of
+    // their path. MoveSelectedTo() returns false if the cell cannot be
+    // reached.
+    static const int	kFramesPerStep = 2;
     void			SelectMember(int member);
     int				SelectedMember() const;
     bool			MoveSelectedTo(int x, int y);
@@ -84,7 +87,10 @@ private:
     };
 
     struct figure {
-        std::shared_ptr<ImcFile> sprites;
+        std::shared_ptr<ImcFile> sprites;	// standing ("CB")
+        std::shared_ptr<ImcFile> walk;		// walking ("WK")
+        int			frame;		// of the walk
+        int			ticks;		// since the last step
         int			x;
         int			y;
         int			direction;
@@ -93,7 +99,8 @@ private:
         std::vector<battle_position> path;	// still to walk
     };
 
-    std::shared_ptr<ImcFile> _LoadSprites(const std::string& image);
+    std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
+                        const char* set);
     void			_DrawFigure(const figure& f);
     uint8			_GroundColor(const battle_cell& cell) const;
     bool			_IsOpen(int x, int y) const;

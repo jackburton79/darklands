@@ -99,7 +99,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `Run(window, page)`).
 - `BattleView`: a provisional top view of a battlefield map (cells,
   walls, objects) and figures (party and enemies, with their sprites
-  and colors; members walk where one clicks, `BattlePath`), until the
+  and colors; members walk where one clicks, `BattlePath`, with their
+  walking animation), until the
   game's own drawing is decoded.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
