@@ -699,6 +699,36 @@ Where the battle code starts; the rules are not decoded yet.
   150 − WeaponSkill / 2 − Agility / 2 (at least 0). **verified** (code).
   The bigger the number, the faster and more skilled the fighter: more
   a rate of strikes than a chance (*inferred*).
+- **Weapon table**: 63 weapon types (the item type of a weapon: a
+  character's weapon in use, +0x51), static data in segment 20A5 (file
+  0x17F670, as the data segments: the far pointers at DS:7D8C..7D9E all
+  hold 20A5), one array of 63 per figure: category at 75AC (0 edged, 1
+  impact, 2 flail, 3 polearm, 4 thrown, 5 bow, 6 missile device: the
+  order of the weapon skills), a 2-letter code at 75EB (2 bytes each),
+  speed at 7669, hands and penetration at 76A8 (high nibble 1 or 2
+  hands, low nibble the penetration), damage at 76E7, the skill it
+  needs at 7726, minimum and maximum useful strength at 7765 and 77A4,
+  range at 77E3 (missiles only); the armor strengths by armor type at
+  781E. **verified**: the codes are those of the sprites' file names
+  and agree with DARKLAND.LST's items (0 Two-hand Sword S2, 1 Long
+  Sword SW, 6 Battle Axe A2, 27..29 bows BW, 30, 31 crossbows CB, 32,
+  33 handguns HG); 35..62 have no item and are the monsters' natural
+  weapons, whose codes are those of their sprites (48 SK the skeleton,
+  M03CBSK; 44 WF the wolf; 46 GN, 47 KB, 37 GG, 39 VL...). E.g. the
+  long sword: speed 55, one hand, penetration 3, damage 12, skill 18,
+  strength 19..29.
+- **Setting up a combatant** (file 0x446E0, combatant i, weapon type
+  w): the record gets the weapon's speed (+0x52), hands and
+  penetration (+0x53), damage (+0x54), needed skill (+0x23), strength
+  range (+0x56, +0x57), range (+0x0C), the armor strengths of its
+  vitals and limbs armor types (+0x4D, +0x4E), WeaponQual (+0x0D) = the
+  melee weapon's quality (+0x58) or the missile weapon's (+0x5A), and
+  WeaponSkill (+0x59) = the character's skill (+0x6B + category). With
+  skill S, Max Str T, weak = min − T and unskilled = needed skill − S,
+  each counting only if above 0, and strong = T − max if above 0:
+  PCMeleeAttack (+0x20) = S + 2 · strong − 3 · weak − 2 · unskilled,
+  PCMissileAttack (+0x21) = S − weak − 2 · unskilled, both clamped to
+  0..255. **verified** (code)
 - **A melee strike**, as DARKLAND.EXE resolves it. **verified** (code)
   unless noted; "record" is the combatant's (above), die(n) is
   0000:0C8C, 1..n (rand() % n + 1, n at least 2).
