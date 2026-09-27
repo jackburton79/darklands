@@ -77,6 +77,16 @@ public:
         SCREEN_UNWELCOME,		// the inn, for a wanted party: $URBAN00/01
         SCREEN_STABLES,			// cards 3, 1 and 7
         SCREEN_STABLES_SALE,
+        SCREEN_MARKET_GUARDED,	// the market at night: $MARKE01 card 19,
+        SCREEN_MARKET_STUMBLE,	// the watch hears you (2),
+        SCREEN_MARKET_ALARM,	// the guards come (1),
+        SCREEN_MARKET_BRIBED,	// the guards look aside (9),
+        SCREEN_MARKET_REFUSED,	// or not (10)
+        SCREEN_NIGHT_WATCH,		// the night watch: $NIGHT00 card 0,
+        SCREEN_NIGHT_WATCH_MARKET,	// after the market (1),
+        SCREEN_NIGHT_WATCH_AGAIN,	// "Not you again" (2),
+        SCREEN_NIGHT_WATCH_CAUGHT,	// a member fell behind (4),
+        SCREEN_WATCH_ESCAPED,	// you outdistanced them (3)
         SCREEN_STORE,			// items left with the innkeeper: cards 5
         SCREEN_RECOVER,			// and 6
         SCREEN_FUGGER,			// the market's banks: $FUGGE00.MSG,
@@ -200,12 +210,25 @@ private:
     int				_Treatment();
     int				_Students();
     int				_LeavePhysician(bool apologize);
+    // The market at night and the night watch (DARKLAND.EXE, file
+    // 0xA0C62 and 0xBF0BB); marks are the game's timed events, by kind
+    bool			_Marked(int kind) const;
+    void			_Mark(int kind, uint32 hours, bool extend = false);
+    uint32			_Bribe() const;
+    uint32			_Fine() const;
+    int				_SneakChance() const;
+    int				_Slowest() const;
+    int				_Sneak();
+    int				_BribeGuards();
+    int				_PayFine();
+    int				_RunFromWatch();
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
     uint32			_StonePrice() const;
     int				_AlchemistChance() const;
     int				_BestSkill(int skill) const;
+    void			_SetChosen(int member);
     int				_Stone();
     int				_AlchemistShop();
     int				_Reputation() const;
@@ -250,5 +273,7 @@ private:
     bool			fTreatmentOffered;
     bool			fStoneOffered;			// once a visit
     std::map<int, uint32> fAlchemistAngryUntil;
+    std::map<std::pair<int, int>, uint32> fMarks;	// (kind, city): until
+    int				fWatchReturn;	// where paying the fine leads
     std::unique_ptr<ExeData> fNames;
 };

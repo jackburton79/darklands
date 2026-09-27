@@ -102,6 +102,8 @@ implemented yet. See the roadmap below.
 - [x] The physician: his skill, treating wounds, alchemical components
 - [x] The alchemist's shop: a better philosopher's stone, potions and
       components
+- [x] The market at night (sneaking, bribing) and the night watch
+      (fines, running away)
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback

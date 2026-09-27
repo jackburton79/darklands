@@ -198,3 +198,15 @@ TrainSkill(character& member, int skill, int amount,
     member.skills[skill]++;
     return true;
 }
+
+
+void
+TrainParty(party& members, int skill, int mode, int amount,
+    const std::function<int(int)>& random)
+{
+    const int chance = mode == 1 ? amount * 15 / 10 : amount * 5 / 10;
+    for (character& member : members.members) {
+        if (random(100) <= chance && member.skills[skill] < 99)
+            member.skills[skill]++;
+    }
+}

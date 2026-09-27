@@ -258,6 +258,44 @@ the options' switch at file 0xA3128). **verified** (code); see
   other departures (0x1A) lead to the crafts.
 - Not reproduced: the lessons.
 
+## The market at night and the night watch
+
+$MARKE01.MSG (state 0x16, file 0xA0C62) and $NIGHT00.MSG (state 0x3C,
+file 0xBF0BB, where the walks at night end when their chance fails,
+e.g. the crafts' (file 0xA47C5)). **verified** (code); see
+`CityVisit.cpp`. "Marks" are timed events per location (0E76:2930 makes
+one for n hours, 0E76:2A32 adds hours to it).
+
+- **The market**: card 19 while mark 0x17 (watched) runs, else card 0.
+  Sneaking needs no mark 0x1A; bribing ($Money1 = max(4, size −
+  reputation / 10) · party size · 24 pf, at least 48) needs the purse
+  and no mark 0x19. Potions and saints are offered when the party has
+  them (0x150B:16E8, 168C).
+- **Sneaking** (file 0xA0F96): chance (file 0xA109A) from 100, each
+  member in turn lowers it to his Stealth if lower, then adds 30; − 20
+  while watched or when 0x9C0:2107 says so. Success: a lesson in Stealth
+  for everyone (1462:0132(−2, 15, 1, 10): 15 % each) and the offices
+  (state 0x101, $INSID00: burglary, not implemented). Failure (the same
+  roll): if under twice the chance and 95, card 2, mark 0x17 + 72 hours,
+  an hour, the side streets; else card 1, mark 0x1A 12 hours, 0x17 + 32,
+  and the watch (then the offices).
+- **Bribing** (file 0xA10FC): taken if the reputation is over −10 (and
+  0x9C0:20F3 is not 1): paid, card 9, the offices; else card 10, mark
+  0x17 + 72 hours, the watch.
+- **The watch**: card 1 after the market or the grove at night (state
+  0x16, 0x22), card 2 if mark 0x40 runs ("Not you again"), else card 0;
+  mark 0x40 for 7 hours. The fine ($Money1): (city size − reputation /
+  50 + the purse's florins + 1) · party size (0x9C0:2161) pfennigs; paying
+  it (file 0xBF5C0) takes an hour and returns to the state the caller
+  left in DS:E7D8. Running (file 0xBF61A): if random(100) <= (the slowest
+  member's speed, 0E76:0656: agility lowered by the load, + the best
+  Streetwise) / 2: the reputation may fall by 1 (0E76:19D0: if
+  random(100) <= 100 − |reputation|), a small lesson in Streetwise, an
+  hour, card 3, the side streets; else card 4 (the slowest has fallen
+  behind: $ChosenOneName), without running.
+- Not reproduced: the burglary, potions, saints, fights, the load's
+  effect on speed.
+
 ## The alchemist
 
 $ALCHE00.MSG (state 0x59, file 0xD9B53; reached from the crafts in an

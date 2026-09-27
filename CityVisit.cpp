@@ -38,7 +38,11 @@ enum option_action {
     ACTION_LEAVE_PHYSICIAN,		// at night: `target` 1 to apologize
     ACTION_APOLOGIZE,
     ACTION_STONE,				// the alchemist's options
-    ACTION_ALCHEMIST_SHOP
+    ACTION_ALCHEMIST_SHOP,
+    ACTION_SNEAK,				// the market at night
+    ACTION_BRIBE,
+    ACTION_PAY_FINE,			// the night watch
+    ACTION_RUN
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -70,6 +74,17 @@ static const int kNeedsTreatment	= -10;
 static const int kNeedsAlchemist	= -12;
 static const int kNeedsStone		= -13;
 static const int kNeedsMaster		= -14;
+// or the night: no failed sneaking lately, the bribe in the purse, the
+// fine in the purse
+static const int kNeedsSneak		= -15;
+static const int kNeedsBribe		= -16;
+static const int kNeedsFine			= -17;
+
+// The game's timed marks used here (0E76:2930, 2A32)
+static const int kMarkGuarded		= 0x17;	// the market is watched
+static const int kMarkBribeRefused	= 0x19;
+static const int kMarkSneakFailed	= 0x1A;
+static const int kMarkWatchMet		= 0x40;
 
 // The game's day for some places (1367:072A): hour 5 to 18; the extra
 // hour to reach a guild then (file 0xA47A5)
@@ -131,6 +146,26 @@ struct screen_rules {
         HIDE, HIDE, HIDE,					/* the leader's home, saboteurs */ \
         TODO, TODO, TODO, TODO,				/* placeholders */ \
         GO(back)							/* leave */ \
+    }
+
+// The market at night and the night watch; potions, saints and fights
+// are not implemented
+#define NIGHT_MARKET_OPTIONS { \
+        DO_IF(ACTION_SNEAK, kNeedsSneak),	/* sneak to the offices */ \
+        DO_IF(ACTION_BRIBE, kNeedsBribe),	/* bribe them with $Money1 */ \
+        TODO, TODO, TODO,					/* potion, saint, attack */ \
+        GO(SCREEN_MAIN_STREET), \
+        GO(SCREEN_SIDE_STREET) \
+    }
+#define WATCH_OPTIONS { \
+        DO_IF(ACTION_PAY_FINE, kNeedsFine),	/* the fine of $Money1 */ \
+        DO(ACTION_RUN),						/* run away */ \
+        TODO, TODO, TODO					/* potion, saint, fight */ \
+    }
+#define WATCH_CAUGHT_OPTIONS { \
+        DO_IF(ACTION_PAY_FINE, kNeedsFine), \
+        HIDE,								/* no running again */ \
+        TODO, TODO, TODO \
     }
 
 // The option lists are those of the cards (see `darklands --messages`);
@@ -412,6 +447,22 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 1, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
     // the same, "whether any of your mounts are for sale"
     { "URBAN00", 7, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
+    // The market at night (in the day table too, for its cards): watched,
+    // "a loud thump", "...they quickly run in your direction...", the
+    // guard leader leads them away, "take money from scum like you?"
+    { "MARKE01", 19, NULL, NIGHT_MARKET_OPTIONS },
+    { "MARKE01", 2, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "MARKE01", 1, NULL, { GO(SCREEN_NIGHT_WATCH_MARKET) } },
+    { "MARKE01", 9, NULL, { TODO } },			// into the offices
+    { "MARKE01", 10, NULL, { GO(SCREEN_NIGHT_WATCH_MARKET) } },
+    // "Who violates the curfew of $PlaceName?" (file 0xBF0BB)
+    { "NIGHT00", 0, NULL, WATCH_OPTIONS },
+    { "NIGHT00", 1, NULL, WATCH_OPTIONS },
+    { "NIGHT00", 2, NULL, WATCH_OPTIONS },
+    { "NIGHT00", 4, NULL, WATCH_CAUGHT_OPTIONS },
+    // "Dashing down narrow lanes and alleys, you outdistance the night
+    // watch."
+    { "NIGHT00", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
     // "You carefully select which items to leave with the innkeeper...",
     // "You sort through the various goods...": the cache, then an hour
     { "URBAN00", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
@@ -607,12 +658,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_SIDE_STREET)
     } },
     // "The $marketplace... is almost empty at night."
-    { "MARKE01", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// sneak, bribe, potion, saint,
-                                            // attack
-        GO(SCREEN_MAIN_STREET),
-        GO(SCREEN_SIDE_STREET)
-    } },
+    // (DARKLAND.EXE, file 0xA0C62; card 19 when the market is watched)
+    { "MARKE01", 0, NULL, NIGHT_MARKET_OPTIONS },
     // "Gothic spires are black spikes in the night sky."
     { "CHURC01", 0, "XNCHRCH.PIC", {
         GO_IF(SCREEN_CATHEDRAL, CITY_CATHEDRAL),
@@ -729,6 +776,16 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     // "The stableboy assures you..." (no trade at night)
     { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
     { NULL, 0, NULL, {} },					// stables, sale: not at night
+    { NULL, 0, NULL, {} },					// the market at night, the watch
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { "URBAN01", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { "URBAN01", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { NULL, 0, NULL, {} },					// the alchemist
@@ -774,6 +831,9 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef HIDE
 #undef TRADE
 #undef TRADE_THEN
+#undef NIGHT_MARKET_OPTIONS
+#undef WATCH_OPTIONS
+#undef WATCH_CAUGHT_OPTIONS
 #undef DO
 #undef DO_IF
 #undef SHOP_OPTIONS
@@ -839,7 +899,8 @@ CityVisit::CityVisit(GameData& data)
     fPendingResidence(false),
     fPendingCache(false),
     fTreatmentOffered(false),
-    fStoneOffered(false)
+    fStoneOffered(false),
+    fWatchReturn(SCREEN_NOT_IMPLEMENTED)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -957,6 +1018,10 @@ CityVisit::Choose(int option)
     fPendingTrade = -1;
     fPendingResidence = false;
     fPendingCache = false;
+    // $ChosenOneName and its pronouns are the leader's unless an option
+    // names another member
+    if (fParty != NULL)
+        AddPartyVariables(*fParty, fVariables);
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
         _Show(fPreviousScreen, false);
         return true;
@@ -1020,6 +1085,18 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_ALCHEMIST_SHOP:
             _Show(_AlchemistShop());
+            return true;
+        case ACTION_SNEAK:
+            _Show(_Sneak());
+            return true;
+        case ACTION_BRIBE:
+            _Show(_BribeGuards());
+            return true;
+        case ACTION_PAY_FINE:
+            _Show(_PayFine());
+            return true;
+        case ACTION_RUN:
+            _Show(_RunFromWatch());
             return true;
         case ACTION_LEAVE_PHYSICIAN:
             _Show(_LeavePhysician(false));
@@ -1136,8 +1213,7 @@ CityVisit::_Show(int screen, bool withScene)
         // his name: the city's property 0x21 + 800
         fVariables["NamedOneName"] = _PersonName(uint16(_PeopleSeed() + 0x320));
         if (fParty != NULL && !fParty->members.empty())
-            fVariables["ChosenOneName"]
-                = fParty->members[_BestHealer()].shortName;
+            _SetChosen(_BestHealer());
     }
     // the master banker and the League's master: the city's number + 8
     // (the Fuggers, file 0xC4280), + 6 (the Medici, file 0xC62E9), + 7
@@ -1180,9 +1256,25 @@ CityVisit::_Show(int screen, bool withScene)
                         > fParty->members[best].skills[kSkillAlchemy])
                     best = int(i);
             }
-            fVariables["ChosenOneName"] = fParty->members[best].shortName;
+            _SetChosen(best);
         }
     }
+    // the market at night: watched for a while after trouble; the bribe
+    if (screen == SCREEN_MARKET && fClock != NULL && fClock->IsNight()
+            && _Marked(kMarkGuarded))
+        screen = SCREEN_MARKET_GUARDED;
+    if (screen == SCREEN_MARKET || screen == SCREEN_MARKET_GUARDED)
+        fVariables["Money1"] = MoneyText(_Bribe());
+    // the night watch: "Not you again" within 7 hours (0E76:2930(0x40, 7))
+    if (screen == SCREEN_NIGHT_WATCH || screen == SCREEN_NIGHT_WATCH_MARKET) {
+        if (screen == SCREEN_NIGHT_WATCH && _Marked(kMarkWatchMet))
+            screen = SCREEN_NIGHT_WATCH_AGAIN;
+        _Mark(kMarkWatchMet, 7);
+    }
+    if (screen == SCREEN_NIGHT_WATCH || screen == SCREEN_NIGHT_WATCH_MARKET
+            || screen == SCREEN_NIGHT_WATCH_AGAIN
+            || screen == SCREEN_NIGHT_WATCH_CAUGHT)
+        fVariables["Money1"] = MoneyText(_Fine());
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
         screen = SCREEN_FUGGER_COLD;
@@ -1248,6 +1340,13 @@ CityVisit::_HiddenOptions(int screen) const
             const int number = int16(_PeopleSeed());
             hide = (c.size <= 3 && number % 2 == 0)
                 || (c.size == 4 && number % 3 == 0);
+        } else if (rule.needs == kNeedsSneak) {
+            hide = _Marked(kMarkSneakFailed);
+        } else if (rule.needs == kNeedsBribe) {
+            hide = _Marked(kMarkBribeRefused) || fParty == NULL
+                || TotalPfennigs(fParty->cash) < _Bribe();
+        } else if (rule.needs == kNeedsFine) {
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < _Fine();
         } else if (rule.needs == kNeedsStone) {
             hide = fStoneOffered || fParty == NULL
                 || TotalPfennigs(fParty->cash) < _StonePrice();
@@ -1862,4 +1961,201 @@ CityVisit::_AlchemistShop()
     fPendingTrade = _AlchemistSkill(false) > 24 ? MERCHANT_ALCHEMIST
         : MERCHANT_ALCHEMIST_COMPONENTS;
     return SCREEN_ALCHEMIST_AGAIN;
+}
+
+
+bool
+CityVisit::_Marked(int kind) const
+{
+    const std::map<std::pair<int, int>, uint32>::const_iterator mark
+        = fMarks.find(std::make_pair(kind, fCity));
+    return mark != fMarks.end() && fClock != NULL
+        && fClock->HourStamp() < mark->second;
+}
+
+
+// 0E76:2930 makes a mark for `hours`; 0E76:2A32 (extend) adds them to a
+// mark still running
+void
+CityVisit::_Mark(int kind, uint32 hours, bool extend)
+{
+    if (fClock == NULL)
+        return;
+    uint32& until = fMarks[std::make_pair(kind, fCity)];
+    const uint32 now = fClock->HourStamp();
+    until = (extend && until > now ? until : now) + hours;
+}
+
+
+// The guards' price (file 0xA0CDC): max(4, city size - reputation / 10)
+// · the party's size · 24 pfennigs
+uint32
+CityVisit::_Bribe() const
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int each = std::max(4, size - _Reputation() / 10);
+    const int count = fParty != NULL ? int(fParty->members.size()) : 1;
+    return uint32(std::max(each * count * 24, 48));
+}
+
+
+// The watch's fine (file 0xBF160): (city size - reputation / 50 + the
+// florins in the purse + 1) · the party's size, in pfennigs
+uint32
+CityVisit::_Fine() const
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int florins = fParty != NULL ? fParty->cash.florins : 0;
+    const int count = fParty != NULL ? int(fParty->members.size()) : 1;
+    return uint32(std::max(1, (size - _Reputation() / 50 + florins + 1) * count));
+}
+
+
+// Sneaking's chance (file 0xA109A): from 100, each member in turn brings
+// it down to his Stealth if lower, then adds 30; 20 less when the market
+// is watched
+int
+CityVisit::_SneakChance() const
+{
+    int chance = 100;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members) {
+            chance = std::min(chance, int(member.skills[kSkillStealth]));
+            chance += 30;
+        }
+    }
+    if (_Marked(kMarkGuarded))
+        chance -= 20;
+    return std::max(0, std::min(chance, 99));
+}
+
+
+// The member who falls behind (0E76:0656): the lowest agility (the game
+// lowers it by the load carried: not kept here)
+int
+CityVisit::_Slowest() const
+{
+    int slowest = 0;
+    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
+        if (fParty->members[i].attributes[ATTRIBUTE_AGILITY]
+                < fParty->members[slowest].attributes[ATTRIBUTE_AGILITY])
+            slowest = int(i);
+    }
+    return slowest;
+}
+
+
+// Sneaking past the guards (file 0xA0F96): into the offices (state
+// 0x101, not implemented) with a lesson in Stealth; else, if the roll is
+// under twice the chance and 95, the watch only hears you (card 2, an
+// hour, the side streets, the market watched 72 hours more); else the
+// guards come (card 1, then the watch), no sneaking for 12 hours
+int
+CityVisit::_Sneak()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    const int chance = _SneakChance();
+    const int roll = random(100);
+    if (roll <= chance) {
+        if (fParty != NULL)
+            TrainParty(*fParty, kSkillStealth, 1, 10, random);
+        return SCREEN_NOT_IMPLEMENTED;
+    }
+    if (fParty != NULL)
+        TrainParty(*fParty, kSkillStealth, 0, 10, random);
+    if (roll < 2 * chance && roll < 95) {
+        _Mark(kMarkGuarded, 72, true);
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_MARKET_STUMBLE;
+    }
+    _Mark(kMarkSneakFailed, 12);
+    _Mark(kMarkGuarded, 32, true);
+    fWatchReturn = SCREEN_NOT_IMPLEMENTED;		// the offices
+    if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(_Slowest());
+    return SCREEN_MARKET_ALARM;
+}
+
+
+// Bribing (file 0xA10FC): taken unless the local reputation is -10 or
+// less (card 9, into the offices); else refused (card 10), the market
+// watched 72 hours more, and the watch
+int
+CityVisit::_BribeGuards()
+{
+    if (_Reputation() > -10 && fParty != NULL) {
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - _Bribe());
+        return SCREEN_MARKET_BRIBED;
+    }
+    _Mark(kMarkGuarded, 72, true);
+    fWatchReturn = SCREEN_NOT_IMPLEMENTED;
+    return SCREEN_MARKET_REFUSED;
+}
+
+
+// Paying the fine (file 0xBF5C0): an hour, then on as before
+int
+CityVisit::_PayFine()
+{
+    if (fParty != NULL)
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - _Fine());
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return fWatchReturn;
+}
+
+
+// Running (file 0xBF61A): if random(100) is at most (the slowest member's
+// agility + the best Streetwise) / 2, the party escapes (the local
+// reputation falls by 1 with a chance of 100 - |reputation| %, an hour,
+// card 3, the side streets); else the slowest falls behind (card 4, no
+// running again). Either way a small chance of Streetwise.
+int
+CityVisit::_RunFromWatch()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    const int slowest = _Slowest();
+    const int chance = fParty == NULL || fParty->members.empty() ? 0
+        : (fParty->members[slowest].attributes[ATTRIBUTE_AGILITY]
+            + _BestSkill(kSkillStreetwise)) / 2;
+    if (random(100) <= chance) {
+        if (fReputations != NULL && fCity >= 0
+                && fCity < int(fReputations->size())) {
+            int16& reputation = (*fReputations)[fCity];
+            if (random(100) <= 100 - std::abs(int(reputation)))
+                reputation = int16(std::max(-99, reputation - 1));
+        }
+        if (fParty != NULL)
+            TrainParty(*fParty, kSkillStreetwise, 7, 5, random);
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_WATCH_ESCAPED;
+    }
+    if (fParty != NULL) {
+        TrainParty(*fParty, kSkillStreetwise, 0, 5, random);
+        if (!fParty->members.empty())
+            _SetChosen(slowest);
+    }
+    return SCREEN_NIGHT_WATCH_CAUGHT;
+}
+
+
+// $ChosenOneName and the pronouns that go with it ($he, $his...)
+void
+CityVisit::_SetChosen(int member)
+{
+    if (fParty == NULL || member < 0 || member >= int(fParty->members.size()))
+        return;
+    const character& chosen = fParty->members[member];
+    fVariables["ChosenOneName"] = chosen.shortName;
+    const bool female = chosen.female;
+    fVariables["he"] = female ? "she" : "he";
+    fVariables["He"] = female ? "She" : "He";
+    fVariables["his"] = female ? "her" : "his";
+    fVariables["His"] = female ? "Her" : "His";
+    fVariables["him"] = female ? "her" : "him";
+    fVariables["himself"] = female ? "herself" : "himself";
 }

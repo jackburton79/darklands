@@ -30,6 +30,8 @@ static const int kSkillVirtue		= 9;
 static const int kSkillSpeakCommon	= 10;
 static const int kSkillSpeakLatin	= 11;
 static const int kSkillHealing		= 13;
+static const int kSkillStealth		= 15;
+static const int kSkillStreetwise	= 16;
 
 // What a character has in use: item types (item_definition::type in
 // DARKLAND.LST), 0xFF for none
@@ -98,6 +100,10 @@ void AddToAttribute(character& member, int attribute, int amount);
 // game's gain (0E76:18A8) is 0 or 1, raised to 1. Returns whether it
 // improved.
 bool TrainSkill(character& member, int skill, int amount,
+    const std::function<int(int)>& random);
+// The same routine for the whole party (member -2): each member has a
+// chance of amount · 15 / 10 (mode 1) or amount · 5 / 10 (other modes)
+void TrainParty(party& members, int skill, int mode, int amount,
     const std::function<int(int)>& random);
 // What the passing of time does to the party (DARKLAND.EXE 0E76:255A,
 // at every AddHours()): endurance comes back, and when a day begins
