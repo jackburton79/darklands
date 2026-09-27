@@ -39,6 +39,8 @@ public:
     // "a late-night curfew, after which it is illegal to be on the
     // streets until dawn", manual p. 66).
     bool			IsNight() const;
+    // Hours since a fixed date, to compare times (months of 31 days)
+    uint32			HourStamp() const;
 
     const char*		MonthName() const;	// "January"
     const char*		BellName() const;	// "Matins", "Latins"... "Compline"

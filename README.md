@@ -92,7 +92,8 @@ implemented yet. See the roadmap below.
 - [x] The city church: Mass, confession, donations (divine favor)
 - [x] Trade at the market (everyday goods, foreign traders,
       pharmacists, the Leihhaus)
-- [x] The inn: the price of a meal and a night, sleeping, the stables
+- [x] The inn: the price of a meal and a night, sleeping, the stables,
+      taking up residence (relax, regain strength, pray, work, study)
 - [x] Trade with the artificers' and clothmakers' guilds
 - [x] The party recovers as time passes (endurance, divine favor,
       strength), by the game's rules

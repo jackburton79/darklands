@@ -58,7 +58,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),
   `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
-  `ExeNames` (the people's names, read from DARKLAND.EXE),
+  `ExeData` (the people's names, read from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
@@ -83,6 +83,8 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.
+- `ResidenceView`: living at the inn (CAMPCITY.PIC), the members'
+  activities and days; `CityVisit` opens it like the trade screen.
 - `TradeView`: the item exchange scrolls (BUYSELL.PIC); `CityVisit`
   opens it for `ACTION_TRADE` options, from `Run()` (`PendingTrade()`
   in step-by-step tests). Stock and prices follow DARKLAND.EXE. The

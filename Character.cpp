@@ -187,3 +187,14 @@ PassTime(party& members, bool newDay, const std::function<int(int)>& random)
             current[attribute] = std::min(current[attribute], maximum[attribute]);
     }
 }
+
+
+bool
+TrainSkill(character& member, int skill, int amount,
+    const std::function<int(int)>& random)
+{
+    if (amount * 33 / 10 < random(100) || member.skills[skill] >= 99)
+        return false;
+    member.skills[skill]++;
+    return true;
+}

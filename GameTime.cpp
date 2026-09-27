@@ -73,6 +73,13 @@ GameTime::AddMinutes(uint32 minutes)
 }
 
 
+uint32
+GameTime::HourStamp() const
+{
+    return ((uint32(fYear) * 12 + fMonth) * 31 + fDay) * 24 + fHour;
+}
+
+
 bool
 GameTime::IsNight() const
 {

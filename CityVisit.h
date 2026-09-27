@@ -16,6 +16,7 @@
 
 #include "CardView.h"
 #include "MsgFile.h"
+#include "ResidenceView.h"
 #include "TradeView.h"
 
 #include <map>
@@ -24,7 +25,7 @@
 #include <string>
 #include <vector>
 
-class ExeNames;
+class ExeData;
 class GameData;
 class GameTime;
 class GameWindow;
@@ -141,6 +142,12 @@ public:
     // trade screen), or -1.
     int				PendingTrade() const	{ return fPendingTrade; }
     TradeView&		Trade()					{ return fTrade; }
+    // After Choose(): whether the party takes up residence at the inn
+    // (Run() then shows ResidenceView).
+    bool			PendingResidence() const	{ return fPendingResidence; }
+    ResidenceView&	Residence()				{ return fResidence; }
+    // The inn's price of a meal and a night for the party, in pfennigs
+    uint32			InnPrice() const;
 
     // The card variables of a city: $PlaceName, $PlaceDesc, $Inn,
     // $citySquare...
@@ -162,7 +169,7 @@ private:
     int				_Donation();
     // The inn (DARKLAND.EXE, file 0xA6B5E): the price of a meal and a
     // night, sleeping, the stables
-    uint32			_InnPrice() const;
+
     int				_Sleep();
     int				_Stables();
     // The banks' letters of credit (DARKLAND.EXE, file 0xC4568 and
@@ -209,18 +216,12 @@ private:
     std::map<int, uint32> fTreatedUntil;	// in hours, see HourStamp()
     std::map<int, uint32> fNoStudentsUntil;
 public:
-    // A teacher found in a city: the physician who takes students gives
-    // lessons in a skill, up to a level, for a daily fee, while the party
-    // lives at the inn (DARKLAND.EXE: 0E76:2C4E, kind 0x28)
-    struct tutor {
-        int		skill;			// e.g. kSkillHealing
-        int		level;
-        uint32	fee;			// pfennigs a day
-        uint32	until;			// the offer, in hours (see HourStamp())
-    };
-    const std::map<int, tutor>& Tutors() const	{ return fTutors; }
+    // The teachers found, by city (see city_tutor)
+    const std::map<int, city_tutor>& Tutors() const	{ return fTutors; }
 private:
-    std::map<int, tutor> fTutors;	// by city
+    std::map<int, city_tutor> fTutors;
+    ResidenceView	fResidence;
+    bool			fPendingResidence;
     bool			fTreatmentOffered;
-    std::unique_ptr<ExeNames> fNames;
+    std::unique_ptr<ExeData> fNames;
 };

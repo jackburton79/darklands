@@ -195,7 +195,7 @@ composition of your party" to state 0xAA.
   290E:267F); women's names (88) are at 290E:2517. Then srand(time).
   DS:9C4A is the game's seed global: a new game takes it from the BIOS
   clock ticks (0040:006C, file 0x7C04F), a saved game keeps it at 0x64
-  (see formats.md). `ExeNames.cpp` reads the lists from the executable.
+  (see formats.md). `ExeData.cpp` reads the lists from the executable.
 - Location property 0x21 of a city is the city record's word +0x56 plus
   DS:9C4A: the seed of its people.
 
@@ -234,7 +234,9 @@ the options' switch at file 0xA3128). **verified** (code); see
   11 while a mark (kind 0x38, 30 hours) says he refused; if (P + year)
   % 3 (signed) is not 0 and the skill is over 1, card 4: students for
   skill / 5 + 10 pfennigs a day ($Money1), a person of kind 0x28 being
-  made if there is none (0E76:392C, 2C4E: Healing, 60, for 168 hours);
+  made if there is none (0E76:392C, 2C4E: skill Healing, fee 60 at
+  +0x1E, level 50 at +0x20, for 168 hours: the residence charges the
+  60, not the card's fee);
   else card 5, $Number1 = random(4) + 1 apprentices, and the mark. The
   lessons are given while the party lives at the inn (the inn's
   residence, not decoded).
@@ -247,6 +249,46 @@ the options' switch at file 0xA3128). **verified** (code); see
   is the district ($BUSIN00: its loop tests it at file 0x9F166); the
   other departures (0x1A) lead to the crafts.
 - Not reproduced: the lessons.
+
+## The residence
+
+"Take up residence to study, work, pray, experiment" at the inn (file
+0xA709A) calls 0x9C0:1EEB, which runs the camp screen (file 0x6F97C...;
+CAMPCITY.PIC in a city, CAMPWILD.PIC in the wilderness: its argument, 0
+at the inn, 1 in the wilderness, 2 and 3 other camps). **verified**
+(code); see `ResidenceView.cpp`.
+
+- **Activities**, per member (DS:8A18, their values DS:89FE; keys J R P
+  A E G T, 1..5 for the member, F1..F6, S, L): relax (0); regain
+  strength (1, when strength is under its maximum: gain clamp(1, 99,
+  the party's best Healing / 15)); pray (2, when divine favor is under
+  its maximum: gain (Religion + Virtue) / 12 + 1); alchemy (3, making
+  potions: not decoded); earn money (4, in a city); guard the camp (5, in
+  the wilderness); train or study (6, when the location has a person of
+  kind 0x28). The menu (file 0x7001C) is drawn light green (10) where
+  the activity makes sense, green (2) elsewhere.
+- **Jobs** (file 0x70A0E): the 31 records of 18 bytes at DS:3ACE (name
+  index into 290E:219B, city flags mask, a mask that makes the job never
+  offered, location flags mask, an attribute and threshold, two skills
+  and thresholds, a multiplier); pay = ((the city record's +0x56 % 4) +
+  min(0, reputation / 20) + (attribute − threshold) / 3 + f(skill −
+  threshold) for both skills) · max(city size, 9) · multiplier / 70,
+  with f(x) = 1 under 4, else clamp(1, 9, isqrt(x)) (file 0x70BDC,
+  0x47C:11AB). The best paid job wins; under 2, "Day Laborer" at 2 pf.
+- **A day's price** (file 0x708E8): the inn's price (1462:1D2C), less
+  the workers' pay, plus the fee (+0x1E) of each student's teacher. The
+  text (file 0x70160) shows the inn's price and the purse after the day.
+- **A day** (file 0x7050A): refused ("Not Enough Money") if the purse is
+  short of a positive price; relaxing and regaining strength restore
+  endurance; regaining strength and praying return to relaxing at the
+  maximum; alchemy returns to relaxing; the pay goes to the purse; a
+  student pays the fee if the purse can, then 1462:0132(member, the
+  teacher's skill, 1, level · 20 / 100, −1): a point if random(100) <=
+  amount · 33 / 10 (0E76:18A8 gives 0 or 1, raised to 1); then the inn
+  is paid if the purse can; then AddHours up to 5 in the morning, at
+  least 9 hours (1367:086A(5), + 24 under 9).
+- 1462:0132 is at file 0x80AD2: segment 1462 is shared by overlays too
+  (0x9C0:1EEB's 1462:0082 is in another one).
 
 ## The banks
 
@@ -404,8 +446,8 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
 - **Confession** (1838:03CC): r = the local reputation; card 3, then 11 −
   r / 10 hours if r ≥ 0, else 12 + r / 20 (divisions truncated). If
   random(100) ≤ the leader's Religion and random(100) ≤ 25, 0x9C0:1F63
-  (−1, 9, 1, 10, −1) is called: a routine at 1462:0132 that seems to
-  improve Virtue (skill 9), not decoded, not reproduced. The leader gains
+  (−1, 9, 1, 10, −1) is called: 1462:0132, a chance of a point of
+  Virtue (skill 9, see "The residence"). The leader gains
   random(5) + Religion / 10 + 2 divine favor.
 - **Donation** (1838:067C): the tenth of the purse is taken; points = it
   / (6 · party size). The most religious member gets back all the divine

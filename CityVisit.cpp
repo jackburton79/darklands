@@ -6,7 +6,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
-#include "ExeNames.h"
+#include "ExeData.h"
 #include "ListFile.h"
 #include "ScreenSupport.h"
 
@@ -26,6 +26,7 @@ enum option_action {
     ACTION_ALTAR_BOY,
     ACTION_SLEEP,				// the inn's options
     ACTION_STABLES,
+    ACTION_RESIDENCE,
     ACTION_REDEEM,				// the banks: `target` is the result
     ACTION_DEPOSIT,				// the number typed in; `target`: the bank
     ACTION_DISCUSS_TREATMENTS,	// the physician's options
@@ -149,7 +150,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 0, NULL, {
         TODO,								// local news and rumors
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),	// a meal and sleep for $Money1
-        TODO,								// take up residence
+        DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
         TODO,								// store items
         HIDE,								// recover them: none stored
@@ -504,7 +505,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN01", 0, NULL, {
         TODO,								// local news and rumors
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),
-        TODO,								// take up residence
+        DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
         TODO,								// store items
         HIDE,								// recover them
@@ -756,15 +757,6 @@ RulesFor(int screen, bool night)
 }
 
 
-// Hours since a fixed date, to compare times (months counted as 31 days)
-static uint32
-HourStamp(const GameTime& time)
-{
-    return ((uint32(time.Year()) * 12 + time.Month()) * 31 + time.Day()) * 24
-        + time.Hour();
-}
-
-
 static const option_rule&
 RuleFor(const screen_rules& rules, int option)
 {
@@ -796,6 +788,8 @@ CityVisit::CityVisit(GameData& data)
     fPreviousScreen(SCREEN_START),
     fRandom(std::random_device()()),
     fSeed(0),
+    fResidence(data),
+    fPendingResidence(false),
     fTreatmentOffered(false)
 {
     // every screen has a day card (a miscounted table would leave some
@@ -830,6 +824,7 @@ CityVisit::SetParty(party* members)
     fParty = members;
     fView.SetParty(members);
     fTrade.SetParty(members);
+    fResidence.SetParty(members);
 }
 
 
@@ -864,6 +859,18 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             fPendingTrade = -1;
             _Show(fScreen, false);
         }
+        if (fPendingResidence) {
+            // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
+            // a day costs the inn's price
+            std::map<int, city_tutor>::const_iterator tutor
+                = fTutors.find(fCity);
+            fResidence.SetClock(fClock);
+            fResidence.SetPlace(fCity, _Reputation(), InnPrice(),
+                tutor != fTutors.end() ? &tutor->second : NULL);
+            fResidence.Run(window);
+            fPendingResidence = false;
+            _Show(SCREEN_INN, false);
+        }
     }
 }
 
@@ -891,6 +898,7 @@ bool
 CityVisit::Choose(int option)
 {
     fPendingTrade = -1;
+    fPendingResidence = false;
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
         _Show(fPreviousScreen, false);
         return true;
@@ -916,6 +924,9 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_STABLES:
             _Show(_Stables());
+            return true;
+        case ACTION_RESIDENCE:
+            fPendingResidence = true;
             return true;
         case ACTION_REDEEM:
             _Show(_Redeem(rule.target));
@@ -1075,7 +1086,7 @@ CityVisit::_Show(int screen, bool withScene)
         screen = SCREEN_MEDICI_COLD;
     fScreen = screen;
     if (screen == SCREEN_INN)
-        fVariables["Money1"] = MoneyText(_InnPrice());
+        fVariables["Money1"] = MoneyText(InnPrice());
     else if (fParty != NULL && screen == SCREEN_CHURCH)	// the donation
         fVariables["Money1"] = MoneyText(TotalPfennigs(fParty->cash) / 10);
     else if (fParty != NULL && (screen == SCREEN_FUGGER
@@ -1114,7 +1125,7 @@ CityVisit::_HiddenOptions(int screen) const
         else if (rule.needs == kNeedsBadReputation)
             hide = _Reputation() > -10;
         else if (rule.needs == kNeedsInnPrice)
-            hide = fParty == NULL || TotalPfennigs(fParty->cash) < _InnPrice();
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < InnPrice();
         else if (rule.needs == kNeedsBankNotes)
             hide = fParty == NULL || fParty->bankNotes == 0;
         else if (rule.needs == kNeedsFlorins)
@@ -1132,7 +1143,7 @@ CityVisit::_HiddenOptions(int screen) const
                 = fTreatedUntil.find(fCity);
             hide = !fTreatmentOffered || (fClock != NULL
                 && treated != fTreatedUntil.end()
-                && HourStamp(*fClock) < treated->second);
+                && fClock->HourStamp() < treated->second);
         } else if (rule.needs == kNeedsPawnshop)
             hide = (c.flags & CITY_HAS_PAWNSHOP) == 0;
         else if (rule.needs >= kNeedsShop)
@@ -1153,7 +1164,7 @@ std::string
 CityVisit::_PersonName(uint16 seed)
 {
     if (fNames == NULL)
-        fNames.reset(new ExeNames(fData.PathFor("DARKLAND.EXE")));
+        fNames.reset(new ExeData(fData.PathFor("DARKLAND.EXE")));
     return fNames->MaleName(uint16(fSeed + seed));
 }
 
@@ -1245,8 +1256,9 @@ CityVisit::_AltarBoy()
 
 
 // Confession: the leader gains random(5) + Religion / 10 + 2 divine
-// favor; it takes 11 hours, less with a good local reputation (the game
-// may also raise Virtue: not reproduced)
+// favor; it takes 11 hours, less with a good local reputation; if
+// random(100) <= Religion and random(100) <= 25, a chance of a point of
+// Virtue (1462:0132, see TrainSkill())
 int
 CityVisit::_Confession()
 {
@@ -1258,6 +1270,12 @@ CityVisit::_Confession()
     if (fClock != NULL)
         fClock->AddHours(uint32(std::max(hours, 0)));
     character& leader = fParty->members[fParty->leader];
+    // 0x9C0:1F63(-1, Virtue, 1, 10, -1): a lesson in Virtue
+    if (int(fRandom() % 100) <= leader.skills[kSkillReligion]
+            && int(fRandom() % 100) <= 25) {
+        TrainSkill(leader, kSkillVirtue, 10,
+            [this](int n) { return int(fRandom() % uint32(n)); });
+    }
     AddToAttribute(leader, ATTRIBUTE_DIVINE_FAVOR,
         int(fRandom() % 5) + leader.skills[kSkillReligion] / 10 + 2);
     return SCREEN_CONFESSION;
@@ -1316,7 +1334,7 @@ CityVisit::_Donation()
 // size. (The game raises it by 8/3 or 5/3 with some location states,
 // which are not kept here.)
 uint32
-CityVisit::_InnPrice() const
+CityVisit::InnPrice() const
 {
     const int reputation = _Reputation();
     int price = fData.Cities().CityAt(uint32(fCity)).size + 1;
@@ -1341,7 +1359,7 @@ CityVisit::_Sleep()
 {
     if (fParty == NULL)
         return SCREEN_SLEEP;
-    const uint32 price = _InnPrice();
+    const uint32 price = InnPrice();
     fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - price);
     for (character& member : fParty->members) {
         member.attributes[ATTRIBUTE_ENDURANCE]
@@ -1559,7 +1577,7 @@ CityVisit::_Treatment()
         AddToAttribute(member, ATTRIBUTE_STRENGTH, amount);
     }
     if (fClock != NULL)
-        fTreatedUntil[fCity] = HourStamp(*fClock) + 20;
+        fTreatedUntil[fCity] = fClock->HourStamp() + 20;
     return SCREEN_PHYSICIAN_TREATED;
 }
 
@@ -1578,7 +1596,7 @@ CityVisit::_Students()
         best = fParty->members[_BestHealer()].skills[kSkillHealing];
     if (best > skill && skill > 1)
         return SCREEN_PHYSICIAN_NOTHING;
-    const uint32 now = fClock != NULL ? HourStamp(*fClock) : 0;
+    const uint32 now = fClock != NULL ? fClock->HourStamp() : 0;
     const std::map<int, uint32>::const_iterator refused
         = fNoStudentsUntil.find(fCity);
     if (refused != fNoStudentsUntil.end() && now < refused->second)
@@ -1587,9 +1605,11 @@ CityVisit::_Students()
     if (int16(_PeopleSeed() + year) % 3 != 0 && skill > 1) {
         const uint32 fee = uint32(skill / 5 + 10);
         fVariables["Money1"] = MoneyText(fee);
+        // the teacher the game makes charges 60 pfennigs a day, not the
+        // fee the card shows, with a level of 50 (0E76:2C4E's arguments)
         if (fTutors.find(fCity) == fTutors.end()
                 || fTutors[fCity].until <= now)
-            fTutors[fCity] = tutor{ kSkillHealing, 60, fee, now + 168 };
+            fTutors[fCity] = city_tutor{ kSkillHealing, 50, 60, now + 168 };
         return SCREEN_PHYSICIAN_TUTOR;
     }
     fVariables["Number1"] = std::to_string(fRandom() % 4 + 1);

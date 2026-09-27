@@ -92,6 +92,12 @@ std::string MoneyText(uint32 pfennigs);
 // Adds to a character's current attribute, as DARKLAND.EXE does
 // (0E76:0A72): the result stays within 1..99 and at most the maximum.
 void AddToAttribute(character& member, int attribute, int amount);
+// A chance to improve a skill by a point (DARKLAND.EXE 1462:0132 for
+// one member, mode 1): if random(100) is at most amount · 33 / 10. The
+// game's gain (0E76:18A8) is 0 or 1, raised to 1. Returns whether it
+// improved.
+bool TrainSkill(character& member, int skill, int amount,
+    const std::function<int(int)>& random);
 // What the passing of time does to the party (DARKLAND.EXE 0E76:255A,
 // at every AddHours()): endurance comes back, and when a day begins
 // divine favor, strength and some attributes too. `random(n)` is 0..n-1.
