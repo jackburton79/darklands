@@ -49,7 +49,7 @@ static const char* kMerchantNames[MERCHANT_COUNT] = {
     "Swordsmith", "Blacksmith", "Armorer", "Bowyer", "Artificier",
     "Clothmaker",
     "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop",
-    "Stablemaster", "Physician"
+    "Stablemaster", "Physician", "Alchemist", "Alchemist"
 };
 
 // DARKLAND.EXE, see docs/exe.md. The shop type (its quality in the
@@ -75,7 +75,9 @@ static const struct {
     { kAnyShop, 0x00000400 },
     { kPawnshop, 0x2C3EC3FF },
     { kAnyShop, ITEM_HORSE },
-    { kAnyShop, ITEM_COMPONENT }			// type 9 (file 0xA3604)
+    { kAnyShop, ITEM_COMPONENT },			// type 9 (file 0xA3604)
+    { kAnyShop, ITEM_POTION },				// file 0xDA10B
+    { kAnyShop, ITEM_COMPONENT }			// file 0xDA122
 };
 
 

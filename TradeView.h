@@ -42,6 +42,8 @@ enum merchant_kind {
     MERCHANT_PAWNSHOP,		// the Leihhaus
     MERCHANT_STABLES,		// the inn's stablemaster: horses and mules
     MERCHANT_PHYSICIAN,		// alchemical components
+    MERCHANT_ALCHEMIST,		// potions,
+    MERCHANT_ALCHEMIST_COMPONENTS,	// or components from a lesser one
     MERCHANT_COUNT
 };
 

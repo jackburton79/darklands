@@ -100,6 +100,8 @@ implemented yet. See the roadmap below.
       strength), by the game's rules
 - [x] The Fugger and Medici banks: letters of credit
 - [x] The physician: his skill, treating wounds, alchemical components
+- [x] The alchemist's shop: a better philosopher's stone, potions and
+      components
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback

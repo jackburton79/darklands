@@ -36,7 +36,9 @@ enum option_action {
     ACTION_TREATMENT,
     ACTION_STUDENTS,
     ACTION_LEAVE_PHYSICIAN,		// at night: `target` 1 to apologize
-    ACTION_APOLOGIZE
+    ACTION_APOLOGIZE,
+    ACTION_STONE,				// the alchemist's options
+    ACTION_ALCHEMIST_SHOP
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -63,6 +65,11 @@ static const int kNeedsCache		= -11;
 static const int kNeedsPhysician	= -8;
 static const int kNeedsWounded		= -9;
 static const int kNeedsTreatment	= -10;
+// or the alchemist: in the city, the stone's price in the purse, a
+// master (skill 25 or more) for the formulas
+static const int kNeedsAlchemist	= -12;
+static const int kNeedsStone		= -13;
+static const int kNeedsMaster		= -14;
 
 // The game's day for some places (1367:072A): hour 5 to 18; the extra
 // hour to reach a guild then (file 0xA47A5)
@@ -311,7 +318,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // hour)
     { "CIVCR00", 0, NULL, {
         { ACTION_GO, CityVisit::SCREEN_PHYSICIAN, kNeedsPhysician, 60 },
-        TODO,								// astrologists
+        { ACTION_GO, CityVisit::SCREEN_ALCHEMIST, kNeedsAlchemist, 60 },
         HIDE,								// jewelers
         WAIT(SCREEN_ARTIFICER, kAnHourMoreAtNight),	// tinkers
         WAIT(SCREEN_CLOTHMAKER, kAnHourMoreAtNight),
@@ -484,6 +491,30 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "PHYSI00", 6, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "I am unable to take any students"
     { "PHYSI00", 11, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...the best alchemist in $PlaceName, $NamedOneName... You ask
+    // about..." (file 0xD9B53); card 1 for the next questions
+#define ALCHEMIST_OPTIONS { \
+        DO_IF(ACTION_STONE, kNeedsStone),	/* a better stone for $Money1 */ \
+        DO(ACTION_ALCHEMIST_SHOP),			/* purchasing $Text4 */ \
+        TODO_IF(kNeedsMaster),				/* purchasing formulas */ \
+        TODO,								/* trading formulas */ \
+        TODO,								/* instruction in alchemy */ \
+        TODO,								/* special tasks */ \
+        HIDE, HIDE, HIDE,					/* placeholders */ \
+        GO(SCREEN_CRAFTS)					/* trivialities, then leave */ \
+    }
+    { "ALCHE00", 0, NULL, ALCHEMIST_OPTIONS },
+    { "ALCHE00", 1, NULL, ALCHEMIST_OPTIONS },
+#undef ALCHEMIST_OPTIONS
+    // "...none of you knows enough about alchemy", "Painful peril awaits
+    // any who disturb my slumber", "...before I turn you into toads!"
+    { "ALCHE00", 2, NULL, { GO(SCREEN_CRAFTS) } },
+    { "ALCHE00", 3, NULL, { GO(SCREEN_CRAFTS) } },
+    { "ALCHE00", 6, NULL, { GO(SCREEN_CRAFTS) } },
+    // "...your abilities are beyond my own", "...improve your
+    // philosopher's stone to quality $Number1"
+    { "ALCHE00", 5, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
+    { "ALCHE00", 7, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
     // "Among the dark townhouses... he peers at you through a crack in
     // the door" (outside the game's day, file 0xA2EDB)
     { "PHYSI00", 1, NULL, {
@@ -700,6 +731,13 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },					// stables, sale: not at night
     { "URBAN01", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { "URBAN01", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
+    { NULL, 0, NULL, {} },					// the alchemist
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// the physician
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -800,7 +838,8 @@ CityVisit::CityVisit(GameData& data)
     fResidence(data),
     fPendingResidence(false),
     fPendingCache(false),
-    fTreatmentOffered(false)
+    fTreatmentOffered(false),
+    fStoneOffered(false)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -976,6 +1015,12 @@ CityVisit::Choose(int option)
         case ACTION_STUDENTS:
             _Show(_Students());
             return true;
+        case ACTION_STONE:
+            _Show(_Stone());
+            return true;
+        case ACTION_ALCHEMIST_SHOP:
+            _Show(_AlchemistShop());
+            return true;
         case ACTION_LEAVE_PHYSICIAN:
             _Show(_LeavePhysician(false));
             return true;
@@ -1105,6 +1150,39 @@ CityVisit::_Show(int screen, bool withScene)
         fVariables["NamedOneName"] = _PersonName(uint16(number
             + (fugger ? 8 : screen == SCREEN_HANSE ? 7 : 6)));
     }
+    // the alchemist (file 0xD9E30): angry for a while, not found by a
+    // party that knows too little alchemy, closed at night; card 1 after
+    // the first question
+    if (screen == SCREEN_ALCHEMIST || screen == SCREEN_ALCHEMIST_AGAIN) {
+        const uint32 now = fClock != NULL ? fClock->HourStamp() : 0;
+        const std::map<int, uint32>::const_iterator angry
+            = fAlchemistAngryUntil.find(fCity);
+        // "found" if (the seed global + the location) % 30 is under the
+        // best Alchemy, at least 10
+        const bool found = int((fSeed + fCity) % 30)
+            < std::max(10, std::min(_BestSkill(kSkillAlchemy), 99));
+        if (screen == SCREEN_ALCHEMIST)
+            fStoneOffered = false;
+        if (angry != fAlchemistAngryUntil.end() && now < angry->second)
+            screen = SCREEN_ALCHEMIST_ANGRY;
+        else if (!found)
+            screen = SCREEN_ALCHEMIST_UNKNOWN;
+        else if (fClock != NULL && !IsGameDay(*fClock))
+            screen = SCREEN_ALCHEMIST_NIGHT;
+        fVariables["NamedOneName"] = _PersonName(uint16(_PeopleSeed() + 0x49));
+        fVariables["Money1"] = MoneyText(_StonePrice());
+        fVariables["Text4"] = _AlchemistSkill(true) >= 25 ? "Potions"
+            : "Alchemical Components";
+        if (fParty != NULL && !fParty->members.empty()) {
+            int best = 0;
+            for (size_t i = 1; i < fParty->members.size(); i++) {
+                if (fParty->members[i].skills[kSkillAlchemy]
+                        > fParty->members[best].skills[kSkillAlchemy])
+                    best = int(i);
+            }
+            fVariables["ChosenOneName"] = fParty->members[best].shortName;
+        }
+    }
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
         screen = SCREEN_FUGGER_COLD;
@@ -1164,7 +1242,18 @@ CityVisit::_HiddenOptions(int screen) const
             // (a signed 16-bit remainder)
             hide = c.size <= 3 && int16(_PeopleSeed() + (fClock != NULL
                 ? fClock->Year() : 1400)) % 3 == 0;
-        } else if (rule.needs == kNeedsWounded)
+        } else if (rule.needs == kNeedsAlchemist) {
+            // file 0xA4368: in towns of size 3 or less where the city's
+            // property 0x21 is even, of size 4 where it divides by 3
+            const int number = int16(_PeopleSeed());
+            hide = (c.size <= 3 && number % 2 == 0)
+                || (c.size == 4 && number % 3 == 0);
+        } else if (rule.needs == kNeedsStone) {
+            hide = fStoneOffered || fParty == NULL
+                || TotalPfennigs(fParty->cash) < _StonePrice();
+        } else if (rule.needs == kNeedsMaster)
+            hide = _AlchemistSkill(true) < 25;
+        else if (rule.needs == kNeedsWounded)
             hide = _Wounded() == 0;
         else if (rule.needs == kNeedsTreatment) {
             const std::map<int, uint32>::const_iterator treated
@@ -1669,4 +1758,108 @@ CityVisit::_LeavePhysician(bool apologize)
         reputation = int16(std::max(-99, reputation - int(fRandom() % 4) - 1));
     }
     return SCREEN_PHYSICIAN_CURSES;
+}
+
+
+// The alchemist's skill (file 0xD9BBB): city size · 3 + (property 0x21
+// + 4) % 41, and (property 0x21 + 9) % 11 + 10 more in a city with the
+// flag 0x100 (0E76:1A7E(0x1B)); the shop (file 0xDA0CA) leaves this out
+int
+CityVisit::_AlchemistSkill(bool withBonus) const
+{
+    const city& c = fData.Cities().CityAt(uint32(fCity));
+    int skill = c.size * 3 + (_PeopleSeed() + 4) % 41;
+    if (withBonus && (c.flags & 0x100) != 0)
+        skill += (_PeopleSeed() + 9) % 11 + 10;
+    return skill;
+}
+
+
+// The stone he can make (file 0xDA00C): (property 0x21 + 4) % 25 + 1
+int
+CityVisit::_StoneQuality() const
+{
+    return (_PeopleSeed() + 4) % 25 + 1;
+}
+
+
+// Its price, in groschen (file 0xD9C62): (skill / 2 + 1) · (quality + 5)
+// / 12, within 1..50 + (the seed global + location) % 20
+uint32
+CityVisit::_StonePrice() const
+{
+    const int limit = 50 + (fSeed + fCity) % 20;
+    const int groschen = (_AlchemistSkill(true) / 2 + 1)
+        * (_StoneQuality() + 5) / 12;
+    return uint32(std::max(1, std::min(groschen, limit))) * 12;
+}
+
+
+// Whether he deigns to deal (file 0xD9F6C): random(100) at most the
+// leader's charisma + reputation / 10 + property 0x21 % 31 + the
+// leader's Speak Common / 3 + the best Alchemy / 2 - 15, within 0..99
+int
+CityVisit::_AlchemistChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[fParty->leader];
+    const int chance = leader.attributes[ATTRIBUTE_CHARISMA]
+        + _Reputation() / 10 + _PeopleSeed() % 31
+        + leader.skills[kSkillSpeakCommon] / 3
+        + _BestSkill(kSkillAlchemy) / 2 - 15;
+    return std::max(0, std::min(chance, 99));
+}
+
+
+int
+CityVisit::_BestSkill(int skill) const
+{
+    int best = 0;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members)
+            best = std::max(best, int(member.skills[skill]));
+    }
+    return best;
+}
+
+
+// A better philosopher's stone (file 0xD9FFE): offended if the chance
+// fails (card 6, and no dealings for 60 hours); else the stone becomes
+// his quality, paid, if it is better (card 7), or card 5
+int
+CityVisit::_Stone()
+{
+    fStoneOffered = true;
+    if (int(fRandom() % 100) > _AlchemistChance()) {
+        if (fClock != NULL)
+            fAlchemistAngryUntil[fCity] = fClock->HourStamp() + 60;
+        return SCREEN_ALCHEMIST_ANGRY;
+    }
+    const int quality = _StoneQuality();
+    if (fParty == NULL || fParty->philosopherStone >= quality)
+        return SCREEN_STONE_BEYOND;
+    const uint32 price = _StonePrice();
+    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - price);
+    fParty->philosopherStone = uint16(quality);
+    fVariables["Number1"] = std::to_string(quality);
+    fVariables["Money1"] = MoneyText(price);
+    return SCREEN_STONE_IMPROVED;
+}
+
+
+// Purchasing (file 0xDA0CA): offended if the chance fails; else the trade
+// screen, with potions if his skill (without the bonus) is over 24, else
+// alchemical components
+int
+CityVisit::_AlchemistShop()
+{
+    if (int(fRandom() % 100) > _AlchemistChance()) {
+        if (fClock != NULL)
+            fAlchemistAngryUntil[fCity] = fClock->HourStamp() + 60;
+        return SCREEN_ALCHEMIST_ANGRY;
+    }
+    fPendingTrade = _AlchemistSkill(false) > 24 ? MERCHANT_ALCHEMIST
+        : MERCHANT_ALCHEMIST_COMPONENTS;
+    return SCREEN_ALCHEMIST_AGAIN;
 }

@@ -258,6 +258,34 @@ the options' switch at file 0xA3128). **verified** (code); see
   other departures (0x1A) lead to the crafts.
 - Not reproduced: the lessons.
 
+## The alchemist
+
+$ALCHE00.MSG (state 0x59, file 0xD9B53; reached from the crafts in an
+hour, file 0xA4614). **verified** (code); see `CityVisit.cpp`. P is the
+city's property 0x21 (its number + the seed global).
+
+- **Entry** (file 0xD9E30): card 6 while he is offended (a mark of kind
+  0x44, 60 hours); card 2 if (seed global + location) % 30 is not under
+  clamp(10, 99, the best Alchemy); card 3 outside the game's day; card 0,
+  then card 1 for the next questions. Card 6, 2 and 3 lead back to the
+  crafts. $NamedOneName is 1367:0DB4(P + 0x49), $ChosenOneName the best
+  alchemist (0E76:14A4(7)).
+- **His skill**: city size · 3 + (P + 4) % 41, + (P + 9) % 11 + 10 in a
+  city with flag 0x100 (property 0x1B). Under 25: no formulas for sale,
+  $Text4 is "Alchemical Components", else "Potions".
+- **The chance** (file 0xD9F6C): clamp(0, 99, leader's charisma +
+  reputation / 10 + P % 31 + leader's Speak Common / 3 + best Alchemy /
+  2 − 15); both options below fail if random(100) is over it: card 6,
+  the 60-hour mark, the crafts.
+- **A better stone** (file 0xD9FFE, once a visit, if the purse holds
+  $Money1): quality (P + 4) % 25 + 1; if the party's stone is worse, it
+  becomes that, paid clamp(1, 50 + (seed + location) % 20, (skill / 2 +
+  1) · (quality + 5) / 12) groschen (card 7), else card 5.
+- **Purchasing** (file 0xDA0CA): the trade screen ("Alchemist", type
+  −1), potions (mask 0x800) if his skill without the bonus is over 24,
+  else components (0x400).
+- Not reproduced: the formulas, their trade, the instruction, the tasks.
+
 ## The inn's cache
 
 "Store some items with the innkeeper" and "recover items stored here"

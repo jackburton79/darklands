@@ -101,6 +101,13 @@ public:
         SCREEN_PHYSICIAN_APPRENTICES,	// cards 4, 5, 6 and 11
         SCREEN_PHYSICIAN_NOTHING,
         SCREEN_PHYSICIAN_NO_STUDENTS,
+        SCREEN_ALCHEMIST,		// $ALCHE00.MSG: the alchemist (card 0),
+        SCREEN_ALCHEMIST_AGAIN,	// the next questions (1),
+        SCREEN_ALCHEMIST_UNKNOWN,	// not found (2), at night (3),
+        SCREEN_ALCHEMIST_NIGHT,
+        SCREEN_ALCHEMIST_ANGRY,	// "...I turn you into toads!" (6),
+        SCREEN_STONE_BEYOND,	// the stone: "your abilities are beyond
+        SCREEN_STONE_IMPROVED,	// my own" (5), improved (7)
         SCREEN_PHYSICIAN_NIGHT,	// woken at night: card 1,
         SCREEN_PHYSICIAN_CURSES,	// and cursing the party: card 7
         SCREEN_NOT_IMPLEMENTED,
@@ -193,6 +200,14 @@ private:
     int				_Treatment();
     int				_Students();
     int				_LeavePhysician(bool apologize);
+    // The alchemist (DARKLAND.EXE, file 0xD9B53)
+    int				_AlchemistSkill(bool withBonus) const;
+    int				_StoneQuality() const;
+    uint32			_StonePrice() const;
+    int				_AlchemistChance() const;
+    int				_BestSkill(int skill) const;
+    int				_Stone();
+    int				_AlchemistShop();
     int				_Reputation() const;
     // A city's location property 0x21: its number plus the seed global
     uint16			_PeopleSeed() const;
@@ -233,5 +248,7 @@ private:
     // cache per location (not read here)
     std::map<int, std::vector<cache_item> > fCaches;
     bool			fTreatmentOffered;
+    bool			fStoneOffered;			// once a visit
+    std::map<int, uint32> fAlchemistAngryUntil;
     std::unique_ptr<ExeData> fNames;
 };
