@@ -699,6 +699,50 @@ Where the battle code starts; the rules are not decoded yet.
   150 − WeaponSkill / 2 − Agility / 2 (at least 0). **verified** (code).
   The bigger the number, the faster and more skilled the fighter: more
   a rate of strikes than a chance (*inferred*).
+- **A melee strike**, as DARKLAND.EXE resolves it. **verified** (code)
+  unless noted; "record" is the combatant's (above), die(n) is
+  0000:0C8C, 1..n (rand() % n + 1, n at least 2).
+  1. *Whether it strikes now* (file 0x43F48): roll = die(100); no strike
+     (result 0) if HitChance < roll. The same roll is used below.
+  2. *Hit location*: the roll's parity: even the vitals (0), odd the
+     limbs (1).
+  3. *Chance to hit* (file 0x44232, attacker A, defender D): the
+     defense is D's PCMeleeAttack (+0x20) plus, when A's weapon is not
+     of category 2 (a table at [DS:7D8C]:75AC by weapon type) and D's
+     WeaponHndPen (+0x53) has 1 in its high nibble (one-handed?), D's
+     shield: ShieldQual · 2 / 7 for shield type 0x5F, · 2 / 5 for 0x60,
+     / 2 for 0x61; otherwise −5; at least 0. chance = (A's PCMeleeAttack
+     − defense) · 2 / 3 + 50 + m, at least 10 if A's Orders has bits
+     0x6. m: −5 if A's Orders has bits 0xA, else −2 − A's WeaponSkill / 4
+     with bits 0x22, else max(A's WeaponSkill / 4, 10) with bits 0x6;
+     then if D's Orders has bits 0x22, m −= D's WeaponSkill / 4 + 5, else
+     with bits 0x6, m = min(−(A's WeaponSkill / 4), −10); + 10 for every
+     combatant fighting D (status 1, Orders bit 0x2, target D), − 10
+     for every one fighting A; − 15 if A is in the list at DS:A2EB
+     (0E76:469E; not decoded).
+  4. *Result* (file 0x441EC): roll ≤ chance − 10: a hit (2); roll ≤
+     chance: a weak hit (3); else, if roll ≤ 5 and A's WeaponSkill −
+     A's [+0x23] ≥ 2 · roll, a hit (2); else a miss (1).
+  5. *Damage* (file 0x44418, location L): armor = D's ArmorStr(L)
+     (+0x4D + L) + (D's [+0x55] & 0x7F); penetration = (A's WeaponHndPen
+     + A's [+0x48]) & 0x0F, + die(4) if A's Orders has bits 0xA, − die(4)
+     for a weak hit; base = A's WeaponDmg (+0x54) + A's [+0x48] >> 4,
+     whole if armor < penetration, half if equal, an eighth if more;
+     A's Max Str above WeaponHighStr adds (Max Str − high) / 5 + 1,
+     below WeaponMinStr adds (Max Str − min) / 5 − 1; then + (A's
+     WeaponQual (+0x0D) − q) / 10, q = D's armor quality (+0x4F + L) +
+     A's [+0x24] / 2 if A's [+0x55] has bit 7, at most 99.
+  6. *Rolling it* (file 0x4456A, s = that value clamped to 0..40, r =
+     die(6) + die(6)): s ≤ 7: r / a[s] + b[s] with a = 13, 7, 5, 7, 5, 4,
+     3, 3 (DS:1B90) and b = 1, 1, 1, 2, 2, 2, 2, 3 (DS:1B88); s ≤ 20:
+     r / 2 + s − 6; else s + r − 10. It is added to D's Endurance loss
+     (DS:D70C + 2 · D); D's Strength loss (DS:D70D + 2 · D) gets that
+     times (3 + die(6) if armor < penetration, 1 + die(4) if equal, else
+     random(3), 0..2, 0410:0008) / 10.
+  7. *Applying it* (file 0x4462E): the Endurance loss is at most 42 per
+     strike (the damage numbers of BATTLEGR.IMG go to −42); Endurance
+     (+0x5D) at 0 sets the status to 2, Strength (+0x5E) at 0 to 3
+     (*inferred*: unconscious, dead).
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",
