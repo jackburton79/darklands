@@ -222,22 +222,6 @@ ExtractAll(const Catalog& catalog, const std::string& outputDir,
 }
 
 
-static Bitmap*
-DecodeImage(const Catalog* catalog, uint32 index, const GFX::Palette& palette)
-{
-    Stream* stream = NULL;
-    Bitmap* image = NULL;
-    try {
-        stream = catalog->GetStreamAt(index);
-        image = PICImage::Decode(stream, &palette);
-    } catch (const std::exception& e) {
-        std::cerr << "Cannot decode entry " << index << ": " << e.what() << std::endl;
-    }
-    delete stream;	// sub-stream: delete before the Catalog dies
-    return image;
-}
-
-
 static void
 Usage()
 {
@@ -245,7 +229,7 @@ Usage()
         "  (no command)                  play, from a random city\n"
         "  --start <city>                play, from a city (name or index)\n"
         "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
-        "  <catalog>                     browse a catalog's images\n"
+        "  <catalog>                     dump a catalog's entries\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
         "  --locations                   list DARKLAND.LOC\n"
@@ -371,62 +355,7 @@ int main(int argc, char **argv)
 
     std::cout << "Requested catalog " << catalogName << std::endl;
 
-    if (!GraphicsEngine::Initialize()) {
-        std::cerr << "Cannot initialize graphics engine!" << std::endl;
-        return 1;
-    }
+    catalog.Dump(std::cout);
 
-    GraphicsEngine::Get()->SetVideoMode(320, 200, 16,
-            GraphicsEngine::VIDEOMODE_WINDOWED);
-
-    int32 i = 0;
-    bool quitting = false;
-    SDL_Event event;
-    Bitmap* bitmap = DecodeImage(&catalog, i, palette);
-    while (!quitting) {
-        while (SDL_PollEvent(&event) != 0) {
-            switch (event.type) {
-                case SDL_KEYDOWN: {
-                    switch (event.key.keysym.sym) {
-                        case SDLK_RIGHT:
-                            if (i + 1 < catalog.CountEntries()) {
-                                i++;
-                                if (bitmap != NULL)
-                                    bitmap->Release();
-                                bitmap = DecodeImage(&catalog, i, palette);
-                            }
-                            break;
-                        case SDLK_LEFT:
-                            if (i > 0) {
-                                i--;
-                                if (bitmap != NULL)
-                                    bitmap->Release();
-                                bitmap = DecodeImage(&catalog, i, palette);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                break;
-                case SDL_QUIT:
-                    quitting = true;
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        if (bitmap != NULL) {
-            GFX::rect screenFrame = GraphicsEngine::Get()->ScreenFrame();
-            GFX::rect bitmapFrame = bitmap->Frame();
-            GraphicsEngine::Get()->BlitToScreen(bitmap, &bitmapFrame, &screenFrame);
-        }
-
-        GraphicsEngine::Get()->Update();
-        SDL_Delay(100);
-    }
-    if (bitmap != NULL)
-        bitmap->Release();
     return 0;
 }
