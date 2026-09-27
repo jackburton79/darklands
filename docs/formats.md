@@ -1265,7 +1265,9 @@ compressed. See `ImgFile.cpp`; `./darklands --extract BATTLEGR.IMG
 - `BATTLEGR.IMG` holds the battle's overlays, not the ground: damage
   numbers (-1..-42, white and red), the arrows of the direction cursor,
   the body outlines of the hit locations, clouds (fire and other
-  spells), patches of ground and wall textures, missiles in 8 directions (arrows,
+  spells), dithered patches in colors 245..254 (pictures 105..112, 18 x
+  32 to 83 x 55: spell areas? not ground textures: no picture uses the
+  terrain's colors 164..234), missiles in 8 directions (arrows,
   bolts, stones...), sparks, blood. `COMMONSP.IMG`: pieces of a frame
   (borders, a blue panel, a skull). **verified** visually
 - Between the pictures (they start at paragraph boundaries) the files
@@ -1347,8 +1349,8 @@ byte of all 333 files.
   (*inferred*), index 5 being the figures' dark outline and shadow,
   probably drawn as a darkening (*inferred*). The party's figures use
   235..242, presumably their clothing colors (not decoded). With this
-  palette the dragons (16..31), the spell clouds of `BATTLEGR.IMG`
-  (243..254: fire) and the textures there (164..234) look right.
+  palette the dragons (16..31) and the spell clouds of `BATTLEGR.IMG`
+  (243..254: fire) look right.
   **verified** visually
 
 `TACANIM.DB` (546 bytes = 39 × 14): per sprite set, a 4-byte code

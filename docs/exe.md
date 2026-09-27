@@ -633,6 +633,14 @@ Where the battle code starts; the rules are not decoded yet.
   The tactical code reads and writes the level%d.flr files at segment
   20A5, offset 0 (file 0x141EE and nearby), and addresses a cell as
   20A5:(y · 40 + x) · 4 (e.g. file 0x5222A). **verified** (code)
+- **Drawing**: no battle file holds the ground or the walls, and no
+  code near the map (segment 20A5) computes screen addresses: the
+  screen is drawn through **MGRAPHIC.EXE**, MicroProse's MCGA driver
+  (7208 bytes, "09-19-91", the name pushed at file 0xEF03), whose table
+  of function offsets starts at its file offset 0x22A (the same kind
+  of driver as Civilization's MGRAPHIC.EXE). DARKLAND.EXE references
+  segment A000 only 7 times. How the battle draws is still to be found:
+  through the calls to the driver's functions.
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",
