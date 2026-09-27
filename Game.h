@@ -40,6 +40,7 @@ private:
     GameData&		fData;
     party			fParty;
     GameTime		fTime;
+    uint16			fSeed;			// the game's seed global (DS:9C4A)
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from

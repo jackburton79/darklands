@@ -19,6 +19,9 @@ public:
     const std::string& Label() const			{ return fLabel; }
     const std::string& LocationName() const		{ return fLocationName; }
     const GameTime&	Date() const				{ return fDate; }
+    // The game's seed global (DS:9C4A): with a city's number it names its
+    // people and makes their skills. A new game takes it from the clock.
+    uint16			Seed() const				{ return fSeed; }
     // Index into DARKLAND.LOC, or -1 in the wilderness.
     int				Location() const			{ return fLocation; }
     uint16			X() const					{ return fX; }	// map tile
@@ -37,6 +40,7 @@ private:
     std::string		fLabel;
     std::string		fLocationName;
     GameTime		fDate;
+    uint16			fSeed;
     int				fLocation;
     uint16			fX;
     uint16			fY;

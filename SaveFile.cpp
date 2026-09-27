@@ -13,6 +13,8 @@ static const size_t kLocationNameOffset	= 0x00;
 static const size_t kLocationNameLength	= 12;
 static const size_t kLabelOffset		= 0x15;
 static const size_t kLabelLength		= 23;
+static const size_t kSeedOffset			= 0x64;	// DS:9C4A (verified: the
+                                                // game's save code)
 static const size_t kDateOffset			= 0x68;	// year, month, day, hour
 static const size_t kMoneyOffset		= 0x70;	// florins, groschen, pfennigs
 static const size_t kFameOffset			= 0x7A;
@@ -60,6 +62,7 @@ SaveFile::SaveFile(const std::string& fileName)
 
     fLocationName = StringAt(data, kLocationNameOffset, kLocationNameLength);
     fLabel = StringAt(data, kLabelOffset, kLabelLength);
+    fSeed = WordAt(data, kSeedOffset);
     fDate = GameTime(WordAt(data, kDateOffset), WordAt(data, kDateOffset + 2),
         WordAt(data, kDateOffset + 4), WordAt(data, kDateOffset + 6));
     const uint16 location = WordAt(data, kLocationOffset);

@@ -829,6 +829,9 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
 
     0x00    12    location name ("Olm|tz", "Wilderness")
     0x15    23    label ("Darklands"; "new default" in DEFAULT)
+    0x64    2     the game's seed global, DS:9C4A (**verified**: the
+                  save code writes 21 bytes of name, 79 of label, then
+                  it; 33994 in both saved games, 11183 in DEFAULT)
     0x68    8     date: year, month, day, hour (words)
     0x70    6     money: florins, groschen, pfennigs (words)
     0x7A    2     party fame (wendigo: "global reputation")
@@ -871,6 +874,11 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
   +0xC..+0xE, +0x12 and +0x14; Olmütz, where the party is, has a
   reputation of 64. DARKLAND.EXE reads the reputation at +0x12 and the
   flags at +0x14 of its location records (see exe.md).
+- **The save code** (file 0x751A8...) writes the header field by field
+  with `fwrite`; the offsets it gives match all the fields above
+  (**verified**). 0xA7..0xEE are 36 words of a local variable, perhaps
+  padding. The party's standings with the banks (DS:4BB6, DS:4BB8) are
+  not written.
 - `DEFAULT` is the new game template: the four Quickstart characters,
   no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
   10 pf.

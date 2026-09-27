@@ -24,6 +24,7 @@ Game::Game(GameData& data)
 {
     fParty.leader = 0;
     fParty.cash = money{ 0, 0, 0 };
+    fSeed = 0;
 }
 
 
@@ -47,6 +48,8 @@ Game::NewGame(int startCity)
         fTime = GameTime();		// no template: 1 January 1400
     }
     fReputations.assign(fData.Locations().CountLocations(), 0);
+    // DARKLAND.EXE takes it from the BIOS clock ticks (file 0x7C04F)
+    fSeed = uint16(std::random_device()());
     fCity = startCity;
     fScreen = CityVisit::SCREEN_START;
 }
@@ -63,6 +66,7 @@ Game::LoadGame(const std::string& fileName)
         throw std::runtime_error("Game: no party in " + fileName);
     fParty = save.Party();
     fTime = save.Date();
+    fSeed = save.Seed();
     fReputations = save.Reputations();
     fReputations.resize(fData.Locations().CountLocations(), 0);
     // the cities are the first locations of DARKLAND.LOC; in a city the
@@ -88,6 +92,7 @@ Game::Run()
     CityVisit visit(fData);
     visit.SetParty(&fParty);
     visit.SetClock(&fTime);
+    visit.SetSeed(fSeed);
     visit.SetReputations(&fReputations);
     MapViewer map(fData);
     map.SetClock(&fTime);

@@ -109,6 +109,8 @@ public:
     // party's money and items.
     void			SetParty(party* members);
     void			SetClock(GameTime* clock)	{ fClock = clock; }
+    // The game's seed global (SaveFile::Seed()), 0 by default
+    void			SetSeed(uint16 seed)		{ fSeed = seed; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
     // The party's reputation in each location of DARKLAND.LOC (not
@@ -167,6 +169,8 @@ private:
     int				_Components();
     int				_Treatment();
     int				_Reputation() const;
+    // A city's location property 0x21: its number plus the seed global
+    uint16			_PeopleSeed() const;
     std::vector<int> _HiddenOptions(int screen) const;
 
     GameData&		fData;
@@ -184,6 +188,7 @@ private:
     int				fScreen;
     int				fPreviousScreen;	// where "not implemented" goes back
     std::mt19937	fRandom;
+    uint16			fSeed;
     // the physicians met, by city: their skill (the game keeps them as
     // people of the city), and until when they treat no one again
     std::map<int, int>	fPhysicianSkill;

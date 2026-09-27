@@ -745,6 +745,7 @@ CityVisit::CityVisit(GameData& data)
     fScreen(SCREEN_START),
     fPreviousScreen(SCREEN_START),
     fRandom(std::random_device()()),
+    fSeed(0),
     fTreatmentOffered(false)
 {
     // every screen has a day card (a miscounted table would leave some
@@ -984,12 +985,12 @@ CityVisit::_Show(int screen, bool withScene)
         if (fScreen == SCREEN_CRAFTS)	// a new visit
             fTreatmentOffered = false;
         _PhysicianSkill();
-        // his name (1367:0DB4 with the city's number + 800); the game adds
-        // its seed global to both, not known here (0)
+        // his name: 1367:0DB4 with the city's property 0x21 + 800, to
+        // which it adds the seed global again
         if (fNames == NULL)
             fNames.reset(new ExeNames(fData.PathFor("DARKLAND.EXE")));
-        fVariables["NamedOneName"] = fNames->MaleName(uint16(
-            fData.Cities().CityAt(uint32(fCity)).peopleSeed + 0x320));
+        fVariables["NamedOneName"] = fNames->MaleName(uint16(fSeed
+            + _PeopleSeed() + 0x320));
         if (fParty != NULL && !fParty->members.empty())
             fVariables["ChosenOneName"]
                 = fParty->members[_BestHealer()].shortName;
@@ -1048,7 +1049,8 @@ CityVisit::_HiddenOptions(int screen) const
         else if (rule.needs == kNeedsPhysician) {
             // DARKLAND.EXE, file 0xA433D: in towns of size 3 or less, by
             // the city's number and the year
-            hide = c.size <= 3 && (c.peopleSeed + (fClock != NULL
+            // (a signed 16-bit remainder)
+            hide = c.size <= 3 && int16(_PeopleSeed() + (fClock != NULL
                 ? fClock->Year() : 1400)) % 3 == 0;
         } else if (rule.needs == kNeedsWounded)
             hide = _Wounded() == 0;
@@ -1070,6 +1072,13 @@ CityVisit::_HiddenOptions(int screen) const
             hidden.push_back(i);
     }
     return hidden;
+}
+
+
+uint16
+CityVisit::_PeopleSeed() const
+{
+    return uint16(fData.Cities().CityAt(uint32(fCity)).peopleSeed + fSeed);
 }
 
 
@@ -1288,8 +1297,8 @@ CityVisit::~CityVisit()
 
 
 // The physician's skill, made when the party first meets him (file
-// 0xA2F1A): (the city's number % 10) · (city size + random(4) - 3),
-// within 1..99. The game adds its seed global to the number (0 here).
+// 0xA2F1A): (the city's property 0x21 % 10) · (city size + random(4)
+// - 3), within 1..99
 int
 CityVisit::_PhysicianSkill()
 {
@@ -1297,7 +1306,7 @@ CityVisit::_PhysicianSkill()
     if (found != fPhysicianSkill.end())
         return found->second;
     const city& c = fData.Cities().CityAt(uint32(fCity));
-    const int skill = (c.peopleSeed % 10)
+    const int skill = (_PeopleSeed() % 10)
         * (c.size + int(fRandom() % 4) - 3);
     return fPhysicianSkill[fCity] = std::max(1, std::min(skill, 99));
 }
@@ -1389,11 +1398,10 @@ CityVisit::_Components()
     if (fParty == NULL || fParty->members.empty())
         return SCREEN_PHYSICIAN_NO_TRADE;
     const character& leader = fParty->members[fParty->leader];
-    const city& c = fData.Cities().CityAt(uint32(fCity));
     const int month = fClock != NULL ? fClock->Month() : 0;
     const int chance = std::max(0, std::min(75,
         leader.skills[kSkillSpeakCommon] + leader.attributes[ATTRIBUTE_CHARISMA]
-            + int((c.peopleSeed + month) % 30) + _Reputation()));
+            + int(uint16(_PeopleSeed() + month) % 30) + _Reputation()));
     if (int(fRandom() % 100) > chance)
         return SCREEN_PHYSICIAN_NO_TRADE;
     if (fClock != NULL)

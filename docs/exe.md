@@ -157,9 +157,9 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   random(1000) thrown away, then by kind, e.g. kind 0: a man's first name
   (108, the far pointers at 290E:235F), a space, a surname (146, at
   290E:267F); women's names (88) are at 290E:2517. Then srand(time).
-  DS:9C4A is a global set at run time (not in the executable's data; not
-  found yet), taken as 0 here. `ExeNames.cpp` reads the lists from the
-  executable.
+  DS:9C4A is the game's seed global: a new game takes it from the BIOS
+  clock ticks (0040:006C, file 0x7C04F), a saved game keeps it at 0x64
+  (see formats.md). `ExeNames.cpp` reads the lists from the executable.
 - Location property 0x21 of a city is the city record's word +0x56 plus
   DS:9C4A: the seed of its people.
 
@@ -220,7 +220,8 @@ file 0xC6253) follow the same code. **verified** (code); see
   (0x9C0:20B7) "Deposit how many Florins?" (DS:5B8F), 10 characters,
   starting with the purse's florins; the number is clamped to 0..500
   and to the purse's florins, which go to the letter. No fee, no time.
-- Not reproduced: the standings, the banker's name ($NamedOneName,
+- Not reproduced: the standings (not in the saved games), the banker's
+  name ($NamedOneName,
   1367:0DB4 with the city record's word +0x56 + 8, + 6 for the Medici),
   the tasks, rewards and politics. The League's options are all tasks
   and politics.
