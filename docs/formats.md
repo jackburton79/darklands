@@ -1208,6 +1208,9 @@ the end mark at their last byte. **verified**. *Partially decoded*:
   streets and 0 in the houses: the ground one can walk on. *inferred*
 - The maps hold no pictures: how the game draws walls and ground from
   them is to be found in DARKLAND.EXE.
+- Not every battle uses them: the castle's levels are in `LCASTLE`, a
+  catalog of its own, and the dragon's cave has its own code (see
+  [exe.md](exe.md), "Battles").
 
 ### Battle pictures (`BATTLEGR.IMG`, `COMMONSP.IMG`)
 

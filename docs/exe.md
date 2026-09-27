@@ -598,7 +598,38 @@ Where the battle code starts; the rules are not decoded yet.
   it opens darkland.enm, darkland.lst and imaps.cat (DS:13A2, pushed at
   file 0x16EEA), then switches on its first argument, 0..0x89, through
   the jump table at file 0x16F34: the battlefield type, TAC.TXT's
-  `bfldtype` (*inferred*).
+  `bfldtype` (*inferred*). Each case calls, with the same arguments,
+  the entry (offset 0 unless noted) of segment 1432 in one of seven
+  overlays; that function builds the battlefield. **verified** (code):
+
+  | bfldtype | overlay, file | what it builds |
+  |---|---|---|
+  | 0..8, 39, 40, 122..126 | 5, 0x1CA70 | not identified (no map name) |
+  | 10..16, 102..105, 108, 109, 127..137 | 9, 0x2BCD0 | mines: "iminegen" / "iminspec" |
+  | 17..38, 41..45, 86, 106, 107 | 0xA, 0x32480 | cities: "icity..." |
+  | 46..85, 97..99, 111..121 | 8, 0x289D0 | the wilderness: "iwild..." |
+  | 9 | 8, 1432:2D62 (0x2B732) | the wilderness, another entry |
+  | 87..93, 110 | 0xD, 0x38090 | the castle of LCASTLE (see below) |
+  | 94 | 0xB, 0x35360 | fortresses and monasteries: "ifortmon" |
+  | 95 | 0xB, 1432:1FB2 (0x37312) | tombs: "imisctom" |
+  | 96, 100, 101 | 0xC, 0x37530 | "cavedrag", the dragon's cave |
+
+- **Calls through RTLink**: the cases call 09C0:1B49.. in the root. Each
+  is a 10-byte entry of RTLink's table (file 0xCBE3..0xE94D, 753
+  entries): `E8 rel16` (a call to the overlay manager), `EA off seg`
+  (the target) and a word, the overlay's number. Segment 09C0 in the file
+  is 0x1800 + 0x9C00 as usual. Several overlays share a segment number
+  (here 1432): the pair (segment, overlay) names the code. An overlay
+  starts with its relocations, 4-byte `off seg` entries (e.g. `xx xx
+  32 14` for 1432), then its segments' code, in the order of their
+  numbers: the code of 1432 in overlay 5 is at 0x1CA70 and that of 146D
+  at 0x1CE20 = 0x1CA70 + (0x146D - 0x1432) · 16. **verified** (the
+  relocations end at the found bases; no target reads more arguments
+  than its case pushes, 10 or 11 words)
+- **LCASTLE** (in the game directory) is a catalog like the .CAT files:
+  LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
+  for each, the castle's levels (overlay 0xD names "lcastle",
+  "lc_court.fil", "lc_court.atv"...). Not decoded.
 - The debug dump of TAC.TXT: "Tac params are..." (DS:1005) is pushed at
   file 0x12443, "Enemy Activation Record for level %d" (DS:2406) at
   0x535F2; battlegr.img (DS:121C) is loaded at 0x12BA2.
