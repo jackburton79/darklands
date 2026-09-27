@@ -60,7 +60,11 @@ implemented yet. See the roadmap below.
 
 ## Screenshots
 
-<!-- TODO: add a screenshot of the PIC viewer once it's stable -->
+- [The main street of a city](screenshots/city-main-street.png)
+- [A grove outside a city](screenshots/city-grove.png)
+- [The character screen](screenshots/character-screen.png)
+- [A battle](screenshots/battle.png): the provisional view of a
+  battlefield map (`--battle`), the party facing four skeletons
 
 ## Roadmap
 
