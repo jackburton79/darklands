@@ -43,7 +43,9 @@ The goal is twofold:
   cathedral, monastery, university, town hall, barracks, guilds, slum,
   docks, a grove to wait in); the arms-making guilds' shops buy and sell
   with the game's own rules for stock and prices, decoded from the
-  executable; what happens in the other places is not implemented yet.
+  executable; in a city church the party can hear Mass, confess and
+  donate, gaining divine favor by the game's own rules; what happens in
+  the other places is not implemented yet.
   Time
   passes (traveling, sleeping at the inn) and the city shows its night
   cards after Compline. The
@@ -85,6 +87,7 @@ implemented yet. See the roadmap below.
 - [x] The city places: moving between them, waiting
 - [x] Trade with the arms-making guilds (swordsmith, blacksmith,
       armorer, bowyer)
+- [x] The city church: Mass, confession, donations (divine favor)
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback

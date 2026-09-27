@@ -84,7 +84,10 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   the categories.
 - `TradeView`: the item exchange scrolls (BUYSELL.PIC); `CityVisit`
   opens it for `ACTION_TRADE` options, from `Run()` (`PendingTrade()`
-  in step-by-step tests). Stock and prices follow DARKLAND.EXE. `ScreenSupport`: `GameWindow` (shows a
+  in step-by-step tests). Stock and prices follow DARKLAND.EXE. The
+  church's options (`ACTION_MASS`, `ACTION_CONFESSION`,
+  `ACTION_DONATION`) change the party and the clock in `CityVisit`, as
+  DARKLAND.EXE does (docs/exe.md, "The church"). `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.
 - `darklands.cpp`: command line only.
 

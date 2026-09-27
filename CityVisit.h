@@ -18,6 +18,7 @@
 #include "MsgFile.h"
 #include "TradeView.h"
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -58,6 +59,12 @@ public:
         SCREEN_BLACKSMITH,		// $BLACK00/01.MSG, $ARMOR00/01.MSG,
         SCREEN_ARMORER,			// $BOWYE00/01.MSG
         SCREEN_BOWYER,
+        SCREEN_MASS,			// the church's result cards, $CITYC00.MSG
+        SCREEN_NO_MASS,			// cards 2..7
+        SCREEN_CONFESSION,
+        SCREEN_SMALL_DONATION,
+        SCREEN_DONATION,
+        SCREEN_LARGE_DONATION,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -109,6 +116,12 @@ public:
 
 private:
     void			_Show(int screen, bool withScene = true);
+    // The church's options (DARKLAND.EXE 1838:0214, 03CC, 067C): they
+    // change the party and the time, and return the result screen.
+    int				_Mass();
+    int				_Confession();
+    int				_Donation();
+    int				_Reputation() const;
     std::vector<int> _HiddenOptions(int screen) const;
 
     GameData&		fData;
@@ -125,4 +138,5 @@ private:
     int				fCity;
     int				fScreen;
     int				fPreviousScreen;	// where "not implemented" goes back
+    std::mt19937	fRandom;
 };

@@ -17,7 +17,10 @@ enum option_action {
     ACTION_GO,					// to another screen, after `minutes`
     ACTION_LEAVE,				// back to the map
     ACTION_HIDE,				// never shown
-    ACTION_TRADE				// the trade screen, with merchant `target`
+    ACTION_TRADE,				// the trade screen, with merchant `target`
+    ACTION_MASS,				// the church's options
+    ACTION_CONFESSION,
+    ACTION_DONATION
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -25,6 +28,11 @@ enum option_action {
 static const int kAlways			= -1;
 static const int kNeedsHarbor		= CITY_PLACE_COUNT;
 static const int kNeedsShop			= kNeedsHarbor + 1;	// + city_shop
+// or a state of the party (DARKLAND.EXE, the church, file 0xB88C2):
+// something to donate (a tenth of the purse, at least 10 pfennigs),
+// a bad local reputation (-10 or less) for sanctuary
+static const int kNeedsDonation		= -2;
+static const int kNeedsBadReputation = -3;
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -54,6 +62,8 @@ struct screen_rules {
 #define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs, 0 }
 #define HIDE				{ ACTION_HIDE, 0, kAlways, 0 }
 #define TRADE(merchant)		{ ACTION_TRADE, merchant, kAlways, 0 }
+#define DO(action)			{ action, 0, kAlways, 0 }
+#define DO_IF(action, needs) { action, 0, needs, 0 }
 
 // The guilds' shops by day and by night
 #define SHOP_OPTIONS(merchant) { \
@@ -186,7 +196,11 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "You come to the $cityChurch, the church of $PlaceName."
     { "CITYC00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// mass, confession, priest...
+        DO(ACTION_MASS),
+        DO(ACTION_CONFESSION),
+        TODO,								// talk to a priest
+        DO_IF(ACTION_DONATION, kNeedsDonation),	// give $Money1
+        TODO_IF(kNeedsBadReputation),		// seek sanctuary
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -293,6 +307,15 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "BLACK00", 0, NULL, SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
     { "ARMOR00", 0, NULL, SHOP_OPTIONS(MERCHANT_ARMORER) },
     { "BOWYE00", 0, NULL, SHOP_OPTIONS(MERCHANT_BOWYER) },
+    // The church's results: "the Mass is sung", "the next Mass will be
+    // at $NamedOneName", confession, the priest's thanks for small,
+    // middling and large donations
+    { "CITYC00", 2, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC00", 4, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC00", 3, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC00", 5, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC00", 6, NULL, { GO(SCREEN_CHURCH) } },
+    { "CITYC00", 7, NULL, { GO(SCREEN_CHURCH) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -462,6 +485,12 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { "BLACK01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BLACKSMITH) },
     { "ARMOR01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_ARMORER) },
     { "BOWYE01", 0, NULL, NIGHT_SHOP_OPTIONS(MERCHANT_BOWYER) },
+    { NULL, 0, NULL, {} },					// the church's results
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -473,6 +502,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef TODO_IF
 #undef HIDE
 #undef TRADE
+#undef DO
+#undef DO_IF
 #undef SHOP_OPTIONS
 #undef NIGHT_SHOP_OPTIONS
 
@@ -527,7 +558,8 @@ CityVisit::CityVisit(GameData& data)
     fNight(false),
     fCity(-1),
     fScreen(SCREEN_START),
-    fPreviousScreen(SCREEN_START)
+    fPreviousScreen(SCREEN_START),
+    fRandom(std::random_device()())
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -638,6 +670,15 @@ CityVisit::Choose(int option)
         case ACTION_TRADE:
             fPendingTrade = rule.target;
             return true;
+        case ACTION_MASS:
+            _Show(_Mass());
+            return true;
+        case ACTION_CONFESSION:
+            _Show(_Confession());
+            return true;
+        case ACTION_DONATION:
+            _Show(_Donation());
+            return true;
         default:
             fPreviousScreen = fScreen;
             _Show(SCREEN_NOT_IMPLEMENTED);
@@ -717,6 +758,8 @@ CityVisit::_Show(int screen, bool withScene)
         fVariables["CurrentBell"] = fClock->BellName();
         fVariables["MonthName"] = fClock->MonthName();
     }
+    if (fParty != NULL)		// what the church asks for a donation
+        fVariables["Money1"] = MoneyText(TotalPfennigs(fParty->cash) / 10);
     const screen_rules& rules = RulesFor(screen, fNight);
     if (rules.deck == NULL) {
         fView.SetCard(fNotImplementedCard, fVariables);
@@ -738,7 +781,11 @@ CityVisit::_HiddenOptions(int screen) const
     for (int i = 0; i < kMaxOptions; i++) {
         const option_rule& rule = RuleFor(rules, i);
         bool hide = rule.action == ACTION_HIDE;
-        if (rule.needs >= kNeedsShop)
+        if (rule.needs == kNeedsDonation)
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
+        else if (rule.needs == kNeedsBadReputation)
+            hide = _Reputation() > -10;
+        else if (rule.needs >= kNeedsShop)
             hide = c.shopQuality[rule.needs - kNeedsShop] == 0;
         else if (rule.needs == kNeedsHarbor)
             hide = c.harbor == CITY_HARBOR_NONE;
@@ -748,4 +795,108 @@ CityVisit::_HiddenOptions(int screen) const
             hidden.push_back(i);
     }
     return hidden;
+}
+
+
+int
+CityVisit::_Reputation() const
+{
+    if (fReputations == NULL || fCity < 0 || fCity >= int(fReputations->size()))
+        return 0;
+    return (*fReputations)[fCity];
+}
+
+
+// Mass: said at some hours only, more of them in bigger cities; every
+// member gains Religion / 8 + Speak Latin / 35 + 1 divine favor, and it
+// lasts until the start of the bell after the next one. Otherwise the
+// priest tells when the next Mass is.
+int
+CityVisit::_Mass()
+{
+    if (fClock == NULL || fParty == NULL)
+        return SCREEN_NO_MASS;
+    // the smallest city size with a Mass, by bell (1 Matins .. 8
+    // Compline); 99: none
+    static const int kMassSize[9] = { 99, 99, 0, 5, 6, 7, 4, 6, 99 };
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int bell = fClock->Hour() / 3 + 1;
+    if (size < kMassSize[bell]) {
+        const int next = bell >= 3 && bell <= 5 && size > 3 ? 18 : 6;
+        fVariables["NamedOneName"] = GameTime(1400, 0, 1, uint16(next)).BellName();
+        return SCREEN_NO_MASS;
+    }
+    for (character& member : fParty->members) {
+        AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
+            member.skills[kSkillReligion] / 8
+                + member.skills[kSkillSpeakLatin] / 35 + 1);
+    }
+    const int end = (bell + 1) * 3;
+    fClock->AddHours(uint32((end - fClock->Hour() + 24) % 24));
+    return SCREEN_MASS;
+}
+
+
+// Confession: the leader gains random(5) + Religion / 10 + 2 divine
+// favor; it takes 11 hours, less with a good local reputation (the game
+// may also raise Virtue: not reproduced)
+int
+CityVisit::_Confession()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CONFESSION;
+    const int reputation = _Reputation();
+    const int hours = reputation >= 0 ? 11 - reputation / 10
+        : 12 + reputation / 20;
+    if (fClock != NULL)
+        fClock->AddHours(uint32(std::max(hours, 0)));
+    character& leader = fParty->members[fParty->leader];
+    AddToAttribute(leader, ATTRIBUTE_DIVINE_FAVOR,
+        int(fRandom() % 5) + leader.skills[kSkillReligion] / 10 + 2);
+    return SCREEN_CONFESSION;
+}
+
+
+// Donation: a tenth of the purse, a pfennig of which buys a sixth of a
+// divine favor point per member. The most religious member gets back all
+// the favor it lacks, then the others in turn while points remain. Over
+// 600 pfennigs, every member gains Religion / 30 Virtue. An hour passes.
+int
+CityVisit::_Donation()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_SMALL_DONATION;
+    const uint32 purse = TotalPfennigs(fParty->cash);
+    const int amount = int(purse / 10);
+    fParty->cash = MoneyFromPfennigs(purse - uint32(amount));
+
+    std::vector<character>& members = fParty->members;
+    const int count = int(members.size());
+    int points = amount / (count * 6);
+    // the game means the most religious member here, but uses its Religion
+    // as a member index (a bug of the original)
+    int first = 0;
+    for (int i = 1; i < count; i++) {
+        if (members[i].skills[kSkillReligion] > members[first].skills[kSkillReligion])
+            first = i;
+    }
+    for (int k = 0; k < count && (k == 0 || points > 0); k++) {
+        character& member = members[(first + k) % count];
+        const int lacking = std::max(0, std::min(99,
+            member.maxAttributes[ATTRIBUTE_DIVINE_FAVOR]
+                - member.attributes[ATTRIBUTE_DIVINE_FAVOR]));
+        AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR, lacking);
+        points -= lacking;
+    }
+    if (amount > 600) {
+        for (character& member : members) {
+            member.skills[kSkillVirtue] = uint8(std::min(99,
+                member.skills[kSkillVirtue] + member.skills[kSkillReligion] / 30));
+        }
+    }
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (amount < 120)
+        return SCREEN_SMALL_DONATION;
+    return amount < 600 ? SCREEN_DONATION : SCREEN_LARGE_DONATION;
 }

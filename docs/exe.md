@@ -25,7 +25,8 @@ program's own (pre-relocation) addresses. Disassembly with
   is found from the far calls (`9A off seg`) into them: the base that
   puts every called offset on a function prologue (`C8 xx xx 00` or
   `55 8B EC`). Found so far: 0E76 → 0x578B0, 1367 → 0x5C7C0,
-  18E7 → 0x65C30 (the trade code), 12F7 → 0x3E020, 146D → 0x1CE20,
+  18E7 → 0x65C30 (the trade code), 1838 → 0xB8840 (the city
+  church), 12F7 → 0x3E020, 146D → 0x1CE20,
   150B → 0x8D110, 1551 → 0x1DC60, 18BF → 0x43CA0.
 - Calls between overlays often go through RTLink's own mechanism, not
   direct far calls: callers of a function can be missing from a search.
@@ -44,7 +45,15 @@ function that draws the merchant's scroll.
 - 06A1:2DC2 long multiply, 06A1:2D28 signed long divide (MSC helpers,
   arguments on the stack, the callee pops them); 06A1:2096 sprintf.
 - 0410:0008 `random(n)` = (rand() · 2 · n) >> 16, i.e. 0..n−1.
-- 1367:0066 `clamp(low, high, value)`.
+- 1367:0066 and 0410:001A `clamp(low, high, value)`.
+- 1367:07EE the current bell, 1 (Matins, hours 0..2) to 8 (Compline,
+  21..23): hour / 3 + 1. 1367:0716 (hour) waits until that hour: it
+  adds the hours to it, through midnight if it has passed (1367:086A).
+  1367:072A is true from hour 5 to 18.
+- 0E76:01A0 `skill(character, index)`, 0E76:02EA adds to a skill;
+  0E76:0A72 `add_to_attribute(character, index, amount)`: the result is
+  clamped to 1..99 and to the attribute's maximum.
+- 0E76:1A8E `location_property(location, n)`: n = 2 is the city size.
 - 0E76:05EE `attribute(character, index)`: −1 is the leader; index 5 is
   charisma (the order of the character record).
 - 0E76:1A7E `location_property(n)` of the current location, a switch
@@ -136,6 +145,42 @@ All in segment 18E7 (file base 0x65C30); see `TradeView.cpp`.
   (the step returns 9999) unless the previous tile was water too, or
   0E76:32CE(0x4B) is true (the party has something: item 0x4B is
   "Marsh Vapor"; not checked).
+
+## The church
+
+The city church ($CITYC00.MSG by day), segment 1838 (file base
+0xB8840): the card at 1838:0000, the options dispatched by a switch at
+file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
+
+- **The card**: $Money1 is a tenth of the party's purse, in pfennigs;
+  "give $Money1" is disabled when that is under 10. "Seek sanctuary" is
+  disabled when the local reputation is over −10 (and a check at
+  0x9C0:20F3, not decoded, is false).
+- **Mass** (1838:0214): bell b = 1367:07EE; there is a Mass at bell 2
+  (Latins) always, at 3 in cities of size 5 or more, 4: 6, 5: 7, 6: 4,
+  7: 6, never at 1 and 8. If there is one, every member gains Religion /
+  8 + Speak Latin / 35 + 1 divine favor, the party waits until hour
+  (b + 1) · 3 (the start of the bell after the next one: from 7 in the
+  morning, till noon) and card 2 is shown. Otherwise card 4 names the next
+  Mass in $NamedOneName: Vespers (hour 18) in cities over size 3 at bells
+  3..5, else Prime (hour 6); no time passes. Afterwards the church's day
+  card if the hour is 5..18, else its night card.
+- **Confession** (1838:03CC): r = the local reputation; card 3, then 11 −
+  r / 10 hours if r ≥ 0, else 12 + r / 20 (divisions truncated). If
+  random(100) ≤ the leader's Religion and random(100) ≤ 25, 0x9C0:1F63
+  (−1, 9, 1, 10, −1) is called: a routine at 1462:0132 that seems to
+  improve Virtue (skill 9), not decoded, not reproduced. The leader gains
+  random(5) + Religion / 10 + 2 divine favor.
+- **Donation** (1838:067C): the tenth of the purse is taken; points = it
+  / (6 · party size). The most religious member gets back all the divine
+  favor it lacks, whatever the points; then, while points remain, the
+  others in turn, each costing what it lacks. Over 600 pfennigs every
+  member gains Religion / 30 Virtue. Card 5 under 120 pfennigs, 6 under
+  600, else 7; one hour passes. A bug of the original: 0E76:14A4 returns
+  the highest Religion *value*, which the code uses as the member's index
+  (so usually a member past the end of the party); the reimplementation
+  uses the most religious member.
+- The night church ($CITYC01.MSG, code at file 0xB9249) is not decoded.
 
 ## Reputation
 

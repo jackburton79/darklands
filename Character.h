@@ -22,6 +22,10 @@ enum character_attribute {
 };
 
 static const int kSkillCount = 19;
+// Skills the game's rules use, in the record's order (see docs/formats.md)
+static const int kSkillReligion		= 8;
+static const int kSkillVirtue		= 9;
+static const int kSkillSpeakLatin	= 11;
 
 // What a character has in use: item types (item_definition::type in
 // DARKLAND.LST), 0xFF for none
@@ -78,6 +82,13 @@ struct party {
 // (manual p. 21)
 uint32 TotalPfennigs(const money& amount);
 money MoneyFromPfennigs(uint32 pfennigs);
+// "2 florins, 3 groschen and 1 pfennig", as the cards' $Money variables
+// (DARKLAND.EXE 1367:0376)
+std::string MoneyText(uint32 pfennigs);
+
+// Adds to a character's current attribute, as DARKLAND.EXE does
+// (0E76:0A72): the result stays within 1..99 and at most the maximum.
+void AddToAttribute(character& member, int attribute, int amount);
 
 static const size_t kCharacterRecordSize = 554;	// 0x22A
 static const int kMaxPartySize = 5;

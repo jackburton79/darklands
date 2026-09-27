@@ -2,6 +2,7 @@
 
 #include "LocationFile.h"
 
+#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
@@ -106,4 +107,39 @@ MoneyFromPfennigs(uint32 pfennigs)
 {
     return money{ uint16(pfennigs / 240), uint16(pfennigs % 240 / 12),
         uint16(pfennigs % 12) };
+}
+
+
+std::string
+MoneyText(uint32 pfennigs)
+{
+    const money amount = MoneyFromPfennigs(pfennigs);
+    std::vector<std::string> parts;
+    if (amount.florins > 0) {
+        parts.push_back(amount.florins == 1 ? std::string("1 florin")
+            : std::to_string(amount.florins) + " florins");
+    }
+    if (amount.groschen > 0)
+        parts.push_back(std::to_string(amount.groschen) + " groschen");
+    if (amount.pfennigs > 0) {
+        parts.push_back(amount.pfennigs == 1 ? std::string("1 pfennig")
+            : std::to_string(amount.pfennigs) + " pfennigs");
+    }
+    std::string text;
+    for (size_t i = 0; i < parts.size(); i++) {
+        if (i > 0)
+            text += i + 1 == parts.size() ? " and " : ", ";
+        text += parts[i];
+    }
+    return text;
+}
+
+
+void
+AddToAttribute(character& member, int attribute, int amount)
+{
+    int value = member.attributes[attribute] + amount;
+    value = std::max(1, std::min(value, 99));
+    value = std::min(value, int(member.maxAttributes[attribute]));
+    member.attributes[attribute] = uint8(value);
 }
