@@ -23,6 +23,12 @@ static const size_t kAttributesOffset = 0x14;
 static const size_t kSkillsOffset	= 0x1B;
 // verified: in 64 of the 70 types it names an existing sprite of theirs
 static const size_t kWeaponOffset	= 0xA0;
+// inferred: armor types of the right kinds (67..75 then 76..84, or the
+// monsters' hides 85..91), shields 95..97
+static const size_t kArmorOffset	= 0x92;
+static const size_t kArmorQualityOffset = 0x96;
+static const size_t kShieldOffset	= 0x97;
+static const size_t kShieldQualityOffset = 0x99;
 
 static const size_t kEnemyNameOffset = 0x02;
 static const size_t kEnemyNameLength = 12;	// "Castle Guard" fills it, no NUL
@@ -72,6 +78,11 @@ EnemyFile::EnemyFile(const std::string& fileName)
                 sizeof(t.attributes));
             memcpy(t.skills, &record[kSkillsOffset], sizeof(t.skills));
             t.weapon = record[kWeaponOffset];
+            t.armor[0] = record[kArmorOffset];
+            t.armor[1] = record[kArmorOffset + 1];
+            t.armorQuality = record[kArmorQualityOffset];
+            t.shield = record[kShieldOffset];
+            t.shieldQuality = record[kShieldQualityOffset];
             fTypes.push_back(t);
         }
 

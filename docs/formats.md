@@ -1107,6 +1107,12 @@ and `./darklands --enemies`.
     +0x30   ...   mostly zero; bytes at +0x92..+0xB8 look like two
                   groups of 6 bytes (weapons? `06 13 01 14 ff ff`) and
                   runs of 0xFE / 0xFF. Not decoded, but for:
+    +0x92   2     armor, vitals and limbs: item types (72 V:Scale and 77
+                  L:Padded for Sergeant1), 85..91 for the monsters' hides
+                  (DARKLAND.EXE's armor strengths have 1..6 for them)
+    +0x96   1     armor quality (25; 99 for the dragons)
+    +0x97   1     shield: item type 95..97, 0xFF none; +0x99 its quality
+                  (the kinds and ranges fit; *inferred*)
     +0xA0   1     the weapon, a type of DARKLAND.EXE's weapon table
                   (exe.md, "Battles"): 6 (battle axe) for Sergeant1,
                   whose sprites include E00CBA2; 48 (the skeleton's own

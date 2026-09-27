@@ -386,17 +386,23 @@ ShowBattle(GameData& data, const std::string& mapName, const std::string& enemy,
         int x = 6;
         int y = 33;
         if (view.FindFreeCell(x, y)) {
-            view.AddPartyMember(int(i), members.images[i],
+            view.AddPartyMember(int(i), members.members[i], members.images[i],
                 i < members.colors.size() ? members.colors[i]
-                    : std::vector<uint8>(),
-                members.members[i].equipment[EQUIPMENT_WEAPON], x, y, 0);
+                    : std::vector<uint8>(), x, y, 0);
         }
     }
+    // the first enemy type with those sprites
+    const EnemyFile& enemies = data.Enemies();
+    uint32 type = 0;
+    while (type < enemies.CountTypes() && enemies.TypeAt(type).image != enemy)
+        type++;
+    if (type == enemies.CountTypes())
+        throw std::runtime_error("no enemy with the sprites " + enemy);
     for (int i = 0; i < 4; i++) {
         int x = 33;
         int y = 6;
         if (view.FindFreeCell(x, y))
-            view.AddEnemy(enemy, x, y, 4);
+            view.AddEnemy(type, x, y, 4);
     }
     view.Scroll(0, BattleMap::kSize);	// the party, at the bottom
     GameWindow window("Darklands");

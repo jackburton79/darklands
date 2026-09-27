@@ -11,10 +11,12 @@
 #pragma once
 
 #include "BattlePath.h"
+#include "Combat.h"
 #include "GraphicsDefs.h"
 #include "SupportDefs.h"
 
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,8 @@ class Bitmap;
 class GameData;
 class GameWindow;
 class ImcFile;
+class ImgFile;
+struct character;
 struct battle_cell;
 
 class BattleView {
@@ -40,16 +44,17 @@ public:
 
     // Figures stand on open cells; direction 0..7 is the column of their
     // sprites (0 seems to face up, 4 down). Party members wear the colors
-    // of party::colors (member: 0..4) and hold `weapon` (an item type,
-    // kNoEquipment for none); enemies the weapon of their type in
-    // DARKLAND.ENM. They throw if the sprites are missing.
-    void			AddPartyMember(int member, const std::string& image,
-                        const std::vector<uint8>& colors, int weapon, int x,
-                        int y, int direction);
-    void			AddEnemy(const std::string& image, int x, int y,
+    // of party::colors (member: 0..4); both fight with the weapon of the
+    // character or of the enemy type (DARKLAND.ENM). They throw if the
+    // sprites are missing.
+    void			AddPartyMember(int member, const character& who,
+                        const std::string& image,
+                        const std::vector<uint8>& colors, int x, int y,
                         int direction);
+    void			AddEnemy(uint32 type, int x, int y, int direction);
     int				CountFigures() const	{ return int(fFigures.size()); }
     battle_position	FigurePosition(int figure) const;
+    const fighter&	FigureFighter(int figure) const;
 
     // Moving the party: select a member (0..4, -1 none), then send it to
     // a cell. Each Tick() shows the next frame of the walking figures'
@@ -65,6 +70,9 @@ public:
 
     // The enemies walk, a step at a time, toward the nearest party member
     // (along the paths) and stop beside it, facing it. Active at first.
+    // Figures next to a foe fight it (Combat.h): every kCombatTicks
+    // ticks, each may strike.
+    static const int	kCombatTicks = 8;
     void			SetEnemiesActive(bool active)	{ fEnemiesActive = active; }
     bool			EnemiesActive() const	{ return fEnemiesActive; }
 
@@ -104,7 +112,19 @@ private:
         int			colors;		// the first of its 8 colors, or -1
         int			member;		// in the party, or -1 (an enemy)
         std::vector<battle_position> path;	// still to walk
+        std::shared_ptr<ImcFile> death;		// falling ("DY")
+        fighter		stats;
+        int			target;		// the figure it fights, or -1
+        int			strikeFrame;	// of its combat animation, 0: none
+        int			fallFrame;
+        int			damage;		// the last loss of Endurance shown
+        int			damageTicks;	// how long it is still shown
     };
+
+    figure			_MakeFigure(const std::string& image, int weapon, int x,
+                        int y, int direction);
+    bool			_Hostile(const figure& a, const figure& b) const;
+    void			_Fight();
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
                         const char* set, int weapon);
@@ -121,6 +141,9 @@ private:
     GFX::Palette	fPalette;
     std::vector<figure> fFigures;
     int				fSelected;		// index into fFigures, or -1
+    std::unique_ptr<ImgFile> fPictures;		// BATTLEGR.IMG
+    std::mt19937	fRandom;
+    int				fTicks;
     bool			fEnemiesActive;
     std::unique_ptr<BattleMap> fMap;
     GFX::point		fOrigin;		// top left, in pixels

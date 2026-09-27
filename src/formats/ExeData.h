@@ -65,6 +65,9 @@ public:
     const std::vector<std::string>& Surnames() const	{ return fSurnames; }
     const std::vector<exe_job>& Jobs() const	{ return fJobs; }
     const std::vector<exe_weapon>& Weapons() const	{ return fWeapons; }
+    // The strength of an armor, by item type (0 for none; 67..84 the
+    // armors, 85..91 the monsters' hides)
+    int				ArmorStrength(int type) const;
 
 private:
     std::vector<std::string>	fMale;		// UTF-8
@@ -72,6 +75,7 @@ private:
     std::vector<std::string>	fSurnames;
     std::vector<exe_job>		fJobs;
     std::vector<exe_weapon>		fWeapons;
+    std::vector<uint8>			fArmor;
 };
 
 // The Microsoft C runtime's rand(), as DARKLAND.EXE uses it

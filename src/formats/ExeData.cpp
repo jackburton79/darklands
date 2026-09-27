@@ -34,6 +34,8 @@ static const uint32 kWeaponSkills	= 0x7726;
 static const uint32 kWeaponMinimum	= 0x7765;
 static const uint32 kWeaponMaximum	= 0x77A4;
 static const uint32 kWeaponRanges	= 0x77E3;
+static const uint32 kArmorStrengths	= 0x781E;	// by item type
+static const size_t kArmorCount		= 100;
 static const uint32 kJobTable		= 0x3ACE;
 static const size_t kJobCount		= 31;
 static const size_t kJobSize		= 18;
@@ -129,6 +131,16 @@ ExeData::ExeData(const std::string& exePath)
         weapon.range = w[kWeaponRanges + i];
         fWeapons.push_back(weapon);
     }
+    if (weapons + kArmorStrengths + kArmorCount > data.size())
+        throw std::runtime_error("ExeData: armor table past the end");
+    fArmor.assign(w + kArmorStrengths, w + kArmorStrengths + kArmorCount);
+}
+
+
+int
+ExeData::ArmorStrength(int type) const
+{
+    return type >= 0 && size_t(type) < fArmor.size() ? fArmor[size_t(type)] : 0;
 }
 
 

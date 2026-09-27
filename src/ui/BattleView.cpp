@@ -6,7 +6,9 @@
 #include "EnemyFile.h"
 #include "ExeData.h"
 #include "GameData.h"
+#include "Character.h"
 #include "ImcFile.h"
+#include "ImgFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
 
@@ -44,6 +46,10 @@ static const int kFigureColors			= 8;
 // (the game's speed is not known)
 static const Uint32 kFrameTicks			= 60;
 
+// The white damage numbers of BATTLEGR.IMG: picture n shows "-n", 1..42
+// (43.. are the same in red: when the game uses which is not known)
+static const int kMaxDamagePicture		= 42;
+
 
 BattleView::BattleView(GameData& data)
     :
@@ -52,6 +58,9 @@ BattleView::BattleView(GameData& data)
     fBuffer(new Bitmap(kScreenWidth, kScreenHeight, 8)),
     fPalette(data.SpritePalette("")),
     fSelected(-1),
+    fPictures(new ImgFile(data.PathFor("BATTLEGR.IMG"))),
+    fRandom(std::random_device()()),
+    fTicks(0),
     fEnemiesActive(true),
     fOrigin(0, 0),
     fPlace(PLACE_WILDERNESS)
@@ -85,14 +94,41 @@ BattleView::SetMap(std::unique_ptr<BattleMap> map, const std::string& name)
 }
 
 
-void
-BattleView::AddPartyMember(int member, const std::string& image,
-    const std::vector<uint8>& colors, int weapon, int x, int y, int direction)
+BattleView::figure
+BattleView::_MakeFigure(const std::string& image, int weapon, int x, int y,
+    int direction)
 {
-    figure f = { _LoadSprites(image, "CB", weapon),
-        _LoadSprites(image, "WK", weapon), 0, 0,
-        x, y, direction, kPartyColors + kFigureColors * member, member,
-        std::vector<battle_position>() };
+    figure f;
+    f.sprites = _LoadSprites(image, "CB", weapon);
+    f.walk = _LoadSprites(image, "WK", weapon);
+    f.death = _LoadSprites(image, "DY", -1);
+    f.frame = 0;
+    f.ticks = 0;
+    f.x = x;
+    f.y = y;
+    f.direction = direction;
+    f.colors = -1;
+    f.member = -1;
+    f.stats = fighter();
+    f.target = -1;
+    f.strikeFrame = 0;
+    f.fallFrame = 0;
+    f.damage = 0;
+    f.damageTicks = 0;
+    return f;
+}
+
+
+void
+BattleView::AddPartyMember(int member, const character& who,
+    const std::string& image, const std::vector<uint8>& colors, int x, int y,
+    int direction)
+{
+    figure f = _MakeFigure(image, who.equipment[EQUIPMENT_WEAPON], x, y,
+        direction);
+    f.colors = kPartyColors + kFigureColors * member;
+    f.member = member;
+    f.stats = FighterFromCharacter(who, *fExe);
     for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
         GFX::Color& color = fPalette.colors[f.colors + i];
         color.r = uint8((colors[3 * i] << 2) | (colors[3 * i] >> 4));
@@ -110,20 +146,14 @@ BattleView::AddPartyMember(int member, const std::string& image,
 
 
 void
-BattleView::AddEnemy(const std::string& image, int x, int y, int direction)
+BattleView::AddEnemy(uint32 index, int x, int y, int direction)
 {
-    int weapon = -1;
-    const EnemyFile& enemies = fData.Enemies();
-    for (uint32 i = 0; i < enemies.CountTypes() && weapon < 0; i++) {
-        if (enemies.TypeAt(i).image == image)
-            weapon = enemies.TypeAt(i).weapon;
-    }
-    figure f = { _LoadSprites(image, "CB", weapon),
-        _LoadSprites(image, "WK", weapon), 0, 0, x, y, direction, -1, -1,
-        std::vector<battle_position>() };
+    const enemy_type& type = fData.Enemies().TypeAt(index);
+    figure f = _MakeFigure(type.image, type.weapon, x, y, direction);
+    f.stats = FighterFromEnemy(type, *fExe);
     // the enemies of different kinds may share palette indices: the last
     // one's colors win
-    fData.ApplyEnemyColors(fPalette, image);
+    fData.ApplyEnemyColors(fPalette, type.image);
     fBuffer->SetColors(fPalette.colors, 0, 256);
     fFigures.push_back(f);
 }
@@ -166,6 +196,13 @@ BattleView::FigurePosition(int index) const
 }
 
 
+const fighter&
+BattleView::FigureFighter(int index) const
+{
+    return fFigures.at(size_t(index)).stats;
+}
+
+
 void
 BattleView::SelectMember(int member)
 {
@@ -190,6 +227,8 @@ BattleView::MoveSelectedTo(int x, int y)
     if (fSelected < 0 || !fMap)
         return false;
     figure& mover = fFigures[size_t(fSelected)];
+    if (mover.stats.status != FIGHTER_ACTIVE)
+        return false;
     std::vector<battle_position> path = FindBattlePath(*fMap,
         battle_position{ mover.x, mover.y }, battle_position{ x, y },
         _Occupied(&mover));
@@ -228,6 +267,17 @@ void
 BattleView::Tick()
 {
     for (figure& f : fFigures) {
+        if (f.damageTicks > 0)
+            f.damageTicks--;
+        if (f.stats.status != FIGHTER_ACTIVE) {
+            if (f.fallFrame < f.death->CountFrames() - 1)
+                f.fallFrame++;
+            f.path.clear();
+            continue;
+        }
+        if (f.strikeFrame > 0 && ++f.strikeFrame >= f.sprites->CountFrames())
+            f.strikeFrame = 0;
+
         const bool enemy = f.member < 0 && fEnemiesActive;
         if (enemy && f.path.empty() && !_PlanEnemy(f)) {
             f.frame = 0;
@@ -241,8 +291,10 @@ BattleView::Tick()
         const battle_position next = f.path.front();
         // another figure may have stepped in since the path was found
         bool taken = false;
-        for (const figure& other : fFigures)
-            taken = taken || (&other != &f && other.x == next.x && other.y == next.y);
+        for (const figure& other : fFigures) {
+            taken = taken || (&other != &f && other.x == next.x
+                && other.y == next.y && other.stats.status == FIGHTER_ACTIVE);
+        }
         if (taken) {
             f.path.clear();
             f.frame = 0;
@@ -259,15 +311,79 @@ BattleView::Tick()
             f.ticks = 0;
         }
     }
+    if (++fTicks % kCombatTicks == 0)
+        _Fight();
+}
+
+
+bool
+BattleView::_Hostile(const figure& a, const figure& b) const
+{
+    return (a.member < 0) != (b.member < 0);
+}
+
+
+// Every standing figure next to a standing foe, and not walking, fights
+// it: its current target if still there, else the first one found
+void
+BattleView::_Fight()
+{
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        figure& f = fFigures[i];
+        f.target = -1;
+        if (f.stats.status != FIGHTER_ACTIVE || !f.path.empty())
+            continue;
+        for (size_t j = 0; j < fFigures.size() && f.target < 0; j++) {
+            const figure& foe = fFigures[j];
+            if (foe.stats.status == FIGHTER_ACTIVE && _Hostile(f, foe)
+                && std::abs(foe.x - f.x) <= 1 && std::abs(foe.y - f.y) <= 1) {
+                f.target = int(j);
+            }
+        }
+    }
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        figure& f = fFigures[i];
+        if (f.target < 0 || f.stats.status != FIGHTER_ACTIVE)
+            continue;
+        figure& foe = fFigures[size_t(f.target)];
+        if (foe.stats.status != FIGHTER_ACTIVE)
+            continue;
+        // as the game counts them: those fighting the defender (the
+        // attacker too) and those fighting the attacker
+        int helpers = 0;
+        int threats = 0;
+        for (const figure& other : fFigures) {
+            if (other.stats.status != FIGHTER_ACTIVE)
+                continue;
+            helpers += other.target == f.target;
+            threats += other.target == int(i);
+        }
+        f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
+        const strike blow = Strike(f.stats, foe.stats, *fExe, helpers,
+            threats, fRandom);
+        if (blow.result == STRIKE_NONE)
+            continue;
+        f.strikeFrame = 1;
+        if (blow.result == STRIKE_HIT || blow.result == STRIKE_WEAK_HIT) {
+            TakeStrike(foe.stats, blow);
+            foe.damage = blow.endurance;
+            foe.damageTicks = 2 * kCombatTicks;
+            if (foe.stats.status != FIGHTER_ACTIVE) {
+                foe.path.clear();
+                foe.fallFrame = 0;
+            }
+        }
+    }
 }
 
 
 std::vector<battle_position>
 BattleView::_Occupied(const figure* except) const
 {
+    // the fallen do not block
     std::vector<battle_position> occupied;
     for (const figure& f : fFigures) {
-        if (&f != except)
+        if (&f != except && f.stats.status == FIGHTER_ACTIVE)
             occupied.push_back(battle_position{ f.x, f.y });
     }
     return occupied;
@@ -284,7 +400,7 @@ BattleView::_PlanEnemy(figure& enemy)
     const figure* nearest = NULL;
     std::vector<battle_position> best;
     for (const figure& target : fFigures) {
-        if (target.member < 0)
+        if (target.member < 0 || target.stats.status != FIGHTER_ACTIVE)
             continue;
         const int dx = target.x - enemy.x;
         const int dy = target.y - enemy.y;
@@ -459,8 +575,15 @@ BattleView::Draw()
     std::vector<const figure*> order;
     for (const figure& f : fFigures)
         order.push_back(&f);
+    // the fallen lie under the others
     std::stable_sort(order.begin(), order.end(),
-        [](const figure* a, const figure* b) { return a->y < b->y; });
+        [](const figure* a, const figure* b) {
+            const bool aDown = a->stats.status != FIGHTER_ACTIVE;
+            const bool bDown = b->stats.status != FIGHTER_ACTIVE;
+            if (aDown != bDown)
+                return aDown;
+            return a->y < b->y;
+        });
     for (const figure* f : order) {
         if (fSelected >= 0 && f == &fFigures[size_t(fSelected)]) {
             // the selected member: a frame around its cell
@@ -587,8 +710,16 @@ BattleView::_DrawCell(int x, int y, int left, int top)
 void
 BattleView::_DrawFigure(const figure& f)
 {
-    const ImcFile& sprites = f.path.empty() ? *f.sprites : *f.walk;
-    const sprite& picture = sprites.SpriteAt(f.path.empty() ? 0 : f.frame,
+    const ImcFile* sprites = f.sprites.get();
+    int frame = f.strikeFrame;
+    if (f.stats.status != FIGHTER_ACTIVE) {
+        sprites = f.death.get();
+        frame = std::min(f.fallFrame, sprites->CountFrames() - 1);
+    } else if (!f.path.empty()) {
+        sprites = f.walk.get();
+        frame = f.frame;
+    }
+    const sprite& picture = sprites->SpriteAt(frame,
         f.direction % ImcFile::kDirectionCount);
     const int left = f.x * kCellSize + kCellSize / 2 - picture.width / 2
         - fOrigin.x;
@@ -608,6 +739,26 @@ BattleView::_DrawFigure(const figure& f)
                 pixel = uint8(f.colors + pixel - kPartySpriteColors);
             }
             fBuffer->PutPixel(screenX, screenY, pixel);
+        }
+    }
+
+    // the last loss of Endurance: BATTLEGR.IMG's picture n is "-n"
+    if (f.damageTicks > 0 && f.damage > 0) {
+        const sprite& number = fPictures->PictureAt(uint32(std::min(f.damage,
+            kMaxDamagePicture)));
+        const int numberLeft = f.x * kCellSize + kCellSize / 2
+            - number.width / 2 - fOrigin.x;
+        const int numberTop = top - number.height - 1;
+        for (int y = 0; y < number.height; y++) {
+            for (int x = 0; x < number.width; x++) {
+                const uint8 pixel = number.pixels[y * number.width + x];
+                const int screenX = numberLeft + x;
+                const int screenY = numberTop + y;
+                if (pixel != 0 && screenX >= 0 && screenX < kScreenWidth
+                    && screenY >= 0 && screenY < kScreenHeight) {
+                    fBuffer->PutPixel(screenX, screenY, pixel);
+                }
+            }
         }
     }
 }

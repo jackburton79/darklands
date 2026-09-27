@@ -27,6 +27,10 @@ struct enemy_type {
     uint8 attributes[ATTRIBUTE_COUNT];
     uint8 skills[kSkillCount];
     uint8 weapon;				// a weapon type of ExeData::Weapons()
+    uint8 armor[2];				// item types, vitals and limbs (0xFF: none)
+    uint8 armorQuality;
+    uint8 shield;				// item type (95..97), 0xFF: none
+    uint8 shieldQuality;
 };
 
 // One enemy name, as the game shows it ("Guard", "Raubritter"...)
