@@ -171,6 +171,8 @@ private:
     int				_Reputation() const;
     // A city's location property 0x21: its number plus the seed global
     uint16			_PeopleSeed() const;
+    // A man of the city named by the game (1367:0DB4) for `seed`
+    std::string		_PersonName(uint16 seed);
     std::vector<int> _HiddenOptions(int screen) const;
 
     GameData&		fData;

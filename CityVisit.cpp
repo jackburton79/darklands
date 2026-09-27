@@ -985,15 +985,22 @@ CityVisit::_Show(int screen, bool withScene)
         if (fScreen == SCREEN_CRAFTS)	// a new visit
             fTreatmentOffered = false;
         _PhysicianSkill();
-        // his name: 1367:0DB4 with the city's property 0x21 + 800, to
-        // which it adds the seed global again
-        if (fNames == NULL)
-            fNames.reset(new ExeNames(fData.PathFor("DARKLAND.EXE")));
-        fVariables["NamedOneName"] = fNames->MaleName(uint16(fSeed
-            + _PeopleSeed() + 0x320));
+        // his name: the city's property 0x21 + 800
+        fVariables["NamedOneName"] = _PersonName(uint16(_PeopleSeed() + 0x320));
         if (fParty != NULL && !fParty->members.empty())
             fVariables["ChosenOneName"]
                 = fParty->members[_BestHealer()].shortName;
+    }
+    // the master banker and the League's master: the city's number + 8
+    // (the Fuggers, file 0xC4280), + 6 (the Medici, file 0xC62E9), + 7
+    // (the Hanse, file 0xC7BBF)
+    if (screen >= SCREEN_FUGGER && screen <= SCREEN_MEDICI_DEPOSIT) {
+        const bool fugger = screen == SCREEN_FUGGER
+            || screen == SCREEN_FUGGER_COLD || screen == SCREEN_FUGGER_REDEEMED
+            || screen == SCREEN_FUGGER_DEPOSIT;
+        const uint16 number = fData.Cities().CityAt(uint32(fCity)).peopleSeed;
+        fVariables["NamedOneName"] = _PersonName(uint16(number
+            + (fugger ? 8 : screen == SCREEN_HANSE ? 7 : 6)));
     }
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
@@ -1072,6 +1079,16 @@ CityVisit::_HiddenOptions(int screen) const
             hidden.push_back(i);
     }
     return hidden;
+}
+
+
+// 1367:0DB4 adds the seed global to `seed`
+std::string
+CityVisit::_PersonName(uint16 seed)
+{
+    if (fNames == NULL)
+        fNames.reset(new ExeNames(fData.PathFor("DARKLAND.EXE")));
+    return fNames->MaleName(uint16(fSeed + seed));
 }
 
 

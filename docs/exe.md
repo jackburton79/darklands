@@ -220,10 +220,12 @@ file 0xC6253) follow the same code. **verified** (code); see
   (0x9C0:20B7) "Deposit how many Florins?" (DS:5B8F), 10 characters,
   starting with the purse's florins; the number is clamped to 0..500
   and to the purse's florins, which go to the letter. No fee, no time.
-- Not reproduced: the standings (not in the saved games), the banker's
-  name ($NamedOneName,
-  1367:0DB4 with the city record's word +0x56 + 8, + 6 for the Medici),
-  the tasks, rewards and politics. The League's options are all tasks
+- **Names**: the master banker's is 1367:0DB4 with the city record's
+  word +0x56 + 8 (the Fuggers, file 0xC4280), + 6 (the Medici, file
+  0xC62E9); the League's master's + 7 (file 0xC7BBF). They are
+  $NamedOneName in the cards of the tasks and rewards.
+- Not reproduced: the standings (not in the saved games), the tasks,
+  rewards and politics. The League's options are all tasks
   and politics.
 
 ## The crafts' guilds
