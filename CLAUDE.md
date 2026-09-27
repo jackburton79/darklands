@@ -51,6 +51,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --cities                 # dump DARKLAND.CTY
 ./darklands --enemies                # dump DARKLAND.ENM
 ./darklands --battlemap ICITY.000    # a battlefield map, as text
+./darklands --battle IWILDGEN.101    # the same, seen from above
 ./darklands --messages [PARTY02]     # list MSGFILES / dump a card deck
 ./darklands --card PARTY02 0 Köln    # show a card (CardView)
 ```
@@ -95,6 +96,9 @@ include path: include headers by name (`#include "CityFile.h"`).
   `InfoView`: the F6 party and F1..F5 character screens, opened from
   `CardView`, `MapViewer`, `ResidenceView` and `TradeView` (modal
   `Run(window, page)`).
+- `BattleView`: a provisional top view of a battlefield map (cells,
+  walls, objects) with the battle's colors, until the game's own
+  drawing is decoded.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

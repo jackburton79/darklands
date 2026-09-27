@@ -218,9 +218,8 @@ sprites", Colors). **verified** (code)
 - `3F 00 3F` (magenta) and runs of `3F 3F 3F` (white) look like
   placeholders for slots a given palette leaves unused. *inferred*
 - Not the map palette: no palette matches any 71-entry range of the
-  palette embedded in the map icon sheets. Which palette indices the
-  71 entries patch, and what selects one of the 11 (location type? time
-  of day?) is unresolved.
+  palette embedded in the map icon sheets. What selects one of the 11
+  (location type? time of day?) is unresolved.
 
 ## World map (`DARKLAND.MAP`)
 
@@ -1227,7 +1226,8 @@ the end mark at their last byte. **verified**. *Partially decoded*:
   insides of houses, the rock: the cells one cannot enter (*inferred*).
 - **Objects**: the high nibble of byte 0, only on open cells.
   **verified**. 11, 12, 13 are common in the wilderness (trees?), 14 in
-  the marshes, 1..4 in the wilderness too; the cities and fortresses
+  the marshes, 1..4 in the wilderness too, where they line up from one
+  edge of the map to another (paths?); the cities and fortresses
   use most values a few times (furniture: TAC.TXT's "FurnRemove"?).
   *inferred*. The high nibbles of bytes 1 and 2 are almost always 0.
 - **Ground** (the second grid): 0 in closed cells; 0x10 open ground,

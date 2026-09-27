@@ -78,6 +78,8 @@ implemented yet. See the roadmap below.
 - [x] Decode the battle sprites (`.IMC`, `--extract E00C.CAT <dir>`)
       and pictures (`BATTLEGR.IMG`, `COMMONSP.IMG`)
 - [x] Read the battlefield maps (`IMAPS.CAT`, `--battlemap ICITY.000`)
+- [ ] Battles: a provisional view of the maps from above (`--battle
+      ICITY.000`); the game's own drawing is not decoded yet
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
 - [x] Party travel on the map (pathfinding, no travel time yet) and a
@@ -182,6 +184,9 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # Print a battlefield map as text (e.g. ICITY.000, IWILDGEN.101)
 ./darklands --battlemap ICITY.000
 
+# Show a battlefield map from above (provisional; arrow keys, Esc)
+./darklands --battle IWILDGEN.101
+
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
 ./darklands --messages [name]
 
@@ -233,6 +238,7 @@ src/ui/             Screens and drawing
   InfoView.*        The party and character information screens
   PartySidebar.*    The character boxes on the left of the screens
   TradeView.*       Buying and selling with a merchant
+  BattleView.*      A provisional view of a battlefield, from above
   ResidenceView.*   Living at the inn: the members' activities
   MapViewer.*       Interactive world map (scrolling, travel, city details)
   WorldMap.*        The world map: tiles, column rule, drawing any part of it

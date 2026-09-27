@@ -1,4 +1,5 @@
 #include "BattleMap.h"
+#include "BattleView.h"
 #include "Bitmap.h"
 #include "CardView.h"
 #include "CharacterFile.h"
@@ -16,6 +17,7 @@
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "PICImage.h"
+#include "ScreenSupport.h"
 #include "Stream.h"
 #include "TextSupport.h"
 #include "WorldMap.h"
@@ -408,6 +410,8 @@ Usage()
         "  --enemies                     list DARKLAND.ENM\n"
         "  --battlemap <name>            dump a battlefield map of IMAPS.CAT\n"
         "                                (e.g. ICITY.000)\n"
+        "  --battle <name>               show a battlefield map (provisional\n"
+        "                                view; arrow keys scroll, Esc quits)\n"
         "  --messages [name]             list MSGFILES, or dump a card deck\n"
         "                                (e.g. PARTY02, or a path to a .MSG file)\n"
         "  --card <name> [card] [city] [picture]\n"
@@ -464,6 +468,22 @@ int main(int argc, char **argv)
             if (!stream)
                 throw std::runtime_error(std::string("no map ") + argv[arg + 1]);
             DumpBattleMap(BattleMap(stream.get()));
+            return 0;
+        }
+        if (command == "--battle") {
+            if (extra < 1) {
+                Usage();
+                return 1;
+            }
+            std::unique_ptr<Catalog> maps(data.OpenCatalog("IMAPS.CAT"));
+            std::unique_ptr<Stream> stream(maps->GetStream(argv[arg + 1]));
+            if (!stream)
+                throw std::runtime_error(std::string("no map ") + argv[arg + 1]);
+            BattleView view(data);
+            view.SetMap(std::unique_ptr<BattleMap>(new BattleMap(stream.get())),
+                argv[arg + 1]);
+            GameWindow window("Darklands");
+            view.Run(window);
             return 0;
         }
         if (command == "--locations") {
