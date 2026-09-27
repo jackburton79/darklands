@@ -204,6 +204,8 @@ implementation.
 
 2343 bytes = 3 · 11 · 71: **11 palettes of 71 colors each**, plain RGB
 triplets with 6-bit components, no header and no index byte.
+The battles copy one of them to palette indices 164..234 (see "Battle
+sprites", Colors). **verified** (code)
 
     palette k (k = 0..10) at offset 213 · k:
     +0x00   3·71  71 RGB triplets, 6-bit components
@@ -1262,8 +1264,8 @@ compressed. See `ImgFile.cpp`; `./darklands --extract BATTLEGR.IMG
   `COMMONSP.IMG` (4078 bytes) 14; every row of every picture fits.
 - `BATTLEGR.IMG` holds the battle's overlays, not the ground: damage
   numbers (-1..-42, white and red), the arrows of the direction cursor,
-  the body outlines of the hit locations, clouds (spells, potions:
-  colors 240..254, not decoded), missiles in 8 directions (arrows,
+  the body outlines of the hit locations, clouds (fire and other
+  spells), patches of ground and wall textures, missiles in 8 directions (arrows,
   bolts, stones...), sparks, blood. `COMMONSP.IMG`: pieces of a frame
   (borders, a blue panel, a skull). **verified** visually
 - Between the pictures (they start at paragraph boundaries) the files
@@ -1334,14 +1336,20 @@ byte of all 333 files.
   show one figure turning; *verified* visually, which direction comes
   first is not).
 - Index 0 is transparent (the pixels a row skips).
-- **Colors** (**verified** visually, on the exported sheets): 0..15 are
-  the EGA colors, except 5, the figures' dark outline and their shadow
-  on the ground, probably drawn as a darkening (*inferred*); 104..175
-  `COMNCLRS.DAT` (skin, steel...); 32..79 the enemy's chunks of
-  `ENEMYPAL.DAT` (see "Enemies"); the party's figures use 235..242,
-  presumably their clothing colors from the character records (not
-  decoded). 16..31 (the dragons) are taken as the gray ramp of the VGA
-  default palette, *inferred*.
+- **Colors**: the battle's palette (DARKLAND.EXE, file 0x1265E, into
+  the buffer at [DS:CA53]): `COMNCLRS.DAT`'s 72 colors go to 16..31
+  (entries 0..15), 120..163 (16..59) and 243..254 (60..71); one of the
+  11 palettes of `BKGNDPAL.DAT` to 164..234, the palette [DS:C7DD]
+  (copied from DS:9085; what sets it is not known); 40 colors from the
+  level's data (segment 20A5, offset 0x33FC, right after the map) to
+  80..119. **verified** (code). The enemies' chunks of `ENEMYPAL.DAT`
+  fill 32..79 (see "Enemies"); 0..15 are taken as the EGA colors
+  (*inferred*), index 5 being the figures' dark outline and shadow,
+  probably drawn as a darkening (*inferred*). The party's figures use
+  235..242, presumably their clothing colors (not decoded). With this
+  palette the dragons (16..31), the spell clouds of `BATTLEGR.IMG`
+  (243..254: fire) and the textures there (164..234) look right.
+  **verified** visually
 
 `TACANIM.DB` (546 bytes = 39 × 14): per sprite set, a 4-byte code
 (`A00`, `C00`, `F01`, `F60`, `E00`..`E17`, `M00`..), three words and
@@ -1361,10 +1369,11 @@ wolf). Not decoded.
       +0x2E, +0x30..) and the enemies' flags
 - [ ] Battles: the maps of `IMAPS.CAT` (the wall, object and ground
       values, the records after the grids) and how the game draws them; `TACANIM.DB`; the `.IMC`
-      header; the colors 235..242 (party) and 240..254 (clouds)
+      header; the colors 235..242 (party)
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
-- [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects
-      one of its 11 palettes
+- [x] Palettes: which indices `BKGNDPAL.DAT` patches — 164..234, in
+      the battles
+- [ ] Palettes: what selects one of the 11 palettes of `BKGNDPAL.DAT`
 - [ ] `.PIC`: are there chunk types other than `M0` and `X0`/`X1`?
 - [ ] Palettes: is index 0 always the color key, across all resource
       types?

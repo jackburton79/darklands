@@ -44,8 +44,9 @@ public:
     const ListFile&		Lists();			// DARKLAND.LST: items, saints...
     const GFX::Palette&	EnemyPalette();		// ENEMYPAL.DAT, all chunks
     // The colors of a battle sprite set ("E00", "M03", "A00"...): the
-    // EGA colors, COMNCLRS.DAT and, for an enemy, the chunks of its
-    // palette (0..paletteCount - 1) from ENEMYPAL.DAT
+    // battle's palette (EGA colors, COMNCLRS.DAT, BKGNDPAL.DAT) and, for
+    // an enemy, the chunks of its palette (0..paletteCount - 1) from
+    // ENEMYPAL.DAT
     GFX::Palette		SpritePalette(const std::string& image,
                             int palette = 0);
     const Catalog&		MessageCatalog();	// MSGFILES

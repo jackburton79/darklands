@@ -142,27 +142,41 @@ GameData::SpritePalette(const std::string& image, int palette)
     // Index 5 is the figures' outline and shadow: probably drawn darker
     // than the ground rather than as a color (inferred), dark here
     colors.colors[5].r = colors.colors[5].g = colors.colors[5].b = 16;
-    // 16..31: the gray ramp of the VGA default palette (inferred)
-    static const uint8 kGrays[16] = {
-        0, 5, 8, 11, 14, 17, 20, 24, 28, 32, 36, 40, 45, 50, 56, 63
-    };
-    for (int i = 0; i < 16; i++) {
-        GFX::Color& color = colors.colors[16 + i];
-        color.r = color.g = color.b = uint8((kGrays[i] << 2) | (kGrays[i] >> 4));
-    }
-
-    // COMNCLRS.DAT: 72 colors from index 104 (the cards use 128..159 of
-    // them, docs/formats.md)
+    // As the battle builds its palette (file 0x1265E): COMNCLRS.DAT's 72
+    // colors go to 16..31, 120..163 and 243..254, one of BKGNDPAL.DAT's
+    // 11 palettes to 164..234 (the first here: what picks it is not known)
     std::unique_ptr<Stream> stream(new FileStream(PathFor("COMNCLRS.DAT").c_str(),
         FileStream::READ_ONLY));
     uint8 common[72 * 3];
     if (stream->ReadAt(0, common, sizeof(common)) != (ssize_t)sizeof(common))
         throw std::runtime_error("COMNCLRS.DAT: truncated file");
-    for (int i = 0; i < 72; i++) {
-        GFX::Color& color = colors.colors[104 + i];
-        color.r = uint8((common[3 * i] << 2) | (common[3 * i] >> 4));
-        color.g = uint8((common[3 * i + 1] << 2) | (common[3 * i + 1] >> 4));
-        color.b = uint8((common[3 * i + 2] << 2) | (common[3 * i + 2] >> 4));
+    stream.reset(new FileStream(PathFor("BKGNDPAL.DAT").c_str(),
+        FileStream::READ_ONLY));
+    uint8 background[71 * 3];
+    if (stream->ReadAt(0, background, sizeof(background))
+            != (ssize_t)sizeof(background)) {
+        throw std::runtime_error("BKGNDPAL.DAT: truncated file");
+    }
+    struct range {
+        const uint8*	source;
+        int				first;		// in the source
+        int				index;		// in the palette
+        int				count;
+    };
+    const range kRanges[] = {
+        { common, 0, 16, 16 },
+        { common, 16, 120, 44 },
+        { common, 60, 243, 12 },
+        { background, 0, 164, 71 }
+    };
+    for (const range& r : kRanges) {
+        for (int i = 0; i < r.count; i++) {
+            const uint8* rgb = r.source + 3 * (r.first + i);
+            GFX::Color& color = colors.colors[r.index + i];
+            color.r = uint8((rgb[0] << 2) | (rgb[0] >> 4));
+            color.g = uint8((rgb[1] << 2) | (rgb[1] >> 4));
+            color.b = uint8((rgb[2] << 2) | (rgb[2] >> 4));
+        }
     }
 
     const EnemyFile& enemies = Enemies();
