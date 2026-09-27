@@ -207,8 +207,9 @@ the options' switch at file 0xA3128). **verified** (code); see
   gives him two groschen" (file 0xA39B6: 2 groschen paid, then state
   0x14). Leaving without them (file 0xA3902): if random(100) <= 50 the
   local reputation falls by random(4) + 1 (0E76:1DFE) and card 7 is
-  shown. Where state 0x14 leads (also after card 3 and the idiot) is
-  not decoded: the crafts here.
+  shown. State 0x14, where the two groschen, card 3 and the idiot lead,
+  is the district ($BUSIN00: its loop tests it at file 0x9F166); the
+  other departures (0x1A) lead to the crafts.
 - Not reproduced: the lessons.
 
 ## The banks

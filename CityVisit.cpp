@@ -445,8 +445,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_CRAFTS),					// leave
         HIDE								// (night only)
     } },
-    // "...a chamberpot's load of offal" (a reputation of -40 or less)
-    { "PHYSI00", 3, NULL, { GO(SCREEN_CRAFTS) } },
+    // "...a chamberpot's load of offal" (a reputation of -40 or less);
+    // then the district (state 0x14, $BUSIN00)
+    { "PHYSI00", 3, NULL, { GO(SCREEN_DISTRICT) } },
     // "...since $Number1 of you suffer, the overall cost will be $Money1"
     { "PHYSI00", 2, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "...decides that $NamedOneName has $Text1 skill"
@@ -454,7 +455,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "...unable to yet determine the competence of this person"
     { "PHYSI00", 9, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "...$NamedOneName is a complete idiot" (and the party leaves)
-    { "PHYSI00", 10, NULL, { GO(SCREEN_CRAFTS) } },
+    { "PHYSI00", 10, NULL, { GO(SCREEN_DISTRICT) } },
     // "I have no need for additional medicines"
     { "PHYSI00", 12, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "...the physician uses leeches to draw out the vile humors"
@@ -1543,7 +1544,8 @@ CityVisit::_Students()
 
 
 // Leaving the physician (file 0xA3902, 0xA39B6): at night, apologizing
-// with two groschen for the trouble, or else, half the time
+// with two groschen for the trouble (to the district), or else, half the
+// time
 // (random(100) <= 50), he curses the party and the local reputation
 // falls by 1..4 (card 7)
 int
@@ -1554,7 +1556,7 @@ CityVisit::_LeavePhysician(bool apologize)
             const uint32 purse = TotalPfennigs(fParty->cash);
             fParty->cash = MoneyFromPfennigs(purse - std::min(purse, 24u));
         }
-        return SCREEN_CRAFTS;
+        return SCREEN_DISTRICT;
     }
     if (int(fRandom() % 100) > 50)
         return SCREEN_CRAFTS;
