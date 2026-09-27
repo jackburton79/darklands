@@ -259,7 +259,8 @@ at the inn, 1 in the wilderness, 2 and 3 other camps). **verified**
 (code); see `ResidenceView.cpp`.
 
 - **Activities**, per member (DS:8A18, their values DS:89FE; keys J R P
-  A E G T, 1..5 for the member, F1..F6, S, L): relax (0); regain
+  A E G T, 1..5 for the member, F1..F6 the information screens (file
+  0x6FF0A), Ctrl+F1..F5 the leader, S, L): relax (0); regain
   strength (1, when strength is under its maximum: gain clamp(1, 99,
   the party's best Healing / 15)); pray (2, when divine favor is under
   its maximum: gain (Religion + Virtue) / 12 + 1); alchemy (3, making

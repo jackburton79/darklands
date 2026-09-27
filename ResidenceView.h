@@ -25,6 +25,7 @@ class Font;
 class GameData;
 class GameTime;
 class GameWindow;
+class InfoView;
 class PartySidebar;
 struct character;
 struct party;
@@ -59,6 +60,9 @@ public:
     // advances the clock.
     void			SetParty(party* members);
     void			SetClock(GameTime* clock)	{ fClock = clock; }
+    // The information screens that F1..F6 and the character boxes open
+    // (not owned; NULL: none), as in the game (file 0x6FF0A).
+    void			SetInfoView(InfoView* info)	{ fInfo = info; }
     // The inn: its city, the party's local reputation there, the price
     // of a day (the inn's meal and night) and the city's teacher (NULL:
     // none). Every member starts relaxing.
@@ -123,6 +127,7 @@ private:
 
     party*			fParty;
     GameTime*		fClock;
+    InfoView*		fInfo;
     int				fCity;
     int				fReputation;
     uint32			fInnPrice;

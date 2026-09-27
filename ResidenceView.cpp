@@ -7,6 +7,7 @@
 #include "FileStream.h"
 #include "GameData.h"
 #include "GameTime.h"
+#include "InfoView.h"
 #include "PICImage.h"
 #include "Palette.h"
 #include "PartySidebar.h"
@@ -78,6 +79,7 @@ ResidenceView::ResidenceView(GameData& data)
     fRandom(std::random_device{}()),
     fParty(NULL),
     fClock(NULL),
+    fInfo(NULL),
     fCity(-1),
     fReputation(0),
     fInnPrice(0),
@@ -159,6 +161,10 @@ ResidenceView::Run(GameWindow& window)
                 if (key == SDLK_ESCAPE || key == SDLK_l)
                     return;
                 fMessage.clear();
+                if (key >= SDLK_F1 && key <= SDLK_F5 && fInfo != NULL)
+                    fInfo->Run(window, int(key - SDLK_F1));
+                else if (key == SDLK_F6 && fInfo != NULL)
+                    fInfo->Run(window, InfoView::kPartyPage);
                 if (key >= SDLK_1 && key <= SDLK_5)
                     SelectMember(int(key - SDLK_1));
                 else if (key == SDLK_s)
@@ -178,8 +184,12 @@ ResidenceView::Run(GameWindow& window)
                 break;
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    if (!Clicked(GameWindow::ToScreen(event.button.x,
-                            event.button.y)))
+                    const GFX::point point = GameWindow::ToScreen(
+                        event.button.x, event.button.y);
+                    const int member = fSidebar->MemberAt(point);
+                    if (member >= 0 && fInfo != NULL)
+                        fInfo->Run(window, member);
+                    else if (!Clicked(point))
                         return;
                     dirty = true;
                 }

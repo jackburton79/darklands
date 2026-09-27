@@ -832,6 +832,7 @@ void
 CityVisit::SetInfoView(InfoView* info)
 {
     fInfo = info;
+    fResidence.SetInfoView(info);
     fView.SetInfoView(info);
 }
 
