@@ -61,6 +61,11 @@ public:
     bool			IsMoving() const;
     void			Tick();
 
+    // The enemies walk, a step at a time, toward the nearest party member
+    // (along the paths) and stop beside it, facing it. Active at first.
+    void			SetEnemiesActive(bool active)	{ fEnemiesActive = active; }
+    bool			EnemiesActive() const	{ return fEnemiesActive; }
+
     // A click on the screen (320x200 coordinates): selects the party
     // member there, or sends the selected one to that cell.
     void			Clicked(const GFX::point& point);
@@ -69,7 +74,7 @@ public:
     bool			FindFreeCell(int& x, int& y) const;
 
     // Runs until Esc; the arrow keys scroll, 1..5 select a member, a
-    // click selects or moves.
+    // click selects or moves, the space bar stops or starts the enemies.
     void			Run(GameWindow& window);
 
     // Moves the view by cells, within the map
@@ -101,6 +106,8 @@ private:
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
                         const char* set);
+    std::vector<battle_position> _Occupied(const figure* except) const;
+    bool			_PlanEnemy(figure& enemy);
     void			_DrawFigure(const figure& f);
     uint8			_GroundColor(const battle_cell& cell) const;
     bool			_IsOpen(int x, int y) const;
@@ -111,6 +118,7 @@ private:
     GFX::Palette	fPalette;
     std::vector<figure> fFigures;
     int				fSelected;		// index into fFigures, or -1
+    bool			fEnemiesActive;
     std::unique_ptr<BattleMap> fMap;
     GFX::point		fOrigin;		// top left, in pixels
     place			fPlace;

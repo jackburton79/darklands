@@ -49,6 +49,7 @@ BattleView::BattleView(GameData& data)
     fBuffer(new Bitmap(kScreenWidth, kScreenHeight, 8)),
     fPalette(data.SpritePalette("")),
     fSelected(-1),
+    fEnemiesActive(true),
     fOrigin(0, 0),
     fPlace(PLACE_WILDERNESS)
 {
@@ -179,13 +180,9 @@ BattleView::MoveSelectedTo(int x, int y)
     if (fSelected < 0 || !fMap)
         return false;
     figure& mover = fFigures[size_t(fSelected)];
-    std::vector<battle_position> occupied;
-    for (const figure& f : fFigures) {
-        if (&f != &mover)
-            occupied.push_back(battle_position{ f.x, f.y });
-    }
     std::vector<battle_position> path = FindBattlePath(*fMap,
-        battle_position{ mover.x, mover.y }, battle_position{ x, y }, occupied);
+        battle_position{ mover.x, mover.y }, battle_position{ x, y },
+        _Occupied(&mover));
     if (path.empty())
         return false;
     mover.path = path;
@@ -221,6 +218,11 @@ void
 BattleView::Tick()
 {
     for (figure& f : fFigures) {
+        const bool enemy = f.member < 0 && fEnemiesActive;
+        if (enemy && f.path.empty() && !_PlanEnemy(f)) {
+            f.frame = 0;
+            f.ticks = 0;
+        }
         if (f.path.empty())
             continue;
         f.frame = (f.frame + 1) % f.walk->CountFrames();
@@ -241,11 +243,62 @@ BattleView::Tick()
         f.x = next.x;
         f.y = next.y;
         f.path.erase(f.path.begin());
-        if (f.path.empty()) {
+        // an enemy plans its next step at the next tick: keep its pace
+        if (f.path.empty() && !enemy) {
             f.frame = 0;
             f.ticks = 0;
         }
     }
+}
+
+
+std::vector<battle_position>
+BattleView::_Occupied(const figure* except) const
+{
+    std::vector<battle_position> occupied;
+    for (const figure& f : fFigures) {
+        if (&f != except)
+            occupied.push_back(battle_position{ f.x, f.y });
+    }
+    return occupied;
+}
+
+
+// One step toward the nearest party member, along the paths; false when
+// the enemy is beside one (it turns to face it) or cannot reach any
+bool
+BattleView::_PlanEnemy(figure& enemy)
+{
+    if (!fMap)
+        return false;
+    const figure* nearest = NULL;
+    std::vector<battle_position> best;
+    for (const figure& target : fFigures) {
+        if (target.member < 0)
+            continue;
+        const int dx = target.x - enemy.x;
+        const int dy = target.y - enemy.y;
+        if (std::abs(dx) <= 1 && std::abs(dy) <= 1) {
+            enemy.direction = DirectionOf(dx, dy);
+            return false;
+        }
+        // to the target's cell, as if it were free: the last step is
+        // not taken
+        std::vector<battle_position> occupied = _Occupied(&enemy);
+        occupied.erase(std::remove(occupied.begin(), occupied.end(),
+            battle_position{ target.x, target.y }), occupied.end());
+        const std::vector<battle_position> path = FindBattlePath(*fMap,
+            battle_position{ enemy.x, enemy.y },
+            battle_position{ target.x, target.y }, occupied);
+        if (!path.empty() && (nearest == NULL || path.size() < best.size())) {
+            nearest = &target;
+            best = path;
+        }
+    }
+    if (nearest == NULL || best.size() < 2)
+        return false;
+    enemy.path.assign(1, best.front());
+    return true;
 }
 
 
@@ -297,13 +350,13 @@ BattleView::Run(GameWindow& window)
             dirty = false;
         }
         const Uint32 now = SDL_GetTicks();
-        if (IsMoving() && now - lastStep >= kFrameTicks) {
+        if (now - lastStep >= kFrameTicks) {
             Tick();
             lastStep = now;
             dirty = true;
         }
         SDL_Event event;
-        if (SDL_WaitEventTimeout(&event, IsMoving() ? 20 : 100) == 0)
+        if (SDL_WaitEventTimeout(&event, 20) == 0)
             continue;
         switch (event.type) {
             case SDL_QUIT:
@@ -320,6 +373,9 @@ BattleView::Run(GameWindow& window)
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
                         return;
+                    case SDLK_SPACE:
+                        SetEnemiesActive(!fEnemiesActive);
+                        break;
                     case SDLK_1:
                     case SDLK_2:
                     case SDLK_3:
