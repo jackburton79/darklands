@@ -324,9 +324,8 @@ one for n hours, 0E76:2A32 adds hours to it).
   0E76:2C4E(−2, location, 0x1E, 0x12, ...), not decoded), 1 card 9, 2
   card 10 (a retreat), 3 card 11 (the dungeon). **verified** (code).
   Reproduced with BattleView; the map among ICITY.000..003 and the
-  starting places are not the game's (not decoded), the fallen get up
-  with 1 Endurance or Strength (death is not implemented), a retreat is
-  Esc and leads to the side streets (inferred), the dungeon is not
+  starting places are not the game's (not decoded), a retreat is Esc
+  and leads to the side streets (inferred), the dungeon is not
   implemented.
 - Not reproduced: the burglary, potions, saints, the load's effect on
   speed.
@@ -799,6 +798,14 @@ Where the battle code starts; the rules are not decoded yet.
      strike (the damage numbers of BATTLEGR.IMG go to −42); Endurance
      (+0x5D) at 0 sets the status to 2, Strength (+0x5E) at 0 to 3
      (*inferred*: unconscious, dead).
+- **After a battle** (0E76:2278, the function every battle goes
+  through: it runs the battle with 09C0:18BF, then from file 0x59B9C):
+  a party slot with status 3 (Strength at 0) is emptied (status 0,
+  09C0:18B5: the member leaves the party); every other member (but
+  status 5) stands again (status 1), keeping the Endurance and Strength
+  of the battle; with nobody left, 09C0:18F1(0x12) and the game ends
+  (not decoded further). It returns the battle's result ([DS:A893]).
+  **verified** (code)
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",

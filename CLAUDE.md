@@ -102,8 +102,9 @@ include path: include headers by name (`#include "CityFile.h"`).
   walls, objects) and figures (party and enemies, with their sprites
   and colors; members walk where one clicks, `BattlePath`, with their
   walking animation; the enemies walk up to the nearest member; the
-  figures next to a foe fight it, `Combat`), until the game's own
-  drawing is decoded.
+  figures next to a foe fight it, `Combat`; `AfterBattle()` then
+  applies the wounds and the deaths), until the game's own drawing is
+  decoded.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

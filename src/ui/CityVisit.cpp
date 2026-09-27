@@ -928,7 +928,8 @@ CityVisit::CityVisit(GameData& data)
     fTreatmentOffered(false),
     fStoneOffered(false),
     fWatchReturn(SCREEN_NOT_IMPLEMENTED),
-    fPendingBattle(false)
+    fPendingBattle(false),
+    fPartyLost(false)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -1007,8 +1008,13 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             fPendingCache = false;
             _Show(fScreen, false);
         }
-        if (fPendingBattle)
+        if (fPendingBattle) {
             _RunBattle(window);
+            if (fPartyLost) {
+                fPartyLost = false;
+                return PARTY_LOST;
+            }
+        }
         if (fPendingResidence) {
             // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
             // a day costs the inn's price
@@ -2285,13 +2291,16 @@ CityVisit::_RunBattle(GameWindow& window)
     view.Scroll(0, 12);
     const battle_outcome outcome = view.Run(window);
 
-    // the party's wounds: the fallen get up with 1 (death is not
-    // implemented)
-    for (size_t i = 0; i < fParty->members.size(); i++) {
-        const fighter& f = view.FigureFighter(int(i));
-        character& member = fParty->members[i];
-        member.attributes[ATTRIBUTE_ENDURANCE] = uint8(std::max(f.endurance, 1));
-        member.attributes[ATTRIBUTE_STRENGTH] = uint8(std::max(f.strength, 1));
+    // the wounded keep their wounds, the dead leave the party; with
+    // nobody left the game is over (the game's end sequence,
+    // 09C0:18F1(0x12), is not decoded)
+    std::vector<fighter> fighters;
+    for (size_t i = 0; i < fParty->members.size(); i++)
+        fighters.push_back(view.FigureFighter(int(i)));
+    AfterBattle(*fParty, fighters);
+    if (fParty->members.empty()) {
+        fPartyLost = true;
+        return;
     }
     ResolveBattle(outcome);
 }

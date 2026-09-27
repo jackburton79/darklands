@@ -130,7 +130,8 @@ public:
 
     enum result {
         LEAVE_CITY,				// the party is back on the map
-        QUIT
+        QUIT,
+        PARTY_LOST				// all its members died
     };
 
     explicit		CityVisit(GameData& data);	// throws if data is missing
@@ -287,5 +288,6 @@ private:
     std::map<std::pair<int, int>, uint32> fMarks;	// (kind, city): until
     int				fWatchReturn;	// where paying the fine leads
     bool			fPendingBattle;
+    bool			fPartyLost;
     std::unique_ptr<ExeData> fNames;
 };

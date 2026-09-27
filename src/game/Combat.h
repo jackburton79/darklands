@@ -13,9 +13,11 @@
 #include "SupportDefs.h"
 
 #include <random>
+#include <vector>
 
 class ExeData;
 struct character;
+struct party;
 struct enemy_type;
 struct exe_weapon;
 
@@ -85,3 +87,10 @@ strike Strike(const fighter& attacker, const fighter& defender,
 
 // Takes a strike's damage; the defender may fall
 void TakeStrike(fighter& defender, const strike& blow);
+
+// After a battle (0E76:2278, file 0x59B9C): the members keep the
+// Endurance and Strength they fought with (`fighters`, by member; an
+// unconscious one stays at 0 Endurance, standing again), and the dead
+// leave the party. Returns how many died; if none is left, the game is
+// over.
+int AfterBattle(party& members, const std::vector<fighter>& fighters);

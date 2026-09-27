@@ -10,6 +10,7 @@
 #include "SaveFile.h"
 #include "ScreenSupport.h"
 
+#include <iostream>
 #include <random>
 #include <stdexcept>
 #include <sys/stat.h>
@@ -115,7 +116,14 @@ Game::Run()
     map_position position = fPosition;
     for (;;) {
         if (cityIndex >= 0) {
-            if (visit.Run(window, cityIndex, screen) == CityVisit::QUIT)
+            const CityVisit::result result = visit.Run(window, cityIndex,
+                screen);
+            if (result == CityVisit::PARTY_LOST) {
+                std::cout << "The whole party has died: the game is over."
+                    << std::endl;
+                return;
+            }
+            if (result == CityVisit::QUIT)
                 return;
             const city& c = fData.Cities().CityAt(uint32(cityIndex));
             position = map_position{ c.x, c.y };

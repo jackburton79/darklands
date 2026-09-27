@@ -249,3 +249,34 @@ TakeStrike(fighter& defender, const strike& blow)
         defender.status = FIGHTER_DEAD;
     }
 }
+
+
+int
+AfterBattle(party& members, const std::vector<fighter>& fighters)
+{
+    int dead = 0;
+    for (size_t i = members.members.size(); i-- > 0;) {
+        if (i >= fighters.size())
+            continue;
+        character& member = members.members[i];
+        member.attributes[ATTRIBUTE_ENDURANCE]
+            = uint8(std::max(fighters[i].endurance, 0));
+        member.attributes[ATTRIBUTE_STRENGTH]
+            = uint8(std::max(fighters[i].strength, 0));
+        if (fighters[i].status != FIGHTER_DEAD)
+            continue;
+        members.members.erase(members.members.begin() + long(i));
+        if (i < members.images.size())
+            members.images.erase(members.images.begin() + long(i));
+        if (i < members.colors.size())
+            members.colors.erase(members.colors.begin() + long(i));
+        if (members.leader > int(i))
+            members.leader--;
+        else if (members.leader == int(i))
+            members.leader = 0;
+        dead++;
+    }
+    if (members.leader >= int(members.members.size()))
+        members.leader = 0;
+    return dead;
+}
