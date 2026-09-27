@@ -1,3 +1,4 @@
+#include "BattleMap.h"
 #include "Bitmap.h"
 #include "CardView.h"
 #include "CharacterFile.h"
@@ -114,6 +115,41 @@ DumpEnemies(const EnemyFile& enemies)
             << e.name << std::right << "  type " << std::setw(2) << e.type
             << " (" << enemies.TypeAt(e.type).name << ")  flags 0x"
             << std::hex << e.flags << std::dec << std::endl;
+    }
+}
+
+
+// A battlefield map as text, one character per cell (the meanings are
+// inferred, see docs/formats.md), then the cells' bytes
+static void
+DumpBattleMap(const BattleMap& map)
+{
+    for (int y = 0; y < BattleMap::kSize; y++) {
+        for (int x = 0; x < BattleMap::kSize; x++) {
+            const battle_cell& cell = map.CellAt(x, y);
+            char c = ' ';
+            if (cell.bytes[3] & 0x80)
+                c = '#';			// a building's inside
+            else if (cell.bytes[3] != 0)
+                c = '+';			// a wall
+            else if (cell.bytes[0] != 0)
+                c = 'o';			// an object
+            else if (cell.ground != 0)
+                c = '.';			// open ground
+            std::cout << c;
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl << "cells (x y: bytes 0..3, ground):" << std::endl;
+    for (int y = 0; y < BattleMap::kSize; y++) {
+        for (int x = 0; x < BattleMap::kSize; x++) {
+            const battle_cell& cell = map.CellAt(x, y);
+            char line[64];
+            snprintf(line, sizeof(line), "%2d %2d: %02x %02x %02x %02x  %02x",
+                x, y, cell.bytes[0], cell.bytes[1], cell.bytes[2],
+                cell.bytes[3], cell.ground);
+            std::cout << line << std::endl;
+        }
     }
 }
 
@@ -349,6 +385,8 @@ Usage()
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
         "  --enemies                     list DARKLAND.ENM\n"
+        "  --battlemap <name>            dump a battlefield map of IMAPS.CAT\n"
+        "                                (e.g. ICITY.000)\n"
         "  --messages [name]             list MSGFILES, or dump a card deck\n"
         "                                (e.g. PARTY02, or a path to a .MSG file)\n"
         "  --card <name> [card] [city] [picture]\n"
@@ -393,6 +431,18 @@ int main(int argc, char **argv)
         }
         if (command == "--enemies") {
             DumpEnemies(data.Enemies());
+            return 0;
+        }
+        if (command == "--battlemap") {
+            if (extra < 1) {
+                Usage();
+                return 1;
+            }
+            std::unique_ptr<Catalog> maps(data.OpenCatalog("IMAPS.CAT"));
+            std::unique_ptr<Stream> stream(maps->GetStream(argv[arg + 1]));
+            if (!stream)
+                throw std::runtime_error(std::string("no map ") + argv[arg + 1]);
+            DumpBattleMap(BattleMap(stream.get()));
             return 0;
         }
         if (command == "--locations") {

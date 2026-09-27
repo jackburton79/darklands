@@ -589,3 +589,34 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
 "a local hero", "respected", "unknown", "suspected", "wanted", "hunted":
 over 50 → 0, over 10 → 1, over −10 → 2, over −40 → 3, over −75 → 4,
 else 5. **verified** (code).
+
+## Battles
+
+Where the battle code starts; the rules are not decoded yet.
+
+- **Setup** (the overlay at file 0x16E40, the function at its offset 0):
+  it opens darkland.enm, darkland.lst and imaps.cat (DS:13A2, pushed at
+  file 0x16EEA), then switches on its first argument, 0..0x89, through
+  the jump table at file 0x16F34: the battlefield type, TAC.TXT's
+  `bfldtype` (*inferred*).
+- The debug dump of TAC.TXT: "Tac params are..." (DS:1005) is pushed at
+  file 0x12443, "Enemy Activation Record for level %d" (DS:2406) at
+  0x535F2; battlegr.img (DS:121C) is loaded at 0x12BA2.
+- **Map names** (DGROUP strings, pushed to sprintf):
+  "iwild%s.%03d" (DS:1486, file 0x28E78), with the kinds "gen", "mtn",
+  "msh", "spc", "sab", "gat", "wal" (DS:146A..1482);
+  "iminspec.%03d" (0x2CC25), "iminegen.%03d" (0x2CCC3);
+  "icity.%03d" (0x32D7C), "icity.70%d" (0x339A1), "icity.80%d"
+  (0x34016), "icity.600" (0x349B4); "ifortmon.%03d" (0x357FF);
+  "imisctom.%03d" (0x37330). **verified** (code)
+- **The wilderness** (the function at file 0x28C46): the name is
+  "iwild" + kind [DS:DF85] + the number [DF87] · 100 + [DF89] · 10 +
+  [DF8B], as the catalog's IWILDGEN.101..316 (hundreds 1..3, tens 0..1,
+  units 1..6). The three are set by nested switches (on [DF83], and on
+  DS:00E4, the month, 0..11, in the function at 0x28E9E), partly at
+  random (0E76:20F6, `random_range(low, high)` *inferred*). Not decoded
+  further.
+- Other names near them: "terrain.fil", "level%d.trn", "level%d.atv",
+  "level%d.flr", "keep", "keep1", "citynw1%1d", "cityww1%1d": the files
+  the battle writes while it runs (*inferred*: TERRAIN.FIL is in the
+  game directory).

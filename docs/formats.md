@@ -1188,7 +1188,7 @@ An ordinary catalog of 143 maps, named by setting:
 **verified** (the catalog listing).
 
 Each entry is compressed like the `.IMC` sprites (LZEXE's scheme, see
-"Battle sprites"): all 143 decompress to exactly 13308 bytes, ending on
+"Battle sprites"; `Lzexe.cpp`): all 143 decompress to exactly 13308 bytes, ending on
 the end mark at their last byte. **verified**. *Partially decoded*:
 
     0x0000  6400  40 x 40 cells of 4 bytes, row by row
@@ -1198,6 +1198,9 @@ the end mark at their last byte. **verified**. *Partially decoded*:
 
 - The first and last rows and columns of both grids are the same in
   every map: a border. **verified**
+- See `BattleMap.cpp`; `./darklands --battlemap ICITY.000` prints a map
+  as text and the bytes of its cells. How the game picks a map is in
+  [exe.md](exe.md), "Battles".
 - Printed as text, `ICITY.000` is a town: blocks of houses (cells whose
   byte 3 has bit 7 set, 0x80 / 0x81) with walls on one side (byte 3 =
   1..8), streets between them (byte 3 = 0), some street cells with a

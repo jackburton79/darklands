@@ -77,6 +77,7 @@ implemented yet. See the roadmap below.
 - [x] Parse the enemies (`DARKLAND.ENM`, `--enemies`)
 - [x] Decode the battle sprites (`.IMC`, `--extract E00C.CAT <dir>`)
       and pictures (`BATTLEGR.IMG`, `COMMONSP.IMG`)
+- [x] Read the battlefield maps (`IMAPS.CAT`, `--battlemap ICITY.000`)
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
 - [x] Party travel on the map (pathfinding, no travel time yet) and a
@@ -178,6 +179,9 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # List the enemy types (attributes, skills) and the enemies
 ./darklands --enemies
 
+# Print a battlefield map as text (e.g. ICITY.000, IWILDGEN.101)
+./darklands --battlemap ICITY.000
+
 # List the menu card files, or dump the cards of one (e.g. PARTY02)
 ./darklands --messages [name]
 
@@ -208,6 +212,8 @@ src/formats/        Readers for the game's files (no SDL)
   ImcFile.*         The battle sprites (.IMC in E00C.CAT, M00C.CAT...)
   ImgFile.*         The battle pictures (BATTLEGR.IMG, COMMONSP.IMG)
   Sprite.*          The picture format of both
+  Lzexe.*           The LZEXE compression of the sprites and battle maps
+  BattleMap.*       The battlefield maps (IMAPS.CAT)
   ListFile.*        The item, saint and formula lists (DARKLAND.LST)
   MsgFile.*         The menu cards (.MSG files in MSGFILES)
   CharacterFile.*   The new game's characters (CHARACTR.TMP)

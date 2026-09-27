@@ -29,9 +29,6 @@ public:
     // Throws std::out_of_range on invalid arguments.
     const sprite&	SpriteAt(int frame, int direction) const;
 
-    // LZEXE-style decompression, exposed for testing.
-    static std::vector<uint8> Decompress(const std::vector<uint8>& data);
-
 private:
     std::vector<sprite> fSprites;	// frame * kDirectionCount + direction
 };
