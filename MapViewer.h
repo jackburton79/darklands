@@ -95,6 +95,7 @@ private:
 
     GameData&		fData;
     GameTime*		fClock;
+    int				fTravelMinutes;	// toward the next hour (DARKLAND.EXE)
     InfoView*		fInfo;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;

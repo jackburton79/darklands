@@ -848,10 +848,10 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
   `DKSAVE1.SAV`), the reverse of the order given by wendigo. **verified**
   (plausible values in three files); month 0 = January is *inferred*
   (the saved games are in month 0 of 1401, `DEFAULT` in month 4 of
-  1400). The game shows the time as one of eight monastic hours of
-  three hours each, Matins at midnight to Compline at 9 PM, on the
-  Julian calendar without leap years, and hides the year (manual
-  pp. 20-21).
+  1400; the running game keeps the month 0-based too, see exe.md). The
+  game shows the time as one of eight monastic hours of three hours
+  each, Matins at midnight to Compline at 9 PM, on the Julian calendar
+  without leap years, and hides the year (manual pp. 20-21).
 - **Location** — **verified**: `DKSAVE1.SAV` is at location 73, Olmütz,
   tile 295,659; `DARKLAND.LOC` puts Olmütz at 296,659, the next tile.
   `DKSAVE0.SAV` is in the wilderness nearby (289,654).
@@ -1044,8 +1044,9 @@ land).
 - [ ] Information screens: the words for fame, the carrying capacity
 - [ ] Trade: which shop call is which place (two masks for some
       guilds), what the location flags mean
-- [ ] DARKLAND.EXE: the travel speeds, the divine favor rules, the
-      seed of the merchants' stock (see exe.md)
+- [x] DARKLAND.EXE: the travel speeds (see exe.md)
+- [ ] DARKLAND.EXE: the divine favor rules, the seed of the merchants'
+      stock, the item that lets the party enter water
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
 - [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...

@@ -14,10 +14,10 @@ static const char* kMonthNames[12] = {
     "August", "September", "October", "November", "December"
 };
 
-// Each starts at hour 3 * index (manual p. 21; "Latins" there is an OCR
-// error of the scan, the office is Lauds)
+// Each starts at hour 3 * index (manual p. 21), spelled as the game
+// does (DARKLAND.EXE: "Latins", "Sexts")
 static const char* kBellNames[8] = {
-    "Matins", "Lauds", "Prime", "Terce", "Sext", "Nones", "Vespers",
+    "Matins", "Latins", "Prime", "Terce", "Sexts", "Nones", "Vespers",
     "Compline"
 };
 

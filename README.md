@@ -79,7 +79,8 @@ implemented yet. See the roadmap below.
 - [x] Show a menu card with its options (`--card`)
 - [x] The flow between the city cards (inn, streets, gate) and the map
 - [x] The party: characters and saved games, the sidebar
-- [x] Game time: the clock, day and night, travel time (placeholder speeds)
+- [x] Game time: the clock, day and night, travel time (the game's own
+      terrain costs, decoded from the executable)
 - [x] Party and character information screens
 - [x] The city places: moving between them, waiting
 - [x] Trade with the arms-making guilds (swordsmith, blacksmith,

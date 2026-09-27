@@ -50,7 +50,7 @@ function that draws the merchant's scroll.
 - 0E76:1A7E `location_property(n)` of the current location, a switch
   on n: 0 is the party's reputation there (record +0x12), 1 its word
   (see below).
-- DS:907B the leader (party slot), DS:907E the current location (index
+- DS:00E0.. the date (see "Time and travel"). DS:907B the leader (party slot), DS:907E the current location (index
   into DARKLAND.LOC, −1 in the wilderness; cities are < 92), DS:9785 a
   far pointer to the current city's DARKLAND.CTY record, [DS:7E6A]:0890
   the far pointers to the 200 item definitions (DARKLAND.LST), [DS:7E20]:
@@ -105,6 +105,37 @@ All in segment 18E7 (file base 0x65C30); see `TradeView.cpp`.
   sellable item.
 - The prices on the manual's screenshot (p. 29) do not follow these
   rules: it shows a pre-release version.
+
+## Time and travel
+
+- The date: DS:00E0 hour, 00E2 day (1-based), 00E4 month (0-based),
+  00E6 year; the month lengths are the words at DS:2776 (31, 28, 31...,
+  no leap years). 1367:05C8 `AddHours(n)` (file 0x5CD88) adds hours with
+  the carries, after calling the functions that make time pass (0E76:
+  255A, and 09C0:1F95 for more than 2 hours); 1367:0680 adds days. They
+  are called about 2200 times, mostly by the card flows.
+- The hour names are "Matins", "Latins", "Prime", "Terce", "Sexts",
+  "Nones", "Vespers", "Compline" (290E:0B01...): "Latins" and "Sexts"
+  are the game's spelling, not the manual scan's.
+- **Moving on the map** (file 0x5E79E...): the party's screen position is
+  DS:2866 (x), DS:2868 (y); a move changes x by 1 pixel every frame and
+  y by 1 every other frame (DS:290E toggles).
+- **Travel time** (file 0x5EDA0, then 0x5EE68): after every move, the
+  tile under the party (its type, from the pixel: row (y + 11) / 4,
+  column (x + 16 or 24) / 16) gives a cost in minutes (the switch at
+  file 0x60568): 9 by default (plains, farmland, ford, river, bridge,
+  castle, city), ocean and major river 40, minor river 30, marsh 50,
+  geest 17 / 13, farmland 11, fields and woods 10 / 12, light woods
+  14 / 16, forest 18 / 27 / 40 / 60, rocky 20 / 30 / 45 / 67, alps
+  98 / 197, road 6. It is added to DS:8672; when that reaches 60, one
+  hour passes (`AddHours(1)`, at most one a move) and 60 is subtracted.
+  So a diagonal step to a neighbor tile (8 × 4 pixels, 8 moves) takes
+  72 minutes on plains, 48 on a road. (The switch also turns multiples
+  of 1440 into hours, which its costs never reach.)
+- **Water**: entering an ocean (1) or major river (2) tile is refused
+  (the step returns 9999) unless the previous tile was water too, or
+  0E76:32CE(0x4B) is true (the party has something: item 0x4B is
+  "Marsh Vapor"; not checked).
 
 ## Reputation
 

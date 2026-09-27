@@ -35,7 +35,7 @@ public:
     bool			IsNight() const;
 
     const char*		MonthName() const;	// "January"
-    const char*		BellName() const;	// "Matins", "Lauds"... "Compline"
+    const char*		BellName() const;	// "Matins", "Latins"... "Compline"
     // "Terce, 28 May": the game hides the year ("sometime in the 15th
     // Century", manual p. 20)
     std::string		Describe() const;

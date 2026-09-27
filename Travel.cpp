@@ -4,34 +4,79 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <functional>
 #include <queue>
 
 static const int kTypeOcean = 1;
+static const int kTypeMajorRiver = 2;
+static const int kTypeRoad = 24;
+
+
+// Minutes per pixel of movement, by tile type (DARKLAND.EXE, the
+// switch at file 0x60568); 9 for the types it does not list
+static const uint8 kMinutesPerPixel[32] = {
+    9,			// plains
+    40,			// ocean
+    40, 30,		// major, minor river
+    50, 50,		// tidal marsh, marsh
+    17, 13,		// geest
+    9, 11,		// farmland
+    10, 12,		// fields and woods
+    14, 16,		// light woods
+    18, 27, 40, 60,	// forest, denser and denser
+    20, 30, 45, 67,	// rocky, rougher and rougher
+    98, 197,	// alps
+    6,			// road
+    9, 9, 9, 9, 9, 9, 9	// ford, river, bridge, castle, city, flags
+};
+
+
+// Frames to move between two pixels: one a frame horizontally, one
+// every other frame vertically (DARKLAND.EXE)
+static int
+Frames(const GFX::point& a, const GFX::point& b)
+{
+    return std::max(std::abs(b.x - a.x), 2 * std::abs(b.y - a.y));
+}
 
 
 bool
 IsPassable(const WorldMap& map, uint16 x, uint16 y)
 {
     return x < map.Width() && y < map.Height()
-        && map.TileTypeAt(x, y) != kTypeOcean;
+        && map.TileTypeAt(x, y) != kTypeOcean
+        && map.TileTypeAt(x, y) != kTypeMajorRiver;
 }
 
 
+// A lower bound of the minutes from a tile to another: the frames of the
+// straight line at the lowest cost, the road's
 static float
-Distance(const WorldMap& map, int ax, int ay, int bx, int by)
+Estimate(const WorldMap& map, int ax, int ay, int bx, int by)
 {
-    const GFX::point a = map.TileCenter(ax, ay);
-    const GFX::point b = map.TileCenter(bx, by);
-    return std::hypot(float(a.x - b.x), float(a.y - b.y));
+    return float(Frames(map.TileCenter(ax, ay), map.TileCenter(bx, by))
+        * kMinutesPerPixel[kTypeRoad]);
+}
+
+
+// The minutes between two neighbors: half the frames on each tile
+static float
+StepMinutes(const WorldMap& map, int ax, int ay, int bx, int by)
+{
+    const int frames = Frames(map.TileCenter(ax, ay), map.TileCenter(bx, by));
+    return frames * (kMinutesPerPixel[map.TileTypeAt(ax, ay) & 31]
+        + kMinutesPerPixel[map.TileTypeAt(bx, by) & 31]) / 2.0f;
 }
 
 
 std::vector<map_position>
-FindPath(const WorldMap& map, const map_position& from, const map_position& to)
+FindPath(const WorldMap& map, const map_position& from, const map_position& to,
+    bool anyGoal)
 {
     std::vector<map_position> path;
-    if (from == to || !IsPassable(map, to.x, to.y)
+    if (from == to || to.x >= map.Width() || to.y >= map.Height()
+            || (!anyGoal && !IsPassable(map, to.x, to.y))
             || from.x >= map.Width() || from.y >= map.Height()) {
         return path;
     }
@@ -47,7 +92,7 @@ FindPath(const WorldMap& map, const map_position& from, const map_position& to)
     const int32 start = from.y * width + from.x;
     const int32 goal = to.y * width + to.x;
     cost[start] = 0;
-    open.push(entry(Distance(map, from.x, from.y, to.x, to.y), start));
+    open.push(entry(Estimate(map, from.x, from.y, to.x, to.y), start));
 
     while (!open.empty()) {
         const int32 current = open.top().second;
@@ -71,16 +116,16 @@ FindPath(const WorldMap& map, const map_position& from, const map_position& to)
         for (const auto& n : neighbors) {
             const int nx = n[0];
             const int ny = n[1];
-            if (nx < 0 || ny < 0 || nx >= width || ny >= map.Height()
-                    || !IsPassable(map, nx, ny)) {
+            if (nx < 0 || ny < 0 || nx >= width || ny >= map.Height())
                 continue;
-            }
             const int32 next = ny * width + nx;
-            const float newCost = cost[current] + Distance(map, x, y, nx, ny);
+            if (next != goal && !IsPassable(map, nx, ny))
+                continue;
+            const float newCost = cost[current] + StepMinutes(map, x, y, nx, ny);
             if (newCost < cost[next]) {
                 cost[next] = newCost;
                 previous[next] = current;
-                open.push(entry(newCost + Distance(map, nx, ny, to.x, to.y), next));
+                open.push(entry(newCost + Estimate(map, nx, ny, to.x, to.y), next));
             }
         }
     }
@@ -95,35 +140,24 @@ FindPath(const WorldMap& map, const map_position& from, const map_position& to)
 
 
 uint32
-TravelMinutes(const WorldMap& map, const map_position& from,
-    const map_position& to)
+TravelHours(const WorldMap& map, const map_position& from,
+    const map_position& to, int& accumulator)
 {
-    // minutes per tile width (16 pixels) by tile type, the rows of the
-    // icon sheets (see docs/formats.md); 0 for types the party cannot be on
-    static const uint16 kMinutesPerTile[32] = {
-        120,	// plains
-        0,		// ocean
-        240, 240,	// rivers (on the bank)
-        240, 240,	// tidal marsh, marsh
-        120, 120,	// geest
-        120, 120,	// farmland
-        150, 150,	// fields and woods
-        150, 150,	// light woods
-        180, 180, 180, 180,	// forest
-        240, 240, 240, 240,	// rocky
-        360, 360,	// alps
-        60,		// road
-        90,		// ford
-        240,	// river
-        60,		// bridge
-        60, 60,	// castle, city
-        120, 120	// flags
-    };
     const GFX::point a = map.TileCenter(from.x, from.y);
     const GFX::point b = map.TileCenter(to.x, to.y);
-    const int dx = a.x - b.x;
-    const int dy = a.y - b.y;
-    const double pixels = std::sqrt(double(dx * dx + dy * dy));
-    const uint16 rate = kMinutesPerTile[map.TileTypeAt(to.x, to.y) & 31];
-    return uint32(pixels * rate / 16 + 0.5);
+    const int dx = b.x - a.x;
+    const int dy = b.y - a.y;
+    const int frames = std::max(std::abs(dx), 2 * std::abs(dy));
+    uint32 hours = 0;
+    for (int frame = 1; frame <= frames; frame++) {
+        const GFX::point p(a.x + dx * frame / frames, a.y + dy * frame / frames);
+        uint16 x = to.x, y = to.y;
+        map.TileAtPixel(p, x, y);
+        accumulator += kMinutesPerPixel[map.TileTypeAt(x, y) & 31];
+        if (accumulator >= 60) {
+            hours++;
+            accumulator -= 60;
+        }
+    }
+    return hours;
 }

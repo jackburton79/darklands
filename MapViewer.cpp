@@ -62,6 +62,7 @@ MapViewer::MapViewer(GameData& data)
     :
     fData(data),
     fClock(NULL),
+    fTravelMinutes(0),
     fInfo(NULL),
     fBuffer(NULL),
     fOrigin(0, 0),
@@ -341,8 +342,10 @@ MapViewer::Tick()
 {
     if (fPath.empty())
         return false;
+    const uint32 hours = TravelHours(fData.Map(), fParty, fPath.front(),
+        fTravelMinutes);
     if (fClock != NULL)
-        fClock->AddMinutes(TravelMinutes(fData.Map(), fParty, fPath.front()));
+        fClock->AddHours(hours);
     fParty = fPath.front();
     fPath.erase(fPath.begin());
     _KeepPartyVisible();
@@ -423,7 +426,7 @@ MapViewer::_TravelTo(const map_position& destination, int city)
             _EnterCity(city);
         return;
     }
-    fPath = FindPath(fData.Map(), fParty, destination);
+    fPath = FindPath(fData.Map(), fParty, destination, city >= 0);
     fDestinationCity = fPath.empty() ? -1 : city;
 }
 
