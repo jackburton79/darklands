@@ -133,6 +133,11 @@ static const char* kCacheActionNames[4] = {
     "Get an item from cache", "Put an item into cache",
     "Cache another person's items", "Leave"
 };
+// and the loot's (DS:4C42...)
+static const char* kLootActionNames[4] = {
+    "Get an item from pile of loot", "Put an item into the pile of loot",
+    "Distribute to a different person", "Leave"
+};
 
 static const size_t kMaxItems		= 64;	// per character record
 
@@ -148,6 +153,7 @@ TradeView::TradeView(GameData& data)
     fLocationFlags(0),
     fKind(MERCHANT_SWORDSMITH),
     fCache(NULL),
+    fLoot(false),
     fMember(0),
     fActive(SCROLL_MERCHANT),
     fMouse(0, 0),
@@ -211,6 +217,7 @@ TradeView::SetMerchant(merchant_kind kind, uint32 seed)
 {
     fKind = kind;
     fCache = NULL;
+    fLoot = false;
     fStock.clear();
 
     // DARKLAND.EXE draws each item with random(100) against the chance
@@ -401,9 +408,28 @@ TradeView::SellingPrice(uint16 code, uint8 itemQuality) const
 
 
 void
+TradeView::SetLoot(std::vector<cache_item>* pile, const money& cash)
+{
+    SetCache(pile);
+    fLoot = true;
+    if (fParty == NULL || (cash.florins == 0 && cash.groschen == 0
+            && cash.pfennigs == 0)) {
+        return;
+    }
+    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+        + TotalPfennigs(cash));
+    char text[80];
+    snprintf(text, sizeof(text), "The party finds %dfl, %dgr, %dpf in cash.",
+        cash.florins, cash.groschen, cash.pfennigs);
+    fMessage = text;
+}
+
+
+void
 TradeView::SetCache(std::vector<cache_item>* cache)
 {
     fCache = cache;
+    fLoot = false;
     fStock.clear();
     fMember = 0;
     fActive = SCROLL_MEMBER;
@@ -705,8 +731,8 @@ TradeView::Draw()
 
     for (int i = 0; i < ACTION_COUNT; i++) {
         const int y = kActionsTop + i * kLineHeight;
-        const std::string name = fCache != NULL ? kCacheActionNames[i]
-            : kActionNames[i];
+        const std::string name = fLoot ? kLootActionNames[i]
+            : fCache != NULL ? kCacheActionNames[i] : kActionNames[i];
         if (_Available(i)) {
             _DrawText(name.substr(0, 1), kActionsLeft, y, kCrimsonColor);
             _DrawText(name.substr(1), kActionsLeft
@@ -785,7 +811,8 @@ TradeView::_DrawScroll(int which)
         ? std::string("The ") + kMerchantNames[fKind] + " offers..."
         : member.shortName + " has...";
     if (fCache != NULL) {
-        label = which == SCROLL_MERCHANT ? std::string("The cache contains...")
+        label = which == SCROLL_MERCHANT ? std::string(fLoot
+            ? "The loot contains..." : "The cache contains...")
             : member.shortName + " currently has...";
     }
     const int width = fFont->StringWidth(Font::ToGameCharset(label));

@@ -2302,6 +2302,14 @@ CityVisit::_RunBattle(GameWindow& window)
         fPartyLost = true;
         return;
     }
+    // the winners loot the bodies ("Loot Bodies" in the battle's menu)
+    if (outcome == BATTLE_WON) {
+        fLoot = view.Loot();
+        fTrade.SetPlace(fCity, _Reputation());
+        fTrade.SetLoot(&fLoot, money{ 0, 0, 0 });
+        fTrade.Run(window);
+        fLoot.clear();
+    }
     ResolveBattle(outcome);
 }
 

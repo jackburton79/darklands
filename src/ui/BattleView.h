@@ -28,6 +28,7 @@ class GameData;
 class GameWindow;
 class ImcFile;
 class ImgFile;
+struct cache_item;
 struct character;
 struct battle_cell;
 
@@ -93,6 +94,10 @@ public:
 
     // BATTLE_GOING_ON while both sides have someone standing
     battle_outcome	Outcome() const;
+    // What the fallen enemies leave (TradeView::SetLoot()): their weapon,
+    // armor and shield, at the quality of their type. Provisional: the
+    // game's rule (and its cash) is not decoded yet.
+    std::vector<cache_item> Loot() const;
 
     // Runs until the battle ends (then a message waits for a key or a
     // click) or Esc; the arrow keys scroll, 1..5 select a member, a click
@@ -123,6 +128,7 @@ private:
         int			direction;
         int			colors;		// the first of its 8 colors, or -1
         int			member;		// in the party, or -1 (an enemy)
+        int			enemyType;	// DARKLAND.ENM, or -1 (the party)
         std::vector<battle_position> path;	// still to walk
         std::shared_ptr<ImcFile> death;		// falling ("DY")
         fighter		stats;

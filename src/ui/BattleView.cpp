@@ -9,9 +9,11 @@
 #include "Character.h"
 #include "ImcFile.h"
 #include "ImgFile.h"
+#include "ListFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
 #include "TextSupport.h"
+#include "TradeView.h"
 
 #include <SDL.h>
 
@@ -113,6 +115,7 @@ BattleView::_MakeFigure(const std::string& image, int weapon, int x, int y,
     f.direction = direction;
     f.colors = -1;
     f.member = -1;
+    f.enemyType = -1;
     f.stats = fighter();
     f.target = -1;
     f.strikeFrame = 0;
@@ -154,6 +157,7 @@ BattleView::AddEnemy(uint32 index, int x, int y, int direction)
 {
     const enemy_type& type = fData.Enemies().TypeAt(index);
     figure f = _MakeFigure(type.image, type.weapon, x, y, direction);
+    f.enemyType = int(index);
     f.stats = FighterFromEnemy(type, *fExe);
     // the enemies of different kinds may share palette indices: the last
     // one's colors win
@@ -474,6 +478,61 @@ BattleView::_LoadSprites(const std::string& image, const char* set,
         return std::shared_ptr<ImcFile>(new ImcFile(stream.get()));
     }
     throw std::runtime_error("no battle sprites " + prefix);
+}
+
+
+// The item code of the first item of that type in DARKLAND.LST, or -1
+static int
+ItemOfType(const ListFile& lists, int type)
+{
+    const std::vector<item_definition>& items = lists.Items();
+    for (size_t code = 0; code < items.size(); code++) {
+        if (!items[code].name.empty() && items[code].type == type)
+            return int(code);
+    }
+    return -1;
+}
+
+
+std::vector<cache_item>
+BattleView::Loot() const
+{
+    // real items only: not the monsters' natural weapons (35..) and hides
+    static const int kFirstNaturalWeapon = 35;
+    static const int kFirstArmor = 67;
+    static const int kLastArmor = 84;
+    static const int kFirstShield = 95;
+    static const int kLastShield = 97;
+
+    std::vector<cache_item> pile;
+    const ListFile& lists = fData.Lists();
+    const auto add = [&](int type, int quality) {
+        const int code = ItemOfType(lists, type);
+        if (code < 0)
+            return;
+        for (cache_item& stored : pile) {
+            if (stored.code == code && stored.quality == quality
+                    && stored.count < 255) {
+                stored.count++;
+                return;
+            }
+        }
+        pile.push_back(cache_item{ uint16(code), uint8(quality), 1 });
+    };
+    for (const figure& f : fFigures) {
+        if (f.enemyType < 0 || f.stats.status == FIGHTER_ACTIVE)
+            continue;
+        const enemy_type& type = fData.Enemies().TypeAt(uint32(f.enemyType));
+        if (type.weapon < kFirstNaturalWeapon)
+            add(type.weapon, type.armorQuality);
+        for (int l = 0; l < 2; l++) {
+            if (type.armor[l] >= kFirstArmor && type.armor[l] <= kLastArmor)
+                add(type.armor[l], type.armorQuality);
+        }
+        if (type.shield >= kFirstShield && type.shield <= kLastShield)
+            add(type.shield, type.shieldQuality);
+    }
+    return pile;
 }
 
 

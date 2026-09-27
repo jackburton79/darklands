@@ -28,6 +28,7 @@ class GameWindow;
 class InfoView;
 class PartySidebar;
 struct item;
+struct money;
 struct party;
 
 enum merchant_kind {
@@ -79,6 +80,10 @@ public:
     // (DARKLAND.EXE, file 0x6DFF6). SetMerchant() ends it.
     void			SetCache(std::vector<cache_item>* cache);
     bool			IsCache() const			{ return fCache != NULL; }
+    // Or the loot of a battle (DARKLAND.EXE's overlay at file 0x8A4E0): a
+    // pile to take from and leave in, like the cache; the cash goes to
+    // the purse, and the screen says so.
+    void			SetLoot(std::vector<cache_item>* pile, const money& cash);
     // Whether the city has that merchant (the quality of its guild shop
     // is 0 if not; the market's merchants are in every city).
     static bool		CityHasMerchant(GameData& data, int cityIndex,
@@ -159,6 +164,7 @@ private:
     merchant_kind	fKind;
     std::vector<uint16> fStock;		// item codes, most valuable first
     std::vector<cache_item>* fCache;	// NULL: a merchant
+    bool			fLoot;			// fCache is a battle's loot
     int				fMember;		// whose items are on the lower scroll
     int				fActive;		// the active scroll
     int				fSelected[2];	// highlighted item of each scroll

@@ -806,6 +806,23 @@ Where the battle code starts; the rules are not decoded yet.
   of the battle; with nobody left, 09C0:18F1(0x12) and the game ends
   (not decoded further). It returns the battle's result ([DS:A893]).
   **verified** (code)
+- **Loot**: the battle's orders menu has "Loot Bodies" (DS:718, with
+  "Open Chest", "Pick Lock", "Dissolve Lock", "Surrender (All)", "Exit
+  Battlefield"). The loot screen is an overlay of its own (segment 1462,
+  its relocations from file 0x8A320, code from 0x8A4E0): 1462:0000
+  takes the pile (a far pointer to the items and their count) and a
+  far pointer to the cash (florins, groschen, pfennigs); it treats
+  arrows, quarrels, balls (types 0x40..0x42) and thrown weapons
+  (0x17..0x1A) apart; 1462:01C8 is the exchange screen, like the inn's
+  cache: "Get an item from pile of loot", "Put an item into the pile of
+  loot", "Distribute to a different person", "Leave" (DS:4C42..4CAE),
+  "The loot contains...", "%s currently has...", and "The party finds
+  %dfl, %dgr, %dpf in cash." **verified** (code). What the pile holds
+  (the fallen foes' items? TAC.TXT's F, G, Pf of the activation spots
+  for the cash) comes from the battle code that calls it, not found:
+  no RTLink entry leads to 1462:0000. Reproduced (TradeView::SetLoot())
+  with a provisional pile: the fallen enemies' weapon, armor and shield
+  (real items only), at their type's qualities, and no cash.
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",

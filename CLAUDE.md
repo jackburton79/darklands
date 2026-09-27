@@ -111,7 +111,8 @@ include path: include headers by name (`#include "CityFile.h"`).
 - `ResidenceView`: living at the inn (CAMPCITY.PIC), the members'
   activities and days; `CityVisit` opens it like the trade screen.
 - `TradeView`: the item exchange scrolls (BUYSELL.PIC); `CityVisit`
-  opens it for `ACTION_TRADE` options, from `Run()` (`PendingTrade()`
+  opens it for `ACTION_TRADE` options (and for a battle's loot,
+  `SetLoot()`), from `Run()` (`PendingTrade()`
   in step-by-step tests). Stock and prices follow DARKLAND.EXE. The
   church's options (`ACTION_MASS`, `ACTION_CONFESSION`,
   `ACTION_DONATION`) change the party and the clock in `CityVisit`, as

@@ -289,5 +289,6 @@ private:
     int				fWatchReturn;	// where paying the fine leads
     bool			fPendingBattle;
     bool			fPartyLost;
+    std::vector<cache_item> fLoot;
     std::unique_ptr<ExeData> fNames;
 };
