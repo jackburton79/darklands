@@ -145,6 +145,39 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   hour), unless a quest is pending. The cards 7..10 (the merchants'
   descriptions) are not shown by this code.
 
+## The inn
+
+$URBAN00.MSG by day (file 0xA6B5E, the option switch at file 0xA6DB6,
+segment base 0xA6B50), $URBAN01.MSG at night (file 0xA7545). **verified**
+(code); see `CityVisit.cpp`.
+
+- **The card**: the options are enabled (1), hidden (0) or disabled (2)
+  by words at DS:EE76... A reputation of −40 or less (wanted, hunted)
+  shows card 3 ("we have no room") with the meal, the room and the
+  storage off. "Recover items" needs location property 0x27 (the
+  location record's word +0x18 is not −1, i.e. something is stored).
+  The meal is disabled when the purse is under its price, $Money1.
+- **The price**, 1462:1D2C (reputation, city size), in pfennigs: p = size
+  + 1; p · 4 / 3 at reputation −10 or less, p / 2 at 50 or more, p · 7 /
+  10 at 10 or more; at least 1; times the number of party members
+  (1462:1DE6); · 8 / 3 if the location's byte +0x14 is 2, · 5 / 3 if it
+  is 8 (always 0 in DARKLAND.LOC; not reproduced); clamped to 1..1000.
+- **A meal and sleep** (file 0xA6F70, and 0xA790C at night): card 2;
+  every member's endurance (attribute 0) is set to its maximum
+  (0E76:0B64 reads the maximum, 0E76:0988 sets an attribute) and
+  strength gains 1 if under its maximum; the price is paid (1367:023E);
+  nine hours pass.
+- **The stables** (file 0xA7120): by day card 1 if every member carries
+  an item with flag 0x2000 (a mount, 0E76:1326(5), counted by 0E76:0DD8),
+  else card 7 ("whether any of your mounts are for sale"); one hour; then
+  the trade screen (−1, "Stablemaster", 0x2000). At night (file 0xA7AAE)
+  only $URBAN01 card 1, no time.
+- **News and rumors** (file 0xA6E40): every member gains an eighth of its
+  maximum endurance; a wanted party is found by the guards (card 4, a
+  fight) if random(100) is over −10 − reputation; else two hours pass and
+  the rumors are shown. Not reproduced (no rumors yet), nor residence,
+  storage and the party's composition.
+
 ## Time and travel
 
 - The date: DS:00E0 hour, 00E2 day (1-based), 00E4 month (0-based),

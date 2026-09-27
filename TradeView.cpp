@@ -47,14 +47,15 @@ static const uint8 kHighlightColor	= 140;
 
 static const char* kMerchantNames[MERCHANT_COUNT] = {
     "Swordsmith", "Blacksmith", "Armorer", "Bowyer",
-    "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop"
+    "Goods Merchant", "Foreign Trader", "herbalist", "Pawnshop",
+    "Stablemaster"
 };
 
 // DARKLAND.EXE, see docs/exe.md. The shop type (its quality in the
 // city record; kAnyShop: quality 25, kPawnshop: 10) and the item
 // categories it deals in, as the guild shops (the same mask by day and at
-// night) and the market (1893:06AF, 0B51, 1039, 13FA) open the trade
-// screen
+// night), the market (1893:06AF, 0B51, 1039, 13FA) and the inn's
+// stables (file 0xA71B4) open the trade screen
 static const int kAnyShop	= -1;
 static const int kPawnshop	= -2;
 
@@ -69,7 +70,8 @@ static const struct {
     { SHOP_GOODS_MERCHANT, 0x0002C100 },
     { kAnyShop, 0x003F843F },
     { kAnyShop, 0x00000400 },
-    { kPawnshop, 0x2C3EC3FF }
+    { kPawnshop, 0x2C3EC3FF },
+    { kAnyShop, ITEM_HORSE }
 };
 
 

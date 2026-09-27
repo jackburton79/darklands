@@ -38,6 +38,7 @@ enum merchant_kind {
     MERCHANT_FOREIGN,		// the foreign traders,
     MERCHANT_HERBALIST,		// the pharmacists,
     MERCHANT_PAWNSHOP,		// the Leihhaus
+    MERCHANT_STABLES,		// the inn's stablemaster: horses and mules
     MERCHANT_COUNT
 };
 

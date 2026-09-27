@@ -45,7 +45,8 @@ The goal is twofold:
   market's merchants buy and sell
   with the game's own rules for stock and prices, decoded from the
   executable; in a city church the party can hear Mass, confess and
-  donate, gaining divine favor by the game's own rules; what happens in
+  donate, gaining divine favor by the game's own rules; at the inn it
+  can sleep (for the game's price) and buy horses; what happens in
   the other places is not implemented yet.
   Time
   passes (traveling, sleeping at the inn) and the city shows its night
@@ -91,6 +92,7 @@ implemented yet. See the roadmap below.
 - [x] The city church: Mass, confession, donations (divine favor)
 - [x] Trade at the market (everyday goods, foreign traders,
       pharmacists, the Leihhaus)
+- [x] The inn: the price of a meal and a night, sleeping, the stables
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback

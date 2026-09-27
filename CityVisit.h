@@ -37,7 +37,7 @@ public:
         SCREEN_MAIN_STREET,		// $MAINS01.MSG, $MAINS02.MSG
         SCREEN_SIDE_STREET,		// $SIDES00.MSG, $SIDES01.MSG
         SCREEN_GATE,			// leaving through the gate: $SELEC00.MSG
-        SCREEN_SLEEP,			// a meal and eight hours of sleep at the inn
+        SCREEN_SLEEP,			// a meal and a night's sleep at the inn
         SCREEN_SQUARE,			// $CITYS00.MSG, $CITYS01.MSG
         SCREEN_FORTRESS,		// $CITYF00.MSG, $CITYF01.MSG
         SCREEN_MARKET,			// $MARKE00.MSG, $MARKE01.MSG
@@ -65,6 +65,9 @@ public:
         SCREEN_SMALL_DONATION,
         SCREEN_DONATION,
         SCREEN_LARGE_DONATION,
+        SCREEN_UNWELCOME,		// the inn, for a wanted party: $URBAN00/01
+        SCREEN_STABLES,			// cards 3, 1 and 7
+        SCREEN_STABLES_SALE,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -121,6 +124,11 @@ private:
     int				_Mass();
     int				_Confession();
     int				_Donation();
+    // The inn (DARKLAND.EXE, file 0xA6B5E): the price of a meal and a
+    // night, sleeping, the stables
+    uint32			_InnPrice() const;
+    int				_Sleep();
+    int				_Stables();
     int				_Reputation() const;
     std::vector<int> _HiddenOptions(int screen) const;
 

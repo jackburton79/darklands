@@ -6,6 +6,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
+#include "ListFile.h"
 #include "ScreenSupport.h"
 
 #include <stdexcept>
@@ -20,7 +21,9 @@ enum option_action {
     ACTION_TRADE,				// the trade screen, with merchant `target`
     ACTION_MASS,				// the church's options
     ACTION_CONFESSION,
-    ACTION_DONATION
+    ACTION_DONATION,
+    ACTION_SLEEP,				// the inn's options
+    ACTION_STABLES
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -35,6 +38,8 @@ static const int kNeedsDonation		= -2;
 static const int kNeedsBadReputation = -3;
 // or a flag of the city record: the market's Leihhaus (1893:00FD)
 static const int kNeedsPawnshop		= -4;
+// or the price of a night at the inn
+static const int kNeedsInnPrice		= -5;
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -42,9 +47,12 @@ static const int kUntilMorning		= -2;	// "camp here until morning"
 
 struct option_rule {
     int action;
-    int target;					// screen, for ACTION_GO
+    int target;					// screen, for ACTION_GO; merchant, for
+                                // ACTION_TRADE
     int needs;					// kAlways, a city_place or kNeedsHarbor
     int minutes;				// game time the option takes
+    int then;					// ACTION_TRADE: the screen after the
+                                // trade, 0: the same
 };
 
 static const int kMaxOptions = 12;
@@ -64,6 +72,8 @@ struct screen_rules {
 #define TODO_IF(needs)		{ ACTION_NOT_IMPLEMENTED, 0, needs, 0 }
 #define HIDE				{ ACTION_HIDE, 0, kAlways, 0 }
 #define TRADE(merchant)		{ ACTION_TRADE, merchant, kAlways, 0 }
+#define TRADE_THEN(merchant, minutes, screen) \
+    { ACTION_TRADE, merchant, kAlways, minutes, CityVisit::screen }
 #define DO(action)			{ action, 0, kAlways, 0 }
 #define DO_IF(action, needs) { action, 0, needs, 0 }
 
@@ -105,10 +115,15 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         LEAVE								// turn away
     } },
     // "Here you can enjoy the good food... of the $Inn common-room."
+    // (DARKLAND.EXE, file 0xA6B5E; a wanted party gets SCREEN_UNWELCOME)
     { "URBAN00", 0, NULL, {
         TODO,								// local news and rumors
-        GO(SCREEN_SLEEP),					// a meal and eight hours sleep
-        TODO, TODO, TODO, TODO, TODO,		// residence, stables, storage...
+        DO_IF(ACTION_SLEEP, kNeedsInnPrice),	// a meal and sleep for $Money1
+        TODO,								// take up residence
+        DO(ACTION_STABLES),
+        TODO,								// store items
+        HIDE,								// recover them: none stored
+        TODO,								// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -145,10 +160,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_MAIN_STREET)				// not leave just yet
     } },
     // "Storing your gear, you eat a hearty meal, then take eight hours
-    // of well-deserved sleep." (no options: a click goes on)
-    { "URBAN00", 2, NULL, {
-        WAIT(SCREEN_INN, 8 * 60)
-    } },
+    // of well-deserved sleep." (the game lets nine hours pass)
+    { "URBAN00", 2, NULL, { WAIT(SCREEN_INN, 9 * 60) } },
     // "The $citySquare, the main city square of $PlaceName..."
     { "CITYS00", 0, "XTOWN.PIC", {
         TODO,								// notices and gossip
@@ -322,6 +335,22 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYC00", 5, NULL, { GO(SCREEN_CHURCH) } },
     { "CITYC00", 6, NULL, { GO(SCREEN_CHURCH) } },
     { "CITYC00", 7, NULL, { GO(SCREEN_CHURCH) } },
+    // "...the innkeeper carefully bows. 'Sirs, most regrettably, I fear
+    // that we have no room.'" The game offers neither the meal nor the
+    // room, nor the storage.
+    { "URBAN00", 3, NULL, {
+        TODO,								// talk, daring the guards
+        HIDE, HIDE,							// eat and rest, a room
+        DO(ACTION_STABLES),
+        HIDE, HIDE,							// store, recover items
+        TODO,								// the party's composition
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // The stablemaster's horses and mules: an hour, then the trade
+    { "URBAN00", 1, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
+    // the same, "whether any of your mounts are for sale"
+    { "URBAN00", 7, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -333,7 +362,18 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
 static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },					// start
     { NULL, 0, NULL, {} },					// outside
-    { NULL, 0, NULL, {} },					// inn
+    // "Mellow lanterns and a warm fire make the $Inn..." (file 0xA7545)
+    { "URBAN01", 0, NULL, {
+        TODO,								// local news and rumors
+        DO_IF(ACTION_SLEEP, kNeedsInnPrice),
+        TODO,								// take up residence
+        DO(ACTION_STABLES),
+        TODO,								// store items
+        HIDE,								// recover them
+        TODO,								// the party's composition
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
     // "Darkness covers the main street of $PlaceName..." (same options)
     { "MAINS02", 0, "XNMAIN.PIC", {
         GO_IF(SCREEN_SQUARE, CITY_SQUARE),
@@ -371,7 +411,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         TODO,								// see how well the walls are guarded
         GO(SCREEN_MAIN_STREET)				// not leave the city just yet
     } },
-    { NULL, 0, NULL, {} },					// sleep
+    { "URBAN01", 2, NULL, { WAIT(SCREEN_INN, 9 * 60) } },	// sleep
     // "Amid the dark shadows of the city square..."
     { "CITYS01", 0, NULL, {
         TODO,								// read the notices
@@ -497,6 +537,18 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { "URBAN01", 3, NULL, {					// "no rooms available"
+        TODO,
+        HIDE, HIDE,
+        DO(ACTION_STABLES),
+        HIDE, HIDE,
+        TODO,
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // "The stableboy assures you..." (no trade at night)
+    { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
+    { NULL, 0, NULL, {} },					// stables, sale: not at night
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -508,6 +560,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef TODO_IF
 #undef HIDE
 #undef TRADE
+#undef TRADE_THEN
 #undef DO
 #undef DO_IF
 #undef SHOP_OPTIONS
@@ -674,7 +727,17 @@ CityVisit::Choose(int option)
         case ACTION_LEAVE:
             return false;
         case ACTION_TRADE:
+            if (fClock != NULL)
+                fClock->AddMinutes(MinutesFor(rule, *fClock));
             fPendingTrade = rule.target;
+            if (rule.then != 0)
+                fScreen = rule.then;	// shown after the trade
+            return true;
+        case ACTION_SLEEP:
+            _Show(_Sleep());
+            return true;
+        case ACTION_STABLES:
+            _Show(_Stables());
             return true;
         case ACTION_MASS:
             _Show(_Mass());
@@ -764,7 +827,14 @@ CityVisit::_Show(int screen, bool withScene)
         fVariables["CurrentBell"] = fClock->BellName();
         fVariables["MonthName"] = fClock->MonthName();
     }
-    if (fParty != NULL)		// what the church asks for a donation
+    // a wanted party is not welcome at the inn (DARKLAND.EXE: a
+    // reputation of -40 or less)
+    if (screen == SCREEN_INN && _Reputation() <= -40)
+        screen = SCREEN_UNWELCOME;
+    fScreen = screen;
+    if (screen == SCREEN_INN)
+        fVariables["Money1"] = MoneyText(_InnPrice());
+    else if (fParty != NULL)	// what the church asks for a donation
         fVariables["Money1"] = MoneyText(TotalPfennigs(fParty->cash) / 10);
     const screen_rules& rules = RulesFor(screen, fNight);
     if (rules.deck == NULL) {
@@ -791,6 +861,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
         else if (rule.needs == kNeedsBadReputation)
             hide = _Reputation() > -10;
+        else if (rule.needs == kNeedsInnPrice)
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < _InnPrice();
         else if (rule.needs == kNeedsPawnshop)
             hide = (c.flags & CITY_HAS_PAWNSHOP) == 0;
         else if (rule.needs >= kNeedsShop)
@@ -907,4 +979,72 @@ CityVisit::_Donation()
     if (amount < 120)
         return SCREEN_SMALL_DONATION;
     return amount < 600 ? SCREEN_DONATION : SCREEN_LARGE_DONATION;
+}
+
+
+// The price of a meal and a night for the party (DARKLAND.EXE,
+// 1462:1D2C), in pfennigs: the city size + 1, a third more for a
+// suspect party (reputation -10 or less), 30% less for a respected one
+// (10 or more), half for a local hero (50 or more); times the party's
+// size. (The game raises it by 8/3 or 5/3 with some location states,
+// which are not kept here.)
+uint32
+CityVisit::_InnPrice() const
+{
+    const int reputation = _Reputation();
+    int price = fData.Cities().CityAt(uint32(fCity)).size + 1;
+    if (reputation <= -10)
+        price = price * 4 / 3;
+    else if (reputation >= 50)
+        price = price / 2;
+    else if (reputation >= 10)
+        price = price * 7 / 10;
+    price = std::max(price, 1);
+    if (fParty != NULL)
+        price *= int(fParty->members.size());
+    return uint32(std::max(1, std::min(price, 1000)));
+}
+
+
+// A meal and a night (file 0xA6F70): every member gets back all the
+// endurance it lacks, and a point of strength; the time passes when the
+// card is left
+int
+CityVisit::_Sleep()
+{
+    if (fParty == NULL)
+        return SCREEN_SLEEP;
+    const uint32 price = _InnPrice();
+    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - price);
+    for (character& member : fParty->members) {
+        member.attributes[ATTRIBUTE_ENDURANCE]
+            = member.maxAttributes[ATTRIBUTE_ENDURANCE];
+        if (member.attributes[ATTRIBUTE_STRENGTH]
+                < member.maxAttributes[ATTRIBUTE_STRENGTH])
+            AddToAttribute(member, ATTRIBUTE_STRENGTH, 1);
+    }
+    return SCREEN_SLEEP;
+}
+
+
+// The stables (file 0xA7120): by day the stablemaster shows his horses
+// and mules, asking about the party's mounts unless every member has one
+// (0E76:1326); at night the stableboy only says to come back
+int
+CityVisit::_Stables()
+{
+    if (fNight || fParty == NULL)
+        return SCREEN_STABLES;
+    const std::vector<item_definition>& items = fData.Lists().Items();
+    for (const character& member : fParty->members) {
+        bool mounted = false;
+        for (const item& carried : member.items) {
+            if (carried.code < items.size()
+                    && (items[carried.code].flags & ITEM_HORSE) != 0)
+                mounted = true;
+        }
+        if (!mounted)
+            return SCREEN_STABLES_SALE;
+    }
+    return SCREEN_STABLES;
 }
