@@ -822,6 +822,13 @@ layout is wendigo's; checked on the four characters:
 - No money: the characters' funds are pooled when the adventure begins
   (manual p. 15). Where they come from is unknown.
 
+## The inns' caches (`CACHE.TMP`)
+
+The items left with innkeepers (see exe.md, "The inn's cache"): a word
+per cache, the offset of its data; there, a count byte and 4-byte
+entries (item code word, quality, count). *inferred* from the code;
+the game's file (198 bytes) has only empty caches.
+
 ## Saved games (`SAVES/DKSAVEn.SAV`, `SAVES/DEFAULT`)
 
 The layout is wendigo's; only the fields the game uses so far, checked

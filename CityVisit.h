@@ -77,6 +77,8 @@ public:
         SCREEN_UNWELCOME,		// the inn, for a wanted party: $URBAN00/01
         SCREEN_STABLES,			// cards 3, 1 and 7
         SCREEN_STABLES_SALE,
+        SCREEN_STORE,			// items left with the innkeeper: cards 5
+        SCREEN_RECOVER,			// and 6
         SCREEN_FUGGER,			// the market's banks: $FUGGE00.MSG,
         SCREEN_MEDICI,			// $MEDIC00.MSG,
         SCREEN_HANSE,			// and the League: $HANSE00.MSG
@@ -145,6 +147,10 @@ public:
     // After Choose(): whether the party takes up residence at the inn
     // (Run() then shows ResidenceView).
     bool			PendingResidence() const	{ return fPendingResidence; }
+    // After Choose(): whether the party opens the inn's cache (Run() then
+    // shows it on the trade screen), and the items left, by city.
+    bool			PendingCache() const		{ return fPendingCache; }
+    std::map<int, std::vector<cache_item> >& Caches()	{ return fCaches; }
     ResidenceView&	Residence()				{ return fResidence; }
     // The inn's price of a meal and a night for the party, in pfennigs
     uint32			InnPrice() const;
@@ -222,6 +228,10 @@ private:
     std::map<int, city_tutor> fTutors;
     ResidenceView	fResidence;
     bool			fPendingResidence;
+    bool			fPendingCache;
+    // the items left at the inns; the game keeps them in CACHE.TMP, one
+    // cache per location (not read here)
+    std::map<int, std::vector<cache_item> > fCaches;
     bool			fTreatmentOffered;
     std::unique_ptr<ExeData> fNames;
 };

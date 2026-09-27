@@ -45,6 +45,14 @@ enum merchant_kind {
     MERCHANT_COUNT
 };
 
+// An item left with an innkeeper: one entry per item and quality, with
+// a count (DARKLAND.EXE, 4 bytes in CACHE.TMP: code, quality, count)
+struct cache_item {
+    uint16 code;
+    uint8 quality;
+    uint8 count;
+};
+
 class TradeView {
 public:
     enum scroll { SCROLL_MERCHANT = 0, SCROLL_MEMBER };
@@ -61,6 +69,11 @@ public:
     // Starts a session with a merchant: its stock (drawn with `seed`),
     // the leader bargaining for the first member.
     void			SetMerchant(merchant_kind kind, uint32 seed = 0);
+    // Or the items left at an inn (not owned): the upper scroll shows
+    // them, Purchase() takes one, Sell() leaves one, without money
+    // (DARKLAND.EXE, file 0x6DFF6). SetMerchant() ends it.
+    void			SetCache(std::vector<cache_item>* cache);
+    bool			IsCache() const			{ return fCache != NULL; }
     // Whether the city has that merchant (the quality of its guild shop
     // is 0 if not; the market's merchants are in every city).
     static bool		CityHasMerchant(GameData& data, int cityIndex,
@@ -115,6 +128,10 @@ private:
         ACTION_LEAVE, ACTION_COUNT };
 
     bool			_Available(int which) const;
+    int				_CountUpper() const;
+    void			_RemoveOne(int index);
+    bool			_TakeFromCache();
+    bool			_LeaveInCache();
     int				_LeaderCharisma() const;
     int				_ActionAt(const GFX::point& point) const;
     std::vector<item>& _MemberItems();
@@ -135,6 +152,7 @@ private:
     uint8			fLocationFlags;
     merchant_kind	fKind;
     std::vector<uint16> fStock;		// item codes, most valuable first
+    std::vector<cache_item>* fCache;	// NULL: a merchant
     int				fMember;		// whose items are on the lower scroll
     int				fActive;		// the active scroll
     int				fSelected[2];	// highlighted item of each scroll

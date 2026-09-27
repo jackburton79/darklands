@@ -258,6 +258,30 @@ the options' switch at file 0xA3128). **verified** (code); see
   other departures (0x1A) lead to the crafts.
 - Not reproduced: the lessons.
 
+## The inn's cache
+
+"Store some items with the innkeeper" and "recover items stored here"
+(file 0xA720C, 0xA72B8) show $URBAN00/01 card 5 or 6, open the same
+screen (0E76:225C → 0x9C0:1ED7; file 0x6DAC0...: BUYSELL.PIC), then
+enable "recover" (location property 0x27: the location record's word
++0x18 is not −1, the location's cache) and let an hour pass.
+**verified** (code); see `TradeView.cpp` (cache mode).
+
+- **The screen**: "Get an item from cache", "Put an item into cache",
+  "Cache another person's items", "Leave"; the scrolls "The cache
+  contains..." and "%s currently has...", rows "%Fs  (%3d) %2d-Qual".
+- **The cache** (DS 2E38:37F4, count DS:89F6): entries of 4 bytes,
+  item code, quality, count. Putting (file 0x6E086, 0x6E682) moves one
+  piece: an entry with the same code and quality counts one more, else a
+  new one is added; getting (file 0x6E1D6) gives the member one piece
+  (0x9C0:1F6D, with the definition's type and weight) and counts one
+  less, the entry going at 0 (file 0x6E6FA).
+- **CACHE.TMP** (file 0x6E900): a word per cache, the offset of its data
+  (the cache number's word at 2 · number); there, a count byte and the
+  4-byte entries. The game's file is 198 bytes, all caches empty.
+- Not reproduced: CACHE.TMP (the caches are kept for the session), the
+  deterioration card 6 speaks of (not found in this code).
+
 ## The residence
 
 "Take up residence to study, work, pray, experiment" at the inn (file

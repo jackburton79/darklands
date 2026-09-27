@@ -121,9 +121,14 @@ Clamp(int64 value, int64 low, int64 high)
 }
 
 
-// The actions and their letters (DARKLAND.EXE: " P|urchase an item"...)
+// The actions and their letters (DARKLAND.EXE: " P|urchase an item"...),
+// and the cache's (DS:37F6...)
 static const char* kActionNames[4] = {
     "Purchase an item", "Sell an item", "Barter for another person", "Leave"
+};
+static const char* kCacheActionNames[4] = {
+    "Get an item from cache", "Put an item into cache",
+    "Cache another person's items", "Leave"
 };
 
 static const size_t kMaxItems		= 64;	// per character record
@@ -138,6 +143,7 @@ TradeView::TradeView(GameData& data)
     fReputation(0),
     fLocationFlags(0),
     fKind(MERCHANT_SWORDSMITH),
+    fCache(NULL),
     fMember(0),
     fActive(SCROLL_MERCHANT),
     fMouse(0, 0),
@@ -200,6 +206,7 @@ void
 TradeView::SetMerchant(merchant_kind kind, uint32 seed)
 {
     fKind = kind;
+    fCache = NULL;
     fStock.clear();
 
     // DARKLAND.EXE draws each item with random(100) against the chance
@@ -383,10 +390,25 @@ TradeView::SellingPrice(uint16 code, uint8 itemQuality) const
 }
 
 
+void
+TradeView::SetCache(std::vector<cache_item>* cache)
+{
+    fCache = cache;
+    fStock.clear();
+    fMember = 0;
+    fActive = SCROLL_MEMBER;
+    fSelected[0] = fSelected[1] = 0;
+    fTop[0] = fTop[1] = 0;
+    fMessage.clear();
+}
+
+
 bool
 TradeView::Purchase()
 {
     fMessage.clear();
+    if (fCache != NULL)
+        return _TakeFromCache();
     if (!_Available(ACTION_PURCHASE))
         return false;
     const uint16 code = fStock[fSelected[SCROLL_MERCHANT]];
@@ -421,6 +443,8 @@ bool
 TradeView::Sell()
 {
     fMessage.clear();
+    if (fCache != NULL)
+        return _LeaveInCache();
     if (!_Available(ACTION_SELL))
         return false;
     std::vector<item>& items = _MemberItems();
@@ -431,6 +455,17 @@ TradeView::Sell()
             + " does not buy that";
         return false;
     }
+    _RemoveOne(index);
+    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) + price);
+    return true;
+}
+
+
+// One of the member's items is gone (sold or left)
+void
+TradeView::_RemoveOne(int index)
+{
+    std::vector<item>& items = _MemberItems();
     const uint8 type = uint8(items[index].type);
     if (items[index].quantity > 1)
         items[index].quantity--;
@@ -450,8 +485,76 @@ TradeView::Sell()
         if (!left)
             slot = kNoEquipment;
     }
-    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) + price);
+}
+
+
+// Getting one of the cache's items (file 0x6E1D6): it joins the
+// member's items of the same code and quality, or makes a new one (the
+// type and weight of its definition)
+bool
+TradeView::_TakeFromCache()
+{
+    if (!_Available(ACTION_PURCHASE))
+        return false;
+    const int index = fSelected[SCROLL_MERCHANT];
+    cache_item& stored = (*fCache)[index];
+    std::vector<item>& items = _MemberItems();
+    bool joined = false;
+    for (item& carried : items) {
+        if (carried.code == stored.code && carried.quality == stored.quality
+                && carried.quantity < 255) {
+            carried.quantity++;
+            joined = true;
+            break;
+        }
+    }
+    if (!joined) {
+        if (items.size() >= kMaxItems) {
+            fMessage = "No room for more items";
+            return false;
+        }
+        const item_definition& definition = fData.Lists().Items()[stored.code];
+        items.push_back(item{ stored.code, uint8(definition.type),
+            stored.quality, 1, definition.weight });
+    }
+    // 0x6E6FA: an entry whose count reaches 0 is removed
+    if (--stored.count == 0) {
+        fCache->erase(fCache->begin() + index);
+        if (fSelected[SCROLL_MERCHANT] >= int(fCache->size()))
+            fSelected[SCROLL_MERCHANT] = std::max(0, int(fCache->size()) - 1);
+    }
     return true;
+}
+
+
+// Leaving one of the member's items (file 0x6E086, 0x6E682): the entry
+// of the same code and quality counts one more, or a new one is made
+bool
+TradeView::_LeaveInCache()
+{
+    if (!_Available(ACTION_SELL))
+        return false;
+    const item& carried = _MemberItems()[fSelected[SCROLL_MEMBER]];
+    bool joined = false;
+    for (cache_item& stored : *fCache) {
+        if (stored.code == carried.code && stored.quality == carried.quality
+                && stored.count < 255) {
+            stored.count++;
+            joined = true;
+            break;
+        }
+    }
+    if (!joined)
+        fCache->push_back(cache_item{ carried.code, carried.quality, 1 });
+    _RemoveOne(fSelected[SCROLL_MEMBER]);
+    return true;
+}
+
+
+int
+TradeView::_CountUpper() const
+{
+    return fCache != NULL ? int(fCache->size()) : int(fStock.size());
 }
 
 
@@ -486,7 +589,7 @@ TradeView::SetMember(int member)
 void
 TradeView::Select(scroll which, int index)
 {
-    const int count = which == SCROLL_MERCHANT ? int(fStock.size())
+    const int count = which == SCROLL_MERCHANT ? _CountUpper()
         : int(_MemberItems().size());
     fActive = which;
     fSelected[which] = std::max(0, std::min(index, count - 1));
@@ -579,20 +682,21 @@ TradeView::Draw()
         fParty->cash.pfennigs);
     _DrawText(text, kTextLeft, kHeaderTop, kTextColor);
     // "%s barters for %s to the %Fs", or the last message
-    if (fMessage.empty()) {
+    if (fMessage.empty() && fCache == NULL) {
         const std::string forWhom = fMember == fParty->leader
             ? (leader.female ? "herself" : "himself") : member.shortName;
         snprintf(text, sizeof(text), "%s barters for %s to the %s",
             leader.female ? "She" : "He", forWhom.c_str(), kMerchantNames[fKind]);
         _DrawText(text, kTextLeft + 4, kHeaderTop + kLineHeight, kTextColor);
-    } else {
+    } else if (!fMessage.empty()) {
         _DrawText(fMessage, kTextLeft + 4, kHeaderTop + kLineHeight,
             kCrimsonColor);
     }
 
     for (int i = 0; i < ACTION_COUNT; i++) {
         const int y = kActionsTop + i * kLineHeight;
-        const std::string name = kActionNames[i];
+        const std::string name = fCache != NULL ? kCacheActionNames[i]
+            : kActionNames[i];
         if (_Available(i)) {
             _DrawText(name.substr(0, 1), kActionsLeft, y, kCrimsonColor);
             _DrawText(name.substr(1), kActionsLeft
@@ -619,7 +723,7 @@ TradeView::_Available(int which) const
         return which == ACTION_LEAVE;
     switch (which) {
         case ACTION_PURCHASE:
-            return fActive == SCROLL_MERCHANT && !fStock.empty();
+            return fActive == SCROLL_MERCHANT && _CountUpper() > 0;
         case ACTION_SELL:
             return fActive == SCROLL_MEMBER
                 && !fParty->members[fMember].items.empty();
@@ -666,14 +770,19 @@ TradeView::_DrawScroll(int which)
     const character& member = fParty->members[fMember];
 
     // the label: "The %Fs offers...", "%s has..."
-    const std::string label = which == SCROLL_MERCHANT
+    // (the cache's: "The cache contains...", "%s currently has...")
+    std::string label = which == SCROLL_MERCHANT
         ? std::string("The ") + kMerchantNames[fKind] + " offers..."
         : member.shortName + " has...";
+    if (fCache != NULL) {
+        label = which == SCROLL_MERCHANT ? std::string("The cache contains...")
+            : member.shortName + " currently has...";
+    }
     const int width = fFont->StringWidth(Font::ToGameCharset(label));
     _DrawText(label, (box.left + box.right - width) / 2, box.labelTop,
         kTextColor);
 
-    const int count = which == SCROLL_MERCHANT ? int(fStock.size())
+    const int count = which == SCROLL_MERCHANT ? _CountUpper()
         : int(member.items.size());
     for (int row = 0; row < kVisibleRows; row++) {
         const int index = fTop[which] + row;
@@ -685,7 +794,18 @@ TradeView::_DrawScroll(int which)
                 kRowHeight), kHighlightColor);
         }
         char text[80];
-        if (which == SCROLL_MERCHANT) {
+        if (fCache != NULL) {
+            // "%Fs  (%3d) %2d-Qual" (DS:38B6)
+            const uint16 code = which == SCROLL_MERCHANT
+                ? (*fCache)[index].code : member.items[index].code;
+            const int count = which == SCROLL_MERCHANT
+                ? (*fCache)[index].count : member.items[index].quantity;
+            const int quality = which == SCROLL_MERCHANT
+                ? (*fCache)[index].quality : member.items[index].quality;
+            snprintf(text, sizeof(text), "%s  (%3d) %2d-Qual",
+                code < definitions.size() ? definitions[code].name.c_str() : "?",
+                count, quality);
+        } else if (which == SCROLL_MERCHANT) {
             // "%5upf  %Fs  %3dq  %3dlbs"
             const item_definition& definition = definitions[fStock[index]];
             snprintf(text, sizeof(text), "%5upf  %s  %3dq  %3dlbs",

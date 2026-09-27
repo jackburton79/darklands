@@ -27,6 +27,7 @@ enum option_action {
     ACTION_SLEEP,				// the inn's options
     ACTION_STABLES,
     ACTION_RESIDENCE,
+    ACTION_CACHE,				// the inn's cache: `then` after it
     ACTION_REDEEM,				// the banks: `target` is the result
     ACTION_DEPOSIT,				// the number typed in; `target`: the bank
     ACTION_DISCUSS_TREATMENTS,	// the physician's options
@@ -55,6 +56,8 @@ static const int kNeedsInnPrice		= -5;
 // or a letter of credit to redeem, or two florins to buy one with
 static const int kNeedsBankNotes	= -6;
 static const int kNeedsFlorins		= -7;
+// or a cache at the inn (the location record's +0x18 is not -1)
+static const int kNeedsCache		= -11;
 // or the physician: in the city (small towns may have none), wounds to
 // treat, a treatment offered
 static const int kNeedsPhysician	= -8;
@@ -152,8 +155,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),	// a meal and sleep for $Money1
         DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
-        TODO,								// store items
-        HIDE,								// recover them: none stored
+        GO(SCREEN_STORE),					// store items (file 0xA720C)
+        GO_IF(SCREEN_RECOVER, kNeedsCache),	// recover them (0xA72B8)
         TODO,								// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
@@ -402,6 +405,10 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 1, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
     // the same, "whether any of your mounts are for sale"
     { "URBAN00", 7, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
+    // "You carefully select which items to leave with the innkeeper...",
+    // "You sort through the various goods...": the cache, then an hour
+    { "URBAN00", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
+    { "URBAN00", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     // The banks (DARKLAND.EXE, file 0xC41E7 and 0xC6253): letters of
     // credit; the tasks, rewards and politics are not implemented
 #define BANK_OPTIONS(redeemed, deposit, tasks) { \
@@ -507,8 +514,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),
         DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
-        TODO,								// store items
-        HIDE,								// recover them
+        GO(SCREEN_STORE),
+        GO_IF(SCREEN_RECOVER, kNeedsCache),
         TODO,								// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
@@ -691,6 +698,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     // "The stableboy assures you..." (no trade at night)
     { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
     { NULL, 0, NULL, {} },					// stables, sale: not at night
+    { "URBAN01", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
+    { "URBAN01", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { NULL, 0, NULL, {} },					// the physician
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -790,6 +799,7 @@ CityVisit::CityVisit(GameData& data)
     fSeed(0),
     fResidence(data),
     fPendingResidence(false),
+    fPendingCache(false),
     fTreatmentOffered(false)
 {
     // every screen has a day card (a miscounted table would leave some
@@ -860,6 +870,13 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             fPendingTrade = -1;
             _Show(fScreen, false);
         }
+        if (fPendingCache) {
+            fTrade.SetPlace(fCity, _Reputation());
+            fTrade.SetCache(&fCaches[fCity]);
+            fTrade.Run(window);
+            fPendingCache = false;
+            _Show(fScreen, false);
+        }
         if (fPendingResidence) {
             // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
             // a day costs the inn's price
@@ -900,6 +917,7 @@ CityVisit::Choose(int option)
 {
     fPendingTrade = -1;
     fPendingResidence = false;
+    fPendingCache = false;
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
         _Show(fPreviousScreen, false);
         return true;
@@ -928,6 +946,13 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_RESIDENCE:
             fPendingResidence = true;
+            return true;
+        case ACTION_CACHE:
+            if (fClock != NULL)
+                fClock->AddMinutes(MinutesFor(rule, *fClock));
+            fCaches[fCity];		// the location has a cache now
+            fPendingCache = true;
+            fScreen = rule.then;
             return true;
         case ACTION_REDEEM:
             _Show(_Redeem(rule.target));
@@ -1127,6 +1152,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Reputation() > -10;
         else if (rule.needs == kNeedsInnPrice)
             hide = fParty == NULL || TotalPfennigs(fParty->cash) < InnPrice();
+        else if (rule.needs == kNeedsCache)
+            hide = fCaches.find(fCity) == fCaches.end();
         else if (rule.needs == kNeedsBankNotes)
             hide = fParty == NULL || fParty->bankNotes == 0;
         else if (rule.needs == kNeedsFlorins)
