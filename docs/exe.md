@@ -202,7 +202,14 @@ the options' switch at file 0xA3128). **verified** (code); see
   else card 5, $Number1 = random(4) + 1 apprentices, and the mark. The
   lessons are given while the party lives at the inn (the inn's
   residence, not decoded).
-- Not reproduced: the lessons, the night card (1).
+- **At night** (outside 1367:072A's day, hours 5..18; DS:8DFA): card 1,
+  without the discussion and the students, with "apologizes profusely,
+  gives him two groschen" (file 0xA39B6: 2 groschen paid, then state
+  0x14). Leaving without them (file 0xA3902): if random(100) <= 50 the
+  local reputation falls by random(4) + 1 (0E76:1DFE) and card 7 is
+  shown. Where state 0x14 leads (also after card 3 and the idiot) is
+  not decoded: the crafts here.
+- Not reproduced: the lessons.
 
 ## The banks
 
@@ -257,8 +264,10 @@ $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
   swordsmith at file 0xCED6A, 0xD0833 at night; the same for the
   others). The tinkers are the artificers' guild ($ARTIF00, trade at file
   0xD74B9: type 6, mask 0x0000800E), the clothmakers type 8, mask
-  0x04000000 (file 0xAD2C9). The night crafts card is $CIVCR01, where
-  the tinkers and the clothmakers are off.
+  0x04000000 (file 0xAD2C9).
+- **At night** the game shows the same card 0 (0x150B:049A(0), file
+  0xA4478): $CIVCR00's card 1 and $CIVCR01 are never used (no code
+  refers to $CivCr01). The places themselves change at night.
 
 ## The inn
 

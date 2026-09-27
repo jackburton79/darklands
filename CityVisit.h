@@ -95,6 +95,8 @@ public:
         SCREEN_PHYSICIAN_APPRENTICES,	// cards 4, 5, 6 and 11
         SCREEN_PHYSICIAN_NOTHING,
         SCREEN_PHYSICIAN_NO_STUDENTS,
+        SCREEN_PHYSICIAN_NIGHT,	// woken at night: card 1,
+        SCREEN_PHYSICIAN_CURSES,	// and cursing the party: card 7
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -118,8 +120,8 @@ public:
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
     // The party's reputation in each location of DARKLAND.LOC (not
-    // owned; NULL: 0 everywhere).
-    void			SetReputations(const std::vector<int16>* reputations)
+    // owned; NULL: 0 everywhere). Some options change it.
+    void			SetReputations(std::vector<int16>* reputations)
                         { fReputations = reputations; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
@@ -173,6 +175,7 @@ private:
     int				_Components();
     int				_Treatment();
     int				_Students();
+    int				_LeavePhysician(bool apologize);
     int				_Reputation() const;
     // A city's location property 0x21: its number plus the seed global
     uint16			_PeopleSeed() const;
@@ -189,7 +192,7 @@ private:
     party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
-    const std::vector<int16>* fReputations;
+    std::vector<int16>* fReputations;
     bool			fNight;			// the current card is a night card
     int				fCity;
     int				fScreen;

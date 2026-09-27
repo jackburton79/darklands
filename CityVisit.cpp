@@ -31,7 +31,9 @@ enum option_action {
     ACTION_ASK_AID,
     ACTION_COMPONENTS,
     ACTION_TREATMENT,
-    ACTION_STUDENTS
+    ACTION_STUDENTS,
+    ACTION_LEAVE_PHYSICIAN,		// at night: `target` 1 to apologize
+    ACTION_APOLOGIZE
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -57,9 +59,19 @@ static const int kNeedsPhysician	= -8;
 static const int kNeedsWounded		= -9;
 static const int kNeedsTreatment	= -10;
 
+// The game's day for some places (1367:072A): hour 5 to 18; the extra
+// hour to reach a guild then (file 0xA47A5)
+static bool
+IsGameDay(const GameTime& clock)
+{
+    return clock.Hour() >= 5 && clock.Hour() <= 18;
+}
+
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
 static const int kUntilMorning		= -2;	// "camp here until morning"
+static const int kAnHourMoreAtNight	= -3;	// an hour, two outside the
+                                            // game's day
 
 struct option_rule {
     int action;
@@ -296,8 +308,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         { ACTION_GO, CityVisit::SCREEN_PHYSICIAN, kNeedsPhysician, 60 },
         TODO,								// astrologists
         HIDE,								// jewelers
-        WAIT(SCREEN_ARTIFICER, 60),			// tinkers
-        WAIT(SCREEN_CLOTHMAKER, 60),
+        WAIT(SCREEN_ARTIFICER, kAnHourMoreAtNight),	// tinkers
+        WAIT(SCREEN_CLOTHMAKER, kAnHourMoreAtNight),
         HIDE, HIDE,							// placeholders
         GO(SCREEN_ARMS_CRAFTS),
         GO(SCREEN_SIDE_STREET),
@@ -457,6 +469,19 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "PHYSI00", 6, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "I am unable to take any students"
     { "PHYSI00", 11, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "Among the dark townhouses... he peers at you through a crack in
+    // the door" (outside the game's day, file 0xA2EDB)
+    { "PHYSI00", 1, NULL, {
+        HIDE,
+        DO_IF(ACTION_ASK_AID, kNeedsWounded),
+        HIDE,
+        DO(ACTION_COMPONENTS),
+        DO_IF(ACTION_TREATMENT, kNeedsTreatment),
+        DO(ACTION_LEAVE_PHYSICIAN),			// apologize and leave
+        DO(ACTION_APOLOGIZE)				// and give him two groschen
+    } },
+    // "As you walk away, the physician loudly curses you."
+    { "PHYSI00", 7, NULL, { GO(SCREEN_CRAFTS) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -593,14 +618,9 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         TODO,								// a piece of city wall
         GO(SCREEN_GATE)
     } },
-    // "Peering down the narrow streets, dimly lit with lamplight..."
-    { "CIVCR00", 1, NULL, {
-        TODO, TODO, TODO, TODO, TODO,
-        TODO, TODO,
-        GO(SCREEN_ARMS_CRAFTS),
-        GO(SCREEN_SIDE_STREET),
-        GO(SCREEN_MAIN_STREET)
-    } },
+    // (the game shows the crafts' day card at night too: $CIVCR00 card 1
+    // and $CIVCR01 are not used)
+    { NULL, 0, NULL, {} },
     // "Walking along the dark streets, you peer down each one..."
     { "MILCR00", 1, NULL, {
         TODO,
@@ -670,6 +690,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// the banks and the League
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -703,6 +725,8 @@ MinutesFor(const option_rule& rule, const GameTime& clock)
 {
     if (rule.minutes >= 0)
         return uint32(rule.minutes);
+    if (rule.minutes == kAnHourMoreAtNight)
+        return IsGameDay(clock) ? 60 : 120;
     const int now = clock.Hour() * 60 + clock.Minute();
     const int target = (rule.minutes == kUntilNight
         ? GameTime::kNightStart : GameTime::kNightEnd) * 60;
@@ -902,6 +926,12 @@ CityVisit::Choose(int option)
         case ACTION_STUDENTS:
             _Show(_Students());
             return true;
+        case ACTION_LEAVE_PHYSICIAN:
+            _Show(_LeavePhysician(false));
+            return true;
+        case ACTION_APOLOGIZE:
+            _Show(_LeavePhysician(true));
+            return true;
         case ACTION_MASS:
             _Show(_Mass());
             return true;
@@ -997,7 +1027,11 @@ CityVisit::_Show(int screen, bool withScene)
     // the physician shuts his door to a wanted party
     if (screen == SCREEN_PHYSICIAN && _Reputation() <= -40)
         screen = SCREEN_PHYSICIAN_SHUT;
-    if (screen == SCREEN_PHYSICIAN || screen == SCREEN_PHYSICIAN_SHUT) {
+    else if (screen == SCREEN_PHYSICIAN && fClock != NULL
+            && !IsGameDay(*fClock))
+        screen = SCREEN_PHYSICIAN_NIGHT;
+    if (screen == SCREEN_PHYSICIAN || screen == SCREEN_PHYSICIAN_SHUT
+            || screen == SCREEN_PHYSICIAN_NIGHT) {
         if (fScreen == SCREEN_CRAFTS)	// a new visit
             fTreatmentOffered = false;
         _PhysicianSkill();
@@ -1505,4 +1539,29 @@ CityVisit::_Students()
     fVariables["Number1"] = std::to_string(fRandom() % 4 + 1);
     fNoStudentsUntil[fCity] = now + 30;
     return SCREEN_PHYSICIAN_APPRENTICES;
+}
+
+
+// Leaving the physician (file 0xA3902, 0xA39B6): at night, apologizing
+// with two groschen for the trouble, or else, half the time
+// (random(100) <= 50), he curses the party and the local reputation
+// falls by 1..4 (card 7)
+int
+CityVisit::_LeavePhysician(bool apologize)
+{
+    if (apologize) {
+        if (fParty != NULL) {
+            const uint32 purse = TotalPfennigs(fParty->cash);
+            fParty->cash = MoneyFromPfennigs(purse - std::min(purse, 24u));
+        }
+        return SCREEN_CRAFTS;
+    }
+    if (int(fRandom() % 100) > 50)
+        return SCREEN_CRAFTS;
+    if (fReputations != NULL && fCity >= 0
+            && fCity < int(fReputations->size())) {
+        int16& reputation = (*fReputations)[fCity];
+        reputation = int16(std::max(-99, reputation - int(fRandom() % 4) - 1));
+    }
+    return SCREEN_PHYSICIAN_CURSES;
 }
