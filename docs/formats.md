@@ -1175,52 +1175,61 @@ stat offsets unknown.*
   between LEVEL1.ENM and LEVEL2.ENM** — template/filler garbage from the
   tool that wrote the files, not data. (`ff ff ff 19 00 00` runs likewise.)
 - **verified**: the image-code/name pairs parse cleanly in all three
-  files; "Raubritter" (E10) matches the encounter deck `$RAUBI0` of
-  BATTLEGR.IMG.
+  files. (The `$RAUBI0` found in BATTLEGR.IMG, once taken to match
+  "Raubritter", is leftover garbage there.)
 
 ### Battlefield maps (`IMAPS.CAT`)
 
-An ordinary catalog of about 150 maps, named by setting:
+An ordinary catalog of 143 maps, named by setting:
 `ICITY.000`..`ICITY.801` (cities), `IMINEGEN.*` / `IMINSPEC.*` (mines),
 `IWILDGEN`, `IWILDMTN`, `IWILDMSH`, `IWILDSPC`, `IWILDSAB`, `IWILDGAT`,
 `IWILDWAL` (the wilderness: plains, mountains, marshes...),
-`IFORTMON.*` (fortresses and monasteries), `IMISCTOM.*` (tombs). Entries
-are 2.5..3 KB. **verified** (the catalog listing). The contents are not
-decoded: they look compressed (`ICITY.000` starts
-`a1 8b 00 ff 80 fc f8 ad ...`, with no visible structure). *inferred*
+`IFORTMON.*` (fortresses and monasteries), `IMISCTOM.*` (tombs).
+**verified** (the catalog listing).
 
-### Battlefield graphics (`BATTLEGR.IMG`, `COMMONSP.IMG`)
+Each entry is compressed like the `.IMC` sprites (LZEXE's scheme, see
+"Battle sprites"): all 143 decompress to exactly 13308 bytes, ending on
+the end mark at their last byte. **verified**. *Partially decoded*:
 
-`BATTLEGR.IMG`: 21236 bytes. *Not decoded; whether it is graphics or
-tables is open.*
+    0x0000  6400  40 x 40 cells of 4 bytes, row by row
+    0x1900  1600  40 x 40 bytes
+    0x1F40  5308  records, not decoded (0x1F40: 00 00 fe ff fe ff ...
+                  in every map; then 14-byte records?)
 
-    0x00   4     dword (LE) 0x5160 = 20832: offset of a final section
-    0x04   ...   main body
-    0x5160 ~354 B  final section, all bytes <= 0x0F (nibble-packed)
+- The first and last rows and columns of both grids are the same in
+  every map: a border. **verified**
+- Printed as text, `ICITY.000` is a town: blocks of houses (cells whose
+  byte 3 has bit 7 set, 0x80 / 0x81) with walls on one side (byte 3 =
+  1..8), streets between them (byte 3 = 0), some street cells with a
+  byte 0 of 0xB0..0xE0 (objects?). The second grid is 0x10 on the
+  streets and 0 in the houses: the ground one can walk on. *inferred*
+- The maps hold no pictures: how the game draws walls and ground from
+  them is to be found in DARKLAND.EXE.
 
-- Embedded in the body: **7-character encounter-deck name prefixes**
-  (`$RAUBI0`, `$MERCH0`, `$MINET0`..`3`, `$CLERI0`, `$CITYW0`,
-  `$CITYG0`, `$SITUA0`, `$POLIT0`, `$PARTY0`, `$URBAN0`, `$VILLA0`,
-  `$BOWYE00`, `$MENU`...), each preceded by byte `02` and followed by
-  parameters. These map encounter families to battle setups — the
-  source of TAC.TXT's `bfldtype`.
-- Much of the body is 4-bit data (values ≤ 0x0F in the quantized
-  columns): plausible nibble-packed battlefield layout/zone data for
-  the procedural generator. *inferred*
-- But the file starts like `COMMONSP.IMG` (4078 bytes): a dword (0x5160
-  here, 0x0FD0 there, both inside the file) followed by runs of
-  increasing u16 values (`0d 18 25 2d 35 ...`, `12 16 1a 27 34 ...`),
-  which look like offset tables. The `.IMG` extension and the
-  `COMMONSP` name ("common sprites") suggest graphics: tiles and objects
-  of the battlefield. The deck names above may be leftover memory, like
-  the filler of the `LEVEL*.ENM` files. *inferred*; this reopens an
-  earlier reading (0x7D-byte records) that had been discarded.
-- Fragments near the file end suggest mode/config strings (`EX_EMS`,
-  `EX_DISK`, `EXITS`, `...GRAPHI`).
-- **not decoded**: record layout, the meaning of the nibble data, the
-  final section. The DARKLAND.EXE debug printer (see TAC.TXT above) and
-  the `battlegr` string at file 0x191FDC (DGROUP offset 0x121C) are the
-  way in.
+### Battle pictures (`BATTLEGR.IMG`, `COMMONSP.IMG`)
+
+Pictures in the same format as the sprites' (see "Battle sprites"), not
+compressed. See `ImgFile.cpp`; `./darklands --extract BATTLEGR.IMG
+<dir>` exports them.
+
+    0x00    2     data size S
+    0x02    2·N   the offset of each picture, in paragraphs from the
+                  start of the data (N = (file size - S - 2) / 2)
+    ...     S     the pictures: width (byte), height (byte), then per
+                  row pixel count, blank pixels on the left, the pixels
+
+- **verified**: `BATTLEGR.IMG` (21236 bytes) has 201 pictures,
+  `COMMONSP.IMG` (4078 bytes) 14; every row of every picture fits.
+- `BATTLEGR.IMG` holds the battle's overlays, not the ground: damage
+  numbers (-1..-42, white and red), the arrows of the direction cursor,
+  the body outlines of the hit locations, clouds (spells, potions:
+  colors 240..254, not decoded), missiles in 8 directions (arrows,
+  bolts, stones...), sparks, blood. `COMMONSP.IMG`: pieces of a frame
+  (borders, a blue panel, a skull). **verified** visually
+- Between the pictures (they start at paragraph boundaries) the files
+  have leftover bytes, e.g. `$RAUBI0`, `$VILLA0`, `OVEEM`, `CORIDO`:
+  memory garbage, not data. An earlier revision of this document read
+  them as encounter tables.
 
 ### Battle sprites (`*.IMC`, `TACANIM.DB`)
 
@@ -1310,9 +1319,9 @@ wolf). Not decoded.
       palette fields of its `DARKLAND.ENM` type
 - [ ] `DARKLAND.ENM`: the unknown fields of the types (+0x12, +0x13,
       +0x2E, +0x30..) and the enemies' flags
-- [ ] Battles: the format of `IMAPS.CAT`'s maps, of `BATTLEGR.IMG` /
-      `COMMONSP.IMG` and of `TACANIM.DB`; the `.IMC` header; the party's
-      sprite colors (235..242)
+- [ ] Battles: the maps of `IMAPS.CAT` (the cells, the records after
+      the grids) and how the game draws them; `TACANIM.DB`; the `.IMC`
+      header; the colors 235..242 (party) and 240..254 (clouds)
 - [x] Palettes: the format of `BKGNDPAL.DAT` — 11 palettes × 71 colors
 - [ ] Palettes: which indices `BKGNDPAL.DAT` patches and what selects
       one of its 11 palettes

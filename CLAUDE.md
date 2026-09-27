@@ -69,7 +69,7 @@ include path: include headers by name (`#include "CityFile.h"`).
   `DescriptionFile` (DARKLAND.DSC, the `$PlaceDesc` of each city),
   `EnemyFile` (DARKLAND.ENM, the enemy types and enemies),
   `ImcFile` (the battle sprites, `GameData::SpritePalette()` for their
-  colors),
+  colors), `ImgFile` (BATTLEGR.IMG, COMMONSP.IMG; both use `Sprite`),
   `ExeData` (the people's names, read from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
   of `Character` records (554 bytes) and giving a `party`.

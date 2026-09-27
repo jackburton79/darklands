@@ -11,6 +11,7 @@
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
 #include "ImcFile.h"
+#include "ImgFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "PICImage.h"
@@ -229,40 +230,76 @@ ShowCard(GameData& data, const std::string& deck, uint32 cardIndex,
 }
 
 
+static void
+DrawSprite(Bitmap* bitmap, const sprite& picture, int left, int top)
+{
+    for (int y = 0; y < picture.height; y++) {
+        for (int x = 0; x < picture.width; x++) {
+            const uint8 pixel = picture.pixels[y * picture.width + x];
+            if (pixel != 0)
+                bitmap->PutPixel(uint16(left + x), uint16(top + y), pixel);
+        }
+    }
+}
+
+
+// index 0 is transparent: show it as a green ground
+static Bitmap*
+SpriteBitmap(int width, int height, GFX::Palette palette)
+{
+    palette.colors[0] = GFX::Color{ 40, 90, 40, 0 };
+    Bitmap* bitmap = new Bitmap(uint16(width), uint16(height), 8);
+    bitmap->SetColors(palette.colors, 0, 256);
+    bitmap->Clear(0);
+    return bitmap;
+}
+
+
 // A battle sprite as one sheet: a row per frame, a column per direction
 static Bitmap*
-SpriteSheet(const ImcFile& sprites, GFX::Palette palette)
+SpriteSheet(const ImcFile& sprites, const GFX::Palette& palette)
 {
     int cellWidth = 0;
     int cellHeight = 0;
     for (int f = 0; f < sprites.CountFrames(); f++) {
         for (int d = 0; d < ImcFile::kDirectionCount; d++) {
-            const imc_sprite& sprite = sprites.SpriteAt(f, d);
-            cellWidth = std::max(cellWidth, sprite.width + 2);
-            cellHeight = std::max(cellHeight, sprite.height + 2);
+            const sprite& picture = sprites.SpriteAt(f, d);
+            cellWidth = std::max(cellWidth, picture.width + 2);
+            cellHeight = std::max(cellHeight, picture.height + 2);
         }
     }
-    // index 0 is transparent: show it as a green ground
-    palette.colors[0] = GFX::Color{ 40, 90, 40, 0 };
-    Bitmap* bitmap = new Bitmap(cellWidth * ImcFile::kDirectionCount,
-        cellHeight * sprites.CountFrames(), 8);
-    bitmap->SetColors(palette.colors, 0, 256);
-    bitmap->Clear(0);
+    Bitmap* bitmap = SpriteBitmap(cellWidth * ImcFile::kDirectionCount,
+        cellHeight * sprites.CountFrames(), palette);
     for (int f = 0; f < sprites.CountFrames(); f++) {
         for (int d = 0; d < ImcFile::kDirectionCount; d++) {
-            const imc_sprite& sprite = sprites.SpriteAt(f, d);
-            for (int y = 0; y < sprite.height; y++) {
-                for (int x = 0; x < sprite.width; x++) {
-                    const uint8 pixel = sprite.pixels[y * sprite.width + x];
-                    if (pixel != 0) {
-                        bitmap->PutPixel(uint16(d * cellWidth + 1 + x),
-                            uint16(f * cellHeight + 1 + y), pixel);
-                    }
-                }
-            }
+            DrawSprite(bitmap, sprites.SpriteAt(f, d), d * cellWidth + 1,
+                f * cellHeight + 1);
         }
     }
     return bitmap;
+}
+
+
+// The pictures of an .IMG file (BATTLEGR.IMG), one BMP each
+static void
+ExtractPictures(GameData& data, const std::string& fileName,
+    const std::string& outputDir)
+{
+    const ImgFile pictures(data.PathFor(fileName));
+    const GFX::Palette palette = data.SpritePalette("");
+    const std::string base = fileName.substr(0, fileName.rfind('.'));
+    for (uint32 i = 0; i < pictures.CountPictures(); i++) {
+        const sprite& picture = pictures.PictureAt(i);
+        Bitmap* bitmap = SpriteBitmap(std::max(1, int(picture.width)),
+            std::max(1, int(picture.height)), palette);
+        DrawSprite(bitmap, picture, 0, 0);
+        char number[16];
+        snprintf(number, sizeof(number), ".%03u", unsigned(i));
+        const std::string output = outputDir + "/" + base + number + ".bmp";
+        bitmap->Save(output.c_str());
+        bitmap->Release();
+        std::cout << fileName << " " << i << " -> " << output << std::endl;
+    }
 }
 
 
@@ -306,7 +343,8 @@ Usage()
         "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
         "  <catalog>                     dump a catalog's entries\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP (the\n"
-        "                                battle sprites as sheets, e.g. E00C.CAT)\n"
+        "                                battle sprites as sheets, e.g. E00C.CAT;\n"
+        "                                also BATTLEGR.IMG, COMMONSP.IMG)\n"
         "  --map [prefix]                render the world map to <prefix>.bmp\n"
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
@@ -408,7 +446,12 @@ int main(int argc, char **argv)
                 Usage();
                 return 1;
             }
-            std::unique_ptr<Catalog> catalog(data.OpenCatalog(argv[arg + 1]));
+            const std::string name = argv[arg + 1];
+            if (name.size() > 4 && name.compare(name.size() - 4, 4, ".IMG") == 0) {
+                ExtractPictures(data, name, argv[arg + 2]);
+                return 0;
+            }
+            std::unique_ptr<Catalog> catalog(data.OpenCatalog(name));
             // output dir must exist
             ExtractAll(data, *catalog, argv[arg + 2]);
             return 0;

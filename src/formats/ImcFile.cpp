@@ -146,27 +146,8 @@ ImcFile::ImcFile(Stream* stream)
     const size_t start = table + 4 + kParagraph * frames;
     fSprites.resize(size_t(frames) * kDirectionCount);
     for (size_t i = 0; i < fSprites.size(); i++) {
-        size_t position = start + kParagraph * WordAt(data, table + 4 + 2 * i);
-        if (position + 2 > data.size())
-            throw std::runtime_error("ImcFile: invalid frame offset");
-        imc_sprite& sprite = fSprites[i];
-        sprite.width = data[position];
-        sprite.height = data[position + 1];
-        position += 2;
-        sprite.pixels.assign(size_t(sprite.width) * sprite.height, 0);
-        // each row: pixel count, blank pixels on the left, the pixels
-        for (uint16 y = 0; y < sprite.height; y++) {
-            if (position + 2 > data.size())
-                throw std::runtime_error("ImcFile: truncated row");
-            const size_t count = data[position];
-            const size_t skip = data[position + 1];
-            position += 2;
-            if (skip + count > sprite.width || position + count > data.size())
-                throw std::runtime_error("ImcFile: invalid row");
-            for (size_t x = 0; x < count; x++)
-                sprite.pixels[y * sprite.width + skip + x] = data[position + x];
-            position += count;
-        }
+        fSprites[i] = ReadSprite(data,
+            start + kParagraph * WordAt(data, table + 4 + 2 * i));
     }
 }
 
@@ -178,7 +159,7 @@ ImcFile::CountFrames() const
 }
 
 
-const imc_sprite&
+const sprite&
 ImcFile::SpriteAt(int frame, int direction) const
 {
     if (frame < 0 || frame >= CountFrames() || direction < 0

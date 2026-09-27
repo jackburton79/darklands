@@ -5,23 +5,17 @@
  * directions.
  *
  * The file is compressed with the LZ77 scheme of LZEXE; the data holds
- * a header, a frame table and the pictures, row by row (skip, pixels).
+ * a header, a frame table and the pictures (Sprite.h).
  * See docs/formats.md.
  */
 #pragma once
 
+#include "Sprite.h"
 #include "SupportDefs.h"
 
 #include <vector>
 
 class Stream;
-
-// One picture; index 0 is transparent
-struct imc_sprite {
-    uint16 width;
-    uint16 height;
-    std::vector<uint8> pixels;	// width * height
-};
 
 class ImcFile {
 public:
@@ -33,11 +27,11 @@ public:
 
     int				CountFrames() const;
     // Throws std::out_of_range on invalid arguments.
-    const imc_sprite& SpriteAt(int frame, int direction) const;
+    const sprite&	SpriteAt(int frame, int direction) const;
 
     // LZEXE-style decompression, exposed for testing.
     static std::vector<uint8> Decompress(const std::vector<uint8>& data);
 
 private:
-    std::vector<imc_sprite> fSprites;	// frame * kDirectionCount + direction
+    std::vector<sprite> fSprites;	// frame * kDirectionCount + direction
 };
