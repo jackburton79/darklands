@@ -641,6 +641,16 @@ Where the battle code starts; the rules are not decoded yet.
   of driver as Civilization's MGRAPHIC.EXE). DARKLAND.EXE references
   segment A000 only 7 times. How the battle draws is still to be found:
   through the calls to the driver's functions.
+- **The graphics layer** is root segment 047C. 047C:07CE loads the
+  driver (it is passed "mgraphic.exe" and "fonts.fnt", file 0x10700).
+  047C:04C7..061E are the entries the game calls (e.g. 047C:055A 341
+  times, 047C:1293 and 047C:12C3 over 500 times each, from the whole
+  program): in the file most are `jmp far 0000:0000` slots, filled in
+  when the driver is loaded, and some call a common handler at 047C:03CA;
+  their spacing is not regular (mostly 7 bytes). Which slot is which
+  driver function is not decoded; the driver's own table of offsets is
+  at MGRAPHIC.EXE file 0x22A. The battle code (files 0x3C000..0x54000)
+  calls 047C:0553, 055A, 05A5, 073D, 0744, 1120 and others.
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",
