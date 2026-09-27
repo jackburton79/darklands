@@ -23,7 +23,9 @@ enum option_action {
     ACTION_CONFESSION,
     ACTION_DONATION,
     ACTION_SLEEP,				// the inn's options
-    ACTION_STABLES
+    ACTION_STABLES,
+    ACTION_REDEEM,				// the banks: `target` is the result
+    ACTION_DEPOSIT				// the number typed in; `target`: the bank
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -40,6 +42,9 @@ static const int kNeedsBadReputation = -3;
 static const int kNeedsPawnshop		= -4;
 // or the price of a night at the inn
 static const int kNeedsInnPrice		= -5;
+// or a letter of credit to redeem, or two florins to buy one with
+static const int kNeedsBankNotes	= -6;
+static const int kNeedsFlorins		= -7;
 
 // Special waiting times
 static const int kUntilNight		= -1;	// "wait until nightfall"
@@ -190,7 +195,12 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         TRADE(MERCHANT_GOODS),				// everyday items
         TRADE(MERCHANT_FOREIGN),			// the foreign traders
         TRADE(MERCHANT_HERBALIST),			// the pharmacists' stalls
-        TODO, TODO, TODO,					// Fugger, Medici, Hanse
+        // Fugger, Medici, Hanse: the game offers them where the location
+        // record's bytes +0x15, +0x16, +0x17 are not 0, which they never
+        // are in the game data
+        GO(SCREEN_FUGGER),
+        GO(SCREEN_MEDICI),
+        GO(SCREEN_HANSE),
         { ACTION_TRADE, MERCHANT_PAWNSHOP, kNeedsPawnshop, 0 },
         HIDE,								// placeholder
         GO(SCREEN_MAIN_STREET),
@@ -361,6 +371,45 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 1, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
     // the same, "whether any of your mounts are for sale"
     { "URBAN00", 7, NULL, { TRADE_THEN(MERCHANT_STABLES, 60, SCREEN_INN) } },
+    // The banks (DARKLAND.EXE, file 0xC41E7 and 0xC6253): letters of
+    // credit; the tasks, rewards and politics are not implemented
+#define BANK_OPTIONS(redeemed, deposit, tasks) { \
+        { ACTION_REDEEM, CityVisit::redeemed, kNeedsBankNotes, 0 }, \
+        GO_IF(deposit, kNeedsFlorins),		/* a letter of credit */ \
+        tasks,								/* special tasks */ \
+        HIDE,								/* a reward */ \
+        TODO,								/* politics */ \
+        HIDE,								/* "unused" */ \
+        GO(SCREEN_MARKET), \
+        GO(SCREEN_SIDE_STREET) \
+    }
+    { "FUGGE00", 0, NULL, BANK_OPTIONS(SCREEN_FUGGER_REDEEMED,
+        SCREEN_FUGGER_DEPOSIT, TODO) },
+    { "MEDIC00", 0, NULL, BANK_OPTIONS(SCREEN_MEDICI_REDEEMED,
+        SCREEN_MEDICI_DEPOSIT, TODO) },
+    // "In the rich, wood-paneled offices of the Hanseatic League..."
+    { "HANSE00", 0, NULL, {
+        TODO, TODO, TODO, TODO, TODO,		// tasks, rewards, politics
+        HIDE, HIDE,							// placeholders
+        TODO,								// chat with the clerks
+        GO(SCREEN_SIDE_STREET),
+        GO(SCREEN_MARKET)					// the main door
+    } },
+    // "...the guards grip their weapons and watch you carefully": the
+    // same, with no tasks (a reputation under 0)
+    { "FUGGE00", 2, NULL, BANK_OPTIONS(SCREEN_FUGGER_REDEEMED,
+        SCREEN_FUGGER_DEPOSIT, HIDE) },
+    { "MEDIC00", 2, NULL, BANK_OPTIONS(SCREEN_MEDICI_REDEEMED,
+        SCREEN_MEDICI_DEPOSIT, HIDE) },
+    // "...counts out from the purse the full amount, $Money1. Then he
+    // deducts $Money2 from the pile."
+    { "FUGGE00", 6, NULL, { GO(SCREEN_FUGGER) } },
+    { "MEDIC00", 6, NULL, { GO(SCREEN_MEDICI) } },
+    // "You pool your resources and give the clerk enough coins for a note
+    // worth..." (then "Deposit how many Florins?")
+    { "FUGGE00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_FUGGER, kAlways, 0 } } },
+    { "MEDIC00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_MEDICI, kAlways, 0 } } },
+#undef BANK_OPTIONS
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -561,6 +610,15 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     // "The stableboy assures you..." (no trade at night)
     { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
     { NULL, 0, NULL, {} },					// stables, sale: not at night
+    { NULL, 0, NULL, {} },					// the banks and the League
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -751,6 +809,13 @@ CityVisit::Choose(int option)
         case ACTION_STABLES:
             _Show(_Stables());
             return true;
+        case ACTION_REDEEM:
+            _Show(_Redeem(rule.target));
+            return true;
+        case ACTION_DEPOSIT:
+            _Deposit();
+            _Show(rule.target);
+            return true;
         case ACTION_MASS:
             _Show(_Mass());
             return true;
@@ -843,11 +908,20 @@ CityVisit::_Show(int screen, bool withScene)
     // reputation of -40 or less)
     if (screen == SCREEN_INN && _Reputation() <= -40)
         screen = SCREEN_UNWELCOME;
+    // the banks are cold to a party with a bad local reputation
+    if (screen == SCREEN_FUGGER && _Reputation() < 0)
+        screen = SCREEN_FUGGER_COLD;
+    else if (screen == SCREEN_MEDICI && _Reputation() < 0)
+        screen = SCREEN_MEDICI_COLD;
     fScreen = screen;
     if (screen == SCREEN_INN)
         fVariables["Money1"] = MoneyText(_InnPrice());
-    else if (fParty != NULL)	// what the church asks for a donation
+    else if (fParty != NULL && screen == SCREEN_CHURCH)	// the donation
         fVariables["Money1"] = MoneyText(TotalPfennigs(fParty->cash) / 10);
+    else if (fParty != NULL && (screen == SCREEN_FUGGER
+            || screen == SCREEN_MEDICI || screen == SCREEN_FUGGER_COLD
+            || screen == SCREEN_MEDICI_COLD))	// the letter of credit
+        fVariables["Money1"] = MoneyText(uint32(fParty->bankNotes) * 240);
     const screen_rules& rules = RulesFor(screen, fNight);
     if (rules.deck == NULL) {
         fView.SetCard(fNotImplementedCard, fVariables);
@@ -856,6 +930,12 @@ CityVisit::_Show(int screen, bool withScene)
     }
     fView.SetCard(fData.Messages(rules.deck).CardAt(uint32(rules.card)),
         fVariables, _HiddenOptions(screen));
+    if ((screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_MEDICI_DEPOSIT)
+            && fParty != NULL) {
+        // DARKLAND.EXE: the purse's florins to start with, 10 digits
+        fView.SetPrompt("Deposit how many Florins?",
+            std::to_string(fParty->cash.florins), 10);
+    }
     fView.SetScene(rules.scene != NULL ? rules.scene : "", withScene);
 }
 
@@ -875,6 +955,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Reputation() > -10;
         else if (rule.needs == kNeedsInnPrice)
             hide = fParty == NULL || TotalPfennigs(fParty->cash) < _InnPrice();
+        else if (rule.needs == kNeedsBankNotes)
+            hide = fParty == NULL || fParty->bankNotes == 0;
+        else if (rule.needs == kNeedsFlorins)
+            hide = fParty == NULL || fParty->cash.florins < 2;
         else if (rule.needs == kNeedsPawnshop)
             hide = (c.flags & CITY_HAS_PAWNSHOP) == 0;
         else if (rule.needs >= kNeedsShop)
@@ -1059,4 +1143,41 @@ CityVisit::_Stables()
             return SCREEN_STABLES_SALE;
     }
     return SCREEN_STABLES;
+}
+
+
+// Redeeming the letter of credit: its florins go to the purse, less
+// 6 pfennigs a florin
+int
+CityVisit::_Redeem(int result)
+{
+    if (fParty == NULL)
+        return result;
+    const uint32 notes = fParty->bankNotes;
+    const uint32 fee = notes * 6;
+    fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+        + notes * 240 - fee);
+    fParty->bankNotes = 0;
+    fVariables["Money1"] = MoneyText(notes * 240);
+    fVariables["Money2"] = MoneyText(fee);
+    return result;
+}
+
+
+// Buying a letter of credit: the florins typed in, at most 500 and what
+// the purse holds in florins (not counting the smaller coins), without a
+// fee
+void
+CityVisit::_Deposit()
+{
+    if (fParty == NULL)
+        return;
+    const std::string& typed = fView.PromptText();
+    uint32 amount = 0;
+    for (char c : typed)
+        amount = std::min(amount * 10 + uint32(c - '0'), 500u);
+    amount = std::min(amount, uint32(fParty->cash.florins));
+    amount = std::min(amount, uint32(0xFFFF - fParty->bankNotes));
+    fParty->cash.florins -= uint16(amount);
+    fParty->bankNotes += uint16(amount);
 }

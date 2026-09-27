@@ -145,6 +145,36 @@ $MARKE00.MSG by day, segment 1893 (file base 0x9F620). **verified**
   hour), unless a quest is pending. The cards 7..10 (the merchants'
   descriptions) are not shown by this code.
 
+## The banks
+
+The Fuggers ($FUGGE00.MSG, file 0xC41E7) and the Medici ($MEDIC00.MSG,
+file 0xC6253) follow the same code. **verified** (code); see
+`CityVisit.cpp`.
+
+- **Where**: the market offers them, and the Hanseatic League
+  ($HANSE00.MSG), when the location properties 0x0C, 0x0D, 0x0E are not
+  0: the location record's bytes +0x15, +0x16, +0x17, which are 0x19 for
+  every city in DARKLAND.LOC and in the saved games seen.
+- **The card**: card 0, or card 2 ("the guards grip their weapons")
+  when the local reputation or the party's standing with the bank
+  (DS:4BB6 Fuggers, DS:4BB8 Medici; 0 in the executable, raised by one
+  at each visit while not over 0) is under 0; with both summing to −100
+  or less the party is thrown out (card 5). $Money1 is the letter of
+  credit (DS:9072, in florins: one amount, whichever bank issued it).
+  Redeeming needs a letter; buying one needs over one florin in the
+  purse (DS:906B, the florins alone); the tasks are off on card 2 and
+  with a pending quest.
+- **Redeeming** (file 0xC4568, 0xC65B8): the letter's florins go to the
+  purse, less 6 pfennigs a florin ($Money2), card 6.
+- **Buying** (file 0xC4634, 0xC6676): card 3, then a typed line
+  (0x9C0:20B7) "Deposit how many Florins?" (DS:5B8F), 10 characters,
+  starting with the purse's florins; the number is clamped to 0..500
+  and to the purse's florins, which go to the letter. No fee, no time.
+- Not reproduced: the standings, the banker's name ($NamedOneName,
+  1367:0DB4 with the city record's word +0x56 + 8, + 6 for the Medici),
+  the tasks, rewards and politics. The League's options are all tasks
+  and politics.
+
 ## The crafts' guilds
 
 $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see

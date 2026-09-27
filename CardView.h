@@ -54,6 +54,17 @@ public:
     // Throws if it cannot be loaded.
     void			SetScene(const std::string& pictureName,
                         bool showFirst = true);
+    // A line to type in under the text, e.g. "Deposit how many Florins?"
+    // (the game asks for numbers this way): digits only, at most
+    // `maxLength`, starting as `text`. Return, a click or any option
+    // ends it; SetCard() removes it.
+    void			SetPrompt(const std::string& prompt,
+                        const std::string& text, size_t maxLength);
+    bool			Prompting() const		{ return !fPrompt.empty(); }
+    const std::string& PromptText() const	{ return fPromptText; }
+    void			TypeCharacter(char c);	// ignored if not a digit
+    void			Backspace();
+
     // The party shown in the sidebar (not owned; NULL: none). Throws if
     // a character's picture cannot be loaded.
     void			SetParty(const party* members);
@@ -143,4 +154,10 @@ private:
 
     GFX::point		fMouse;
     bool			fCursorVisible;
+
+    int				fTextLeft;		// the card's text margin
+    int				fTextBottom;	// under the last line of the card
+    std::string		fPrompt;		// empty: none
+    std::string		fPromptText;
+    size_t			fPromptLength;
 };

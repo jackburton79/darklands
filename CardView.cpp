@@ -158,7 +158,10 @@ CardView::CardView(GameData& data)
     fCapitalPosition(0, 0),
     fSelected(-1),
     fMouse(0, 0),
-    fCursorVisible(false)
+    fCursorVisible(false),
+    fTextLeft(0),
+    fTextBottom(0),
+    fPromptLength(0)
 {
     fFont.reset(new Font(fData.Fonts(), kTextFontIndex));
     fSidebar.reset(new PartySidebar(fData));
@@ -188,6 +191,8 @@ void
 CardView::SetCard(const msg_card& card, const card_variables& variables,
     const std::vector<int>& hidden)
 {
+    fPrompt.clear();
+    fPromptText.clear();
     _Layout(card, Normalize(Substitute(card.text, variables)), hidden);
     fSelected = fOptions.empty() ? -1 : 0;
     // the option under the mouse, if it is on the window
@@ -269,6 +274,9 @@ CardView::Run(GameWindow& window)
                         if (fInfo != NULL)
                             fInfo->Run(window, InfoView::kPartyPage);
                         break;
+                    case SDLK_BACKSPACE:
+                        Backspace();
+                        break;
                     case SDLK_UP:
                         SelectPrevious();
                         break;
@@ -280,10 +288,19 @@ CardView::Run(GameWindow& window)
                     case SDLK_SPACE:
                         chosen = Choose();
                         break;
-                    default:
-                        if (fShowingScene || fOptions.empty())
+                    default: {
+                        const SDL_Keycode key = event.key.keysym.sym;
+                        if (Prompting()) {
+                            if (key >= SDLK_0 && key <= SDLK_9)
+                                TypeCharacter(char('0' + key - SDLK_0));
+                            else if (key >= SDLK_KP_1 && key <= SDLK_KP_9)
+                                TypeCharacter(char('1' + key - SDLK_KP_1));
+                            else if (key == SDLK_KP_0)
+                                TypeCharacter('0');
+                        } else if (fShowingScene || fOptions.empty())
                             chosen = Choose();
                         break;
+                    }
                 }
                 dirty = true;
                 break;
@@ -372,6 +389,34 @@ CardView::SelectPrevious()
 {
     if (!fOptions.empty())
         fSelected = (fSelected + int(fOptions.size()) - 1) % int(fOptions.size());
+}
+
+
+void
+CardView::SetPrompt(const std::string& prompt, const std::string& text,
+    size_t maxLength)
+{
+    fPrompt = prompt;
+    fPromptLength = maxLength;
+    fPromptText.clear();
+    for (char c : text)
+        TypeCharacter(c);
+}
+
+
+void
+CardView::TypeCharacter(char c)
+{
+    if (Prompting() && c >= '0' && c <= '9' && fPromptText.size() < fPromptLength)
+        fPromptText += c;
+}
+
+
+void
+CardView::Backspace()
+{
+    if (!fPromptText.empty())
+        fPromptText.erase(fPromptText.size() - 1);
 }
 
 
@@ -523,6 +568,8 @@ CardView::_Layout(const msg_card& card, const std::string& text,
         if (option)
             fOptions.push_back(option_area{ optionNumber, top - 1, y - kLineGap });
     }
+    fTextLeft = left;
+    fTextBottom = y;
 }
 
 
@@ -590,6 +637,18 @@ CardView::_DrawCard()
     }
     for (const text_line& line : fLines) {
         fFont->RenderString(line.text, fBuffer, GFX::point(line.x, line.y),
+            kTextColor);
+    }
+    if (Prompting()) {
+        // under the text, with a cursor (the game's look is not known)
+        // ('_' is a letter in the game's character set: draw the cursor)
+        const std::string line = Font::ToGameCharset(fPrompt) + " "
+            + fPromptText;
+        const int y = fTextBottom + fFont->Height();
+        fFont->RenderString(line, fBuffer, GFX::point(fTextLeft, y),
+            kTextColor);
+        const int cursorX = fTextLeft + fFont->StringWidth(line) + 1;
+        fBuffer->FillRect(GFX::rect(cursorX, y + fFont->Height() - 1, 5, 1),
             kTextColor);
     }
 }

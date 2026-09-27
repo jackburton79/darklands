@@ -70,6 +70,15 @@ public:
         SCREEN_UNWELCOME,		// the inn, for a wanted party: $URBAN00/01
         SCREEN_STABLES,			// cards 3, 1 and 7
         SCREEN_STABLES_SALE,
+        SCREEN_FUGGER,			// the market's banks: $FUGGE00.MSG,
+        SCREEN_MEDICI,			// $MEDIC00.MSG,
+        SCREEN_HANSE,			// and the League: $HANSE00.MSG
+        SCREEN_FUGGER_COLD,		// the banks, for a disliked party
+        SCREEN_MEDICI_COLD,
+        SCREEN_FUGGER_REDEEMED,	// a letter of credit redeemed,
+        SCREEN_MEDICI_REDEEMED,
+        SCREEN_FUGGER_DEPOSIT,	// or bought
+        SCREEN_MEDICI_DEPOSIT,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -131,6 +140,10 @@ private:
     uint32			_InnPrice() const;
     int				_Sleep();
     int				_Stables();
+    // The banks' letters of credit (DARKLAND.EXE, file 0xC4568 and
+    // 0xC4634; the Medici's are the same)
+    int				_Redeem(int result);
+    void			_Deposit();
     int				_Reputation() const;
     std::vector<int> _HiddenOptions(int screen) const;
 

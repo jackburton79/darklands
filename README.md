@@ -94,6 +94,7 @@ implemented yet. See the roadmap below.
       pharmacists, the Leihhaus)
 - [x] The inn: the price of a meal and a night, sleeping, the stables
 - [x] Trade with the artificers' and clothmakers' guilds
+- [x] The Fugger and Medici banks: letters of credit
 - [ ] What happens in the other places (training, audiences...), the
       other merchants
 - [ ] Sound playback
