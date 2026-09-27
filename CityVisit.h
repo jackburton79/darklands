@@ -91,6 +91,10 @@ public:
         SCREEN_PHYSICIAN_NO_TRADE,
         SCREEN_PHYSICIAN_TREATED,
         SCREEN_PHYSICIAN_POOR,	// not enough money for the treatment
+        SCREEN_PHYSICIAN_TUTOR,	// his answers to would-be students:
+        SCREEN_PHYSICIAN_APPRENTICES,	// cards 4, 5, 6 and 11
+        SCREEN_PHYSICIAN_NOTHING,
+        SCREEN_PHYSICIAN_NO_STUDENTS,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -168,6 +172,7 @@ private:
     int				_AskAid();
     int				_Components();
     int				_Treatment();
+    int				_Students();
     int				_Reputation() const;
     // A city's location property 0x21: its number plus the seed global
     uint16			_PeopleSeed() const;
@@ -195,6 +200,20 @@ private:
     // people of the city), and until when they treat no one again
     std::map<int, int>	fPhysicianSkill;
     std::map<int, uint32> fTreatedUntil;	// in hours, see HourStamp()
+    std::map<int, uint32> fNoStudentsUntil;
+public:
+    // A teacher found in a city: the physician who takes students gives
+    // lessons in a skill, up to a level, for a daily fee, while the party
+    // lives at the inn (DARKLAND.EXE: 0E76:2C4E, kind 0x28)
+    struct tutor {
+        int		skill;			// e.g. kSkillHealing
+        int		level;
+        uint32	fee;			// pfennigs a day
+        uint32	until;			// the offer, in hours (see HourStamp())
+    };
+    const std::map<int, tutor>& Tutors() const	{ return fTutors; }
+private:
+    std::map<int, tutor> fTutors;	// by city
     bool			fTreatmentOffered;
     std::unique_ptr<ExeNames> fNames;
 };

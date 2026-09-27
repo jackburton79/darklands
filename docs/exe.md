@@ -193,7 +193,16 @@ the options' switch at file 0xA3128). **verified** (code); see
   mask 0x400) and an hour if random(100) is at most clamp(0, 75, the
   leader's Speak Common + charisma + (P + month) % 30 + reputation)
   (file 0xA365C), else card 12.
-- Not reproduced: the students (training), the night card (1).
+- **Students** (file 0xA349C): card 6 ("nothing I can teach you") if the
+  best healer's Healing is over the skill and the skill is over 1; card
+  11 while a mark (kind 0x38, 30 hours) says he refused; if (P + year)
+  % 3 (signed) is not 0 and the skill is over 1, card 4: students for
+  skill / 5 + 10 pfennigs a day ($Money1), a person of kind 0x28 being
+  made if there is none (0E76:392C, 2C4E: Healing, 60, for 168 hours);
+  else card 5, $Number1 = random(4) + 1 apprentices, and the mark. The
+  lessons are given while the party lives at the inn (the inn's
+  residence, not decoded).
+- Not reproduced: the lessons, the night card (1).
 
 ## The banks
 

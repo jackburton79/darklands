@@ -30,7 +30,8 @@ enum option_action {
     ACTION_DISCUSS_TREATMENTS,	// the physician's options
     ACTION_ASK_AID,
     ACTION_COMPONENTS,
-    ACTION_TREATMENT
+    ACTION_TREATMENT,
+    ACTION_STUDENTS
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -426,7 +427,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "PHYSI00", 0, NULL, {
         DO(ACTION_DISCUSS_TREATMENTS),		// try to determine his skill
         DO_IF(ACTION_ASK_AID, kNeedsWounded),	// his aid in healing wounds
-        TODO,								// be his students
+        DO(ACTION_STUDENTS),				// be his students
         DO(ACTION_COMPONENTS),				// alchemical components
         DO_IF(ACTION_TREATMENT, kNeedsTreatment),	// pay $Money1
         GO(SCREEN_CRAFTS),					// leave
@@ -448,6 +449,14 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "PHYSI00", 13, NULL, { GO(SCREEN_PHYSICIAN) } },
     // "...your purse lacks enough money for everyone"
     { "PHYSI00", 14, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "...I will take some of you as students for $Money1 daily"
+    { "PHYSI00", 4, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "I already have $Number1 apprentices"
+    { "PHYSI00", 5, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "Your skills in healing match my own"
+    { "PHYSI00", 6, NULL, { GO(SCREEN_PHYSICIAN) } },
+    // "I am unable to take any students"
+    { "PHYSI00", 11, NULL, { GO(SCREEN_PHYSICIAN) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -649,6 +658,10 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN01", 1, NULL, { GO(SCREEN_INN) } },
     { NULL, 0, NULL, {} },					// stables, sale: not at night
     { NULL, 0, NULL, {} },					// the physician
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -885,6 +898,9 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_TREATMENT:
             _Show(_Treatment());
+            return true;
+        case ACTION_STUDENTS:
+            _Show(_Students());
             return true;
         case ACTION_MASS:
             _Show(_Mass());
@@ -1455,4 +1471,38 @@ CityVisit::_Treatment()
     if (fClock != NULL)
         fTreatedUntil[fCity] = HourStamp(*fClock) + 20;
     return SCREEN_PHYSICIAN_TREATED;
+}
+
+
+// Asking to be his students (file 0xA349C): nothing to learn from him if
+// the best healer is better (and he is no idiot); no again for 30 hours
+// after a no; he takes students for skill / 5 + 10 pfennigs a day where
+// (the city's property 0x21 + year) % 3 is not 0 (a teacher of healing
+// up to 60, for 168 hours); else he has 1..4 apprentices already
+int
+CityVisit::_Students()
+{
+    const int skill = _PhysicianSkill();
+    int best = 0;
+    if (fParty != NULL && !fParty->members.empty())
+        best = fParty->members[_BestHealer()].skills[kSkillHealing];
+    if (best > skill && skill > 1)
+        return SCREEN_PHYSICIAN_NOTHING;
+    const uint32 now = fClock != NULL ? HourStamp(*fClock) : 0;
+    const std::map<int, uint32>::const_iterator refused
+        = fNoStudentsUntil.find(fCity);
+    if (refused != fNoStudentsUntil.end() && now < refused->second)
+        return SCREEN_PHYSICIAN_NO_STUDENTS;
+    const int year = fClock != NULL ? fClock->Year() : 1400;
+    if (int16(_PeopleSeed() + year) % 3 != 0 && skill > 1) {
+        const uint32 fee = uint32(skill / 5 + 10);
+        fVariables["Money1"] = MoneyText(fee);
+        if (fTutors.find(fCity) == fTutors.end()
+                || fTutors[fCity].until <= now)
+            fTutors[fCity] = tutor{ kSkillHealing, 60, fee, now + 168 };
+        return SCREEN_PHYSICIAN_TUTOR;
+    }
+    fVariables["Number1"] = std::to_string(fRandom() % 4 + 1);
+    fNoStudentsUntil[fCity] = now + 30;
+    return SCREEN_PHYSICIAN_APPRENTICES;
 }
