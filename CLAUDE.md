@@ -27,7 +27,8 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
   `apt-get install -y libsdl2-dev zlib1g-dev`.
 - The Makefile tracks header dependencies (`-MMD -MP`). If objects ever look
   stale (odd crashes after changing a class layout), `make clean && make`.
-- New `.cpp` files must be added to `SOURCES` in the `Makefile`.
+- The Makefile builds every `.cpp` under `src/` (objects go to `obj/`);
+  a new file only needs to be in the right folder.
 
 ## Game data
 
@@ -54,7 +55,13 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 
 ## Code layout
 
-- Readers, one per format: `Catalog` (.CAT), `PICImage` (.PIC, chunked:
+The sources are in `src/`: `src/formats/` the readers of the game's
+files (no SDL), `src/game/` the game state and rules (`GameData`,
+`Character`, `GameTime`, `Travel`), `src/ui/` the screens and drawing,
+`src/darklands.cpp` the command line. The folders are all on the
+include path: include headers by name (`#include "CityFile.h"`).
+
+- Readers, one per format (`src/formats/`): `Catalog` (.CAT), `PICImage` (.PIC, chunked:
   `M0` palette + `X0` image), `Palette` (ENEMYPAL.DAT, `NearestColor()`),
   `MapFile`, `LocationFile`, `CityFile`, `FontFile`, `MsgFile` (.MSG
   card decks, read from the MSGFILES catalog via `GameData::Messages()`),

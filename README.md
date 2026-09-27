@@ -189,37 +189,46 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ## Project layout
 
 ```
-darklands.cpp     Program entry point: the game, image viewer, --extract,
-                  --map, --locations, --cities, --enemies, --messages,
-                  --card
-Game.*            The game: new or loaded, cities and the world map in turn
-GameTime.*        The game's date and time (monastic hours, Julian calendar)
-Character.*       A character (554-byte records) and the party
-CharacterFile.*   Reader for the new game's characters (CHARACTR.TMP)
-ListFile.*        Reader for the item, saint and formula lists (DARKLAND.LST)
-InfoView.*        The party and character information screens
-PartySidebar.*    The character boxes on the left of the screens
-TradeView.*       Buying and selling with a merchant
-SaveFile.*        Reader for the saved games (SAVES/*.SAV)
-CityVisit.*       The party in a city: which card follows which
-GameData.*        Access to the game's data files from one data directory
-MapViewer.*       Interactive world map (scrolling, travel, city details)
-CardView.*        A menu card on screen: frame, text, options
-ScreenSupport.*   The game window and mouse cursor, for the screens
-Travel.*          Paths across the world map
-WorldMap.*        The world map: tiles, column rule, drawing any part of it
-CityLabels.*      City names drawn over the map
-Catalog.*         Reader for the game's .CAT archive/catalog files
-PICImage.*        Decoder for the game's .PIC image format
-Palette.*         Reader for palette chunk files (ENEMYPAL.DAT)
-MapFile.*         Reader for the world map file (DARKLAND.MAP)
-LocationFile.*    Reader for the map locations (DARKLAND.LOC)
-CityFile.*        Reader for the cities (DARKLAND.CTY)
-DescriptionFile.* Reader for the city descriptions (DARKLAND.DSC)
-EnemyFile.*       Reader for the enemies (DARKLAND.ENM)
-MsgFile.*         Reader for the menu cards (.MSG files in MSGFILES)
-FontFile.*        Reader for the bitmap fonts (FONTS.FNT, FONTS.UTL)
-TextSupport.*     Text rendering with the game fonts
+src/darklands.cpp   Program entry point: the game, catalog dump, --extract,
+                    --map, --locations, --cities, --enemies, --messages,
+                    --card
+
+src/formats/        Readers for the game's files (no SDL)
+  Catalog.*         .CAT archive/catalog files
+  PICImage.*        The .PIC image format
+  Palette.*         Palette chunk files (ENEMYPAL.DAT)
+  FontFile.*        The bitmap fonts (FONTS.FNT, FONTS.UTL)
+  MapFile.*         The world map (DARKLAND.MAP)
+  LocationFile.*    The map locations (DARKLAND.LOC)
+  CityFile.*        The cities (DARKLAND.CTY)
+  DescriptionFile.* The city descriptions (DARKLAND.DSC)
+  EnemyFile.*       The enemies (DARKLAND.ENM)
+  ListFile.*        The item, saint and formula lists (DARKLAND.LST)
+  MsgFile.*         The menu cards (.MSG files in MSGFILES)
+  CharacterFile.*   The new game's characters (CHARACTR.TMP)
+  SaveFile.*        The saved games (SAVES/*.SAV)
+  ExeData.*         Names and tables read from DARKLAND.EXE
+
+src/game/           Game state and rules (no screen)
+  GameData.*        Access to the game's data files from one data directory
+  Character.*       A character (554-byte records) and the party
+  GameTime.*        The game's date and time (monastic hours, Julian calendar)
+  Travel.*          Paths across the world map
+
+src/ui/             Screens and drawing
+  Game.*            The game: new or loaded, cities and the world map in turn
+  CityVisit.*       The party in a city: which card follows which
+  CardView.*        A menu card on screen: frame, text, options
+  InfoView.*        The party and character information screens
+  PartySidebar.*    The character boxes on the left of the screens
+  TradeView.*       Buying and selling with a merchant
+  ResidenceView.*   Living at the inn: the members' activities
+  MapViewer.*       Interactive world map (scrolling, travel, city details)
+  WorldMap.*        The world map: tiles, column rule, drawing any part of it
+  CityLabels.*      City names drawn over the map
+  ScreenSupport.*   The game window and mouse cursor, for the screens
+  TextSupport.*     Text rendering with the game fonts
+
 docs/formats.md   Reverse-engineered data format notes
 docs/exe.md       Notes on DARKLAND.EXE: structure, decoded rules
 ```

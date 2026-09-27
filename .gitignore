@@ -3,3 +3,4 @@ darklands
 *.o
 data
 *.d
+/obj/
