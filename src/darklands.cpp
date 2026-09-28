@@ -8,6 +8,7 @@
 #include "CityLabels.h"
 #include "CityVisit.h"
 #include "EnemyFile.h"
+#include "EventFile.h"
 #include "ExeData.h"
 #include "Game.h"
 #include "GameData.h"
@@ -121,6 +122,53 @@ DumpEnemies(const EnemyFile& enemies)
             << e.name << std::right << "  type " << std::setw(2) << e.type
             << " (" << enemies.TypeAt(e.type).name << ")  flags 0x"
             << std::hex << e.flags << std::dec << std::endl;
+    }
+}
+
+
+// The game's events, of EVENTS.TMP or a saved game: category, kind,
+// subject, location, dates (day/month/year hour), whether they run at
+// the saved game's date, then the other fields
+static void
+DumpEvents(GameData& data, const std::string& saveName)
+{
+    std::vector<world_event> events;
+    bool dated = false;
+    GameTime now;
+    if (saveName.empty())
+        events = EventFile(data.PathFor("EVENTS.TMP")).Events();
+    else {
+        const SaveFile save(data.PathFor("SAVES/" + saveName));
+        events = save.Events();
+        now = save.Date();
+        dated = true;
+    }
+    const LocationFile& locations = data.Locations();
+    const auto date = [](const event_date& d) {
+        char text[32];
+        snprintf(text, sizeof(text), "%2d/%2d/%4d %2dh", d.day, d.month,
+            d.year, d.hour);
+        return std::string(text);
+    };
+    for (size_t i = 0; i < events.size(); i++) {
+        const world_event& e = events[i];
+        std::string place = "-";
+        if (e.location >= 0 && uint32(e.location) < locations.CountLocations())
+            place = locations.LocationAt(uint32(e.location)).name;
+        std::cout << std::setw(2) << i << "  category " << std::setw(2)
+            << e.category << "  kind " << std::setw(3) << e.kind
+            << "  subject " << std::setw(3) << e.subject << "  at "
+            << std::setw(3) << e.location << " " << std::left
+            << std::setw(14) << place << std::right << "  "
+            << date(e.start) << " .. " << date(e.end);
+        if (dated) {
+            std::cout << (EventStarted(e, now) && !EventEnded(e, now)
+                ? "  running" : "         ");
+        }
+        std::cout << "  (" << e.unknown1A << " " << e.unknown1E << " "
+            << e.unknown20 << " " << e.unknown24 << " " << e.unknown26
+            << " " << e.unknown2A << " " << e.unknown2C << " "
+            << e.unknown2E << ")" << std::endl;
     }
 }
 
@@ -488,6 +536,8 @@ Usage()
         "  --cities                      list DARKLAND.CTY\n"
         "  --enemies                     list DARKLAND.ENM\n"
         "  --saints                      list the saints' rules (DARKLAND.EXE)\n"
+        "  --events [save]               list the game's events (EVENTS.TMP,\n"
+        "                                or a saved game, e.g. DKSAVE0.SAV)\n"
         "  --battlemap <name>            dump a battlefield map of IMAPS.CAT\n"
         "                                (e.g. ICITY.000)\n"
         "  --battle <name> [enemy] [save]\n"
@@ -536,6 +586,10 @@ int main(int argc, char **argv)
             return DoMapMode(data, extra > 0 ? argv[arg + 1] : "map");
         if (command == "--cities") {
             DumpCities(data.Cities());
+            return 0;
+        }
+        if (command == "--events") {
+            DumpEvents(data, extra > 0 ? argv[arg + 1] : "");
             return 0;
         }
         if (command == "--saints") {

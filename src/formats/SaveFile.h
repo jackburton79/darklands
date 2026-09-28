@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Character.h"
+#include "EventFile.h"
 #include "GameTime.h"
 
 #include <string>
@@ -33,6 +34,8 @@ public:
     // the file has no location array.
     const std::vector<int16>& Reputations() const	{ return fReputations; }
     const std::vector<uint8>& LocationFlags() const	{ return fLocationFlags; }
+    // The game's events (see EventFile.h)
+    const std::vector<world_event>& Events() const	{ return fEvents; }
     // Empty in DEFAULT, the new game template.
     const party&	Party() const				{ return fParty; }
 
@@ -47,5 +50,6 @@ private:
     std::vector<character>	fCharacters;
     std::vector<int16>	fReputations;
     std::vector<uint8>	fLocationFlags;
+    std::vector<world_event> fEvents;
     party			fParty;
 };

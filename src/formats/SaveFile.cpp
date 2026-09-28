@@ -30,7 +30,6 @@ static const size_t kColorsOffset		= 0x111;	// 24 bytes per slot
 static const size_t kCharactersOffset	= 0x189;
 // After the characters: a word count of 48-byte event records, then a
 // word count of 58-byte location records, as in DARKLAND.LOC (verified)
-static const size_t kEventSize			= 48;
 static const size_t kLocationSize		= 58;
 static const size_t kReputationOffset	= 0x12;	// in a location record
 static const size_t kLocationFlagsOffset = 0x14;
@@ -81,7 +80,12 @@ SaveFile::SaveFile(const std::string& fileName)
     size_t offset = kCharactersOffset + count * kCharacterRecordSize;
     if (offset + 2 <= size) {
         const size_t events = WordAt(data, offset);
-        offset += 2 + events * kEventSize;
+        offset += 2;
+        if (offset + events * kEventRecordSize > size)
+            throw std::runtime_error("SaveFile: truncated events");
+        for (size_t i = 0; i < events; i++)
+            fEvents.push_back(ReadEvent(&data[offset + i * kEventRecordSize]));
+        offset += events * kEventRecordSize;
         if (offset + 2 <= size) {
             const size_t locations = WordAt(data, offset);
             offset += 2;

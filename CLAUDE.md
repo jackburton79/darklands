@@ -51,6 +51,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --cities                 # dump DARKLAND.CTY
 ./darklands --enemies                # dump DARKLAND.ENM
 ./darklands --saints                 # the saints' rules (DARKLAND.EXE)
+./darklands --events [DKSAVE0.SAV]   # the game's events (EVENTS.TMP)
 ./darklands --battlemap ICITY.000    # a battlefield map, as text
 ./darklands --battle IWILDGEN.101 M03 DKSAVE0.SAV  # seen from above,
                                      # with the party and 4 skeletons
@@ -78,7 +79,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `ExeData` (the people's names, the jobs, the weapon table, read
   from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
-  of `Character` records (554 bytes) and giving a `party`.
+  of `Character` records (554 bytes) and giving a `party`;
+  `EventFile` (EVENTS.TMP, the saves' events too: `world_event`).
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
   rule, `Draw(bitmap, origin)` for any part of the map, `TileAtPixel()`.
 - `GameData`: lazy access to all game files. `TextSupport` (`Font`): text

@@ -870,7 +870,7 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
                   sprites")
     0x189   554·N character records
     ...     2     event count E
-            48·E  event records
+            48·E  event records (see "Events")
     ...     2     location count L (414; 405 in DEFAULT)
             58·L  location records, as in DARKLAND.LOC, with the state
                   of the game: +0x12 the party's reputation there
@@ -905,6 +905,49 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
 - `DEFAULT` is the new game template: the four Quickstart characters,
   no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
   10 pf.
+
+## Events (`EVENTS.TMP`, and the saved games)
+
+What happens in the world: the game keeps up to 300 events (far
+pointers at 2E38:1B2C); `EVENTS.TMP` is a word, the count of the used
+slots, then their 48-byte records in slot order, as the game writes it
+(file 0x6141E: **verified**, 2 + 28 · 48 = 1346, the file's size). The
+saved games hold the same after the characters. See `EventFile.cpp`
+and `darklands --events [save]`.
+
+    offset  size  description
+    +0x00   2     a number the queries compare (0E76:360C, 3C28): the
+                  subject within the kind (0..10, 171, 172 seen)
+    +0x02   8     a date: hour, day, month, year (words); the creation
+                  (*inferred*: at or before the start)
+    +0x0A   8     the start: the event counts from then on (0E76:3180
+                  compares year, month, day, hour with the game's date)
+    +0x12   8     the end: over from then on (0E76:31E6); 31/12/1499 23h
+                  (month 12: past December) for "never"
+    +0x1A   2     compared by 0E76:3C28; −2 in many records
+    +0x1C   2     location, index into DARKLAND.LOC (0E76:3470, 360C)
+    +0x1E   6     not known (73, 74, 84, 99, 100 ... ; 95; 0)
+    +0x22   2     category: the queries walk those of one category
+                  (0E76:324C; asked for 28, it takes 8 too); 8 the
+                  world's events, 28 the people tied to them, 36, 38,
+                  42, 43, 90, 99 seen
+    +0x24   4     not known
+    +0x28   2     kind, within the category: for category 8, 4 a dragon
+                  (at "Lair", $AFFAI00 card 5: "Some even talk of a
+                  dragon"), 3 a robber knight (at a castle, subjects 171,
+                  172), 10 special sites (Lake, Shrine, Tomb, Cave,
+                  Spring), 1, 12; 2 political unrest (the notices' and
+                  gossip's queries; none in these files)
+    +0x2A   2     compared by 0E76:3C28
+    +0x2C   4     not known
+
+- **Dates** — **verified**: month 0 exists (28/0/1402), so the months
+  are 0-based like the game's clock; the comparisons are the code's.
+- **Locations** — plausible: the dragon at "Lair" (138), the robber
+  knights at Grötsch (120), a castle.
+- **Kinds** — *inferred* from the locations and the cards the queries
+  choose, except kind 2 (political unrest: the queries of the news,
+  exe.md "News and rumors").
 
 ## Item and name lists (`DARKLAND.LST`)
 

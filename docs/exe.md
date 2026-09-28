@@ -1047,9 +1047,10 @@ their content comes from the game's events. **verified** (code)
 - **Events** (0E76:360C(kind, a, location), file 0x5AEBC): a search of
   up to 300 events (far pointers at 7E30:1B2C) for one with +0x28 =
   kind, +0 = a, +0x1C = the location, still valid (0E76:3230). 0E76:
-  3470, 32FE, 3C28 query them too. EVENTS.TMP holds a word (28) and 28
-  records of 48 bytes (2 + 28 · 48 = 1346, its size). Not read yet: no
-  events are kept here, so every event query is false.
+  3470(kind, location): one of category 8, started; 32FE(kind): one of
+  category 8, started; 3C28(category, subject, +0x1A, kind, +0x2A),
+  −1 for "any", returns its location. The records: formats.md
+  "Events". Not used yet by `CityVisit`: every event query is false.
 - **The notices** (state 0x6D, $OFFIC00, segment 1910 at file 0xE97C0,
   overlay 0x47): nobody reading better than 10 (0E76:14A4(12)): by day
   card 4 (a citizen reads them), at night card 5 and nothing more; then
