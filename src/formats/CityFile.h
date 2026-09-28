@@ -87,6 +87,8 @@ struct city {
                                 // flags have bit 0x80 (0E76:1A7E(0x28))
     uint8 shopQuality[CITY_SHOP_COUNT];	// the quality of its goods; 0: the
                                         // city has no such shop
+    uint16 feastDay;			// +0x6C: a day of the year, 0-based (the
+                                // city's feast, inferred)
     std::string places[CITY_PLACE_COUNT];
 };
 

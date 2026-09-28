@@ -326,6 +326,33 @@ public:
         SCREEN_DRIVEN_OFF,		// driven off (21)
         SCREEN_LEFT_FOR_DEAD,	// left for dead (22)
         SCREEN_MEN_BEATEN,		// his men beaten (23)
+        SCREEN_SLUM_REST,		// $SLUMD00: an hour's rest (5), a room
+        SCREEN_SLUM_ROOM,		// (2) or a shanty (3) to live in, the
+        SCREEN_SLUM_SHANTY,		// rest disturbed (7)
+        SCREEN_SLUM_DISTURBED,
+        SCREEN_THIEVES,			// $CITYT00: the thieves in ambush (1)
+        SCREEN_THIEVES_ROBBED,	// the party submits (3)
+        SCREEN_THIEVES_TALKED,	// talked into leaving (4)
+        SCREEN_THIEVES_UNCONVINCED,	// or not (5)
+        SCREEN_THIEVES_SCARED,	// scared away (6)
+        SCREEN_THIEVES_UNIMPRESSED,	// or not (7)
+        SCREEN_THIEVES_SAINT,	// a saint pacifies them (8)
+        SCREEN_THIEVES_UNANSWERED,	// or not (9)
+        SCREEN_THIEVES_OUTRIDDEN,	// on horseback (10)
+        SCREEN_THIEVES_ELUDED,	// running (11)
+        SCREEN_THIEVES_CAUGHT,	// or caught (12)
+        SCREEN_THIEVES_SLAIN,	// the thieves slain (15), the neighbors'
+        SCREEN_THIEVES_LEFT_FOR_DEAD,	// thanks (17, 18); the party
+        SCREEN_THIEVES_THANKED,	// beaten and robbed (16)
+        SCREEN_THIEVES_BLESSED,
+        SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
+        SCREEN_SHELL_LOST_RIGHT,	// pea under the right-hand (1), middle
+        SCREEN_SHELL_LOST_MIDDLE,	// (2) or left-hand shell (3), the
+        SCREEN_SHELL_LOST_LEFT,	// shells shuffled: it seems under the
+        SCREEN_SHELL_RIGHT,		// right-hand (4), middle (5) or left-hand
+        SCREEN_SHELL_MIDDLE,	// shell (6); won (7)
+        SCREEN_SHELL_LEFT,
+        SCREEN_SHELL_WON,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -625,6 +652,21 @@ private:
     void			_KnightSlain();
     int				_TowerInside(int state);
     void			_ClaimRewards(int kind, int place);
+    // The slum's lodging, the thieves (state 0x24) and the shell game
+    // (state 0xB2)
+    int				_SlumLodging();
+    int				_AfterSlumCamp();
+    int				_MeetThieves();
+    int				_ThievesTalkChance() const;
+    int				_TalkToThieves();
+    int				_ThievesScareChance() const;
+    int				_ScareThieves();
+    int				_RunFromThieves();
+    void			_FightThieves();
+    int				_ResolveThievesBattle(int outcome);
+    void			_Robbed();
+    bool			_FeastNear() const;
+    int				_PlayShells(int shell);
 
     GameData&		fData;
     CardView		fView;
@@ -672,7 +714,8 @@ private:
         BATTLE_WITH_PURSUERS,
         BATTLE_AT_GATE,
         BATTLE_WITH_KNIGHT,
-        BATTLE_WITH_KNIGHTS_MEN
+        BATTLE_WITH_KNIGHTS_MEN,
+        BATTLE_WITH_THIEVES
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -703,6 +746,10 @@ private:
     bool			fQuestRobber;	// the task is the robber knight
     int				fAfterCard;		// the tower's results: the next screen,
                                     // -1 the map
+    bool			fSlumCamp;		// the pending residence is in the slum
+    int				fThievesReturn;	// where the thieves' cards end
+    int				fShellReturn;	// the square or the market
+    bool			fShellWon;		// DS:8E1C: the man lets a party win once
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

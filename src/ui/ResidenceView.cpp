@@ -86,6 +86,8 @@ ResidenceView::ResidenceView(GameData& data)
     fTutor(NULL),
     fMember(0),
     fDays(0),
+    fAmbushSafe(-1),
+    fInterrupted(false),
     fMouse(0, 0),
     fCursorVisible(false)
 {
@@ -136,6 +138,8 @@ ResidenceView::SetPlace(int cityIndex, int reputation, uint32 innPrice,
     fMember = 0;
     fDays = 0;
     fMessage.clear();
+    fAmbushSafe = -1;
+    fInterrupted = false;
     _UpdateValues();
 }
 
@@ -170,8 +174,10 @@ ResidenceView::Run(GameWindow& window)
                     fInfo->Run(window, InfoView::kPartyPage);
                 if (key >= SDLK_1 && key <= SDLK_5)
                     SelectMember(int(key - SDLK_1));
-                else if (key == SDLK_s)
-                    SpendDay();
+                else if (key == SDLK_s) {
+                    if (!SpendDay() && fInterrupted)
+                        return;
+                }
                 else {
                     for (int i = 0; i < ACTIVITY_COUNT; i++) {
                         if (key == SDL_Keycode(kMenuKeys[i]))
@@ -308,12 +314,17 @@ ResidenceView::NetCost() const
 
 
 // File 0x7050A: each member's day, then the inn is paid (if the purse
-// can), then the time until 5 in the morning passes (at least 9 hours)
+// can), then the time until 5 in the morning passes (at least 9 hours).
+// In the slum the thieves may come first (file 0x6FDBE).
 bool
 ResidenceView::SpendDay()
 {
-    if (fParty == NULL)
+    if (fParty == NULL || fInterrupted)
         return false;
+    if (fAmbushSafe >= 0 && _Random(100) >= fAmbushSafe) {
+        fInterrupted = true;
+        return false;
+    }
     const int32 cost = NetCost();
     if (cost > 0 && int64(TotalPfennigs(fParty->cash)) < cost) {
         fMessage = "Not Enough Money";
@@ -424,7 +435,7 @@ ResidenceView::Clicked(const GFX::point& point)
     if (point.x >= kOptionsLeft && point.y >= kSpendTop - 1
             && point.y < kSpendTop + kLineHeight) {
         SpendDay();
-        return true;
+        return !fInterrupted;
     }
     return !(point.x >= kOptionsLeft && point.y >= kLeaveTop - 1
         && point.y < kLeaveTop + kLineHeight);

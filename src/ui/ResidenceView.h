@@ -68,6 +68,11 @@ public:
     // none). Every member starts relaxing.
     void			SetPlace(int cityIndex, int reputation, uint32 innPrice,
                         const city_tutor* tutor);
+    // Living in the slum (DARKLAND.EXE, file 0x6FDBE): before each day,
+    // if random(100) is at least `safe`, thieves come and the party
+    // leaves (Interrupted()); -1, as SetPlace() leaves it: never.
+    void			SetAmbush(int safe)		{ fAmbushSafe = safe; }
+    bool			Interrupted() const		{ return fInterrupted; }
 
     // Runs until the party leaves.
     void			Run(GameWindow& window);
@@ -82,7 +87,8 @@ public:
     bool			Available(activity what) const;
     bool			Choose(activity what);
     // One day, until 5 in the morning (at least 9 hours): false, and
-    // nothing happens, if the purse cannot pay for it.
+    // nothing happens, if the purse cannot pay for it or thieves come
+    // (see SetAmbush()).
     bool			SpendDay();
 
     activity		ActivityOf(int member) const;
@@ -140,6 +146,8 @@ private:
     std::vector<std::string> fJobs;
     int				fDays;
     std::string		fMessage;
+    int				fAmbushSafe;
+    bool			fInterrupted;
     GFX::point		fMouse;
     bool			fCursorVisible;
 };

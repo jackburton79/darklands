@@ -1144,6 +1144,81 @@ segment base 0xA6B50), $URBAN01.MSG at night (file 0xA7545). **verified**
   "News and rumors" below), back to the inn after (DS:E7D8). Not
   reproduced: the party's composition.
 
+## Encounters in the city
+
+The code of the city's places, followed from the streets, the square,
+the market, the slum and the grove, has two random encounters besides
+the night watch: the thieves in the slum and the shell game. The grove
+(states 0x21, 0x22, $CITYG05/06) has none: an hour (card 1), a bell
+(card 2, three hours) or until nightfall (card 3, then card 4 with
+$Number1 the hours when 8 or more) by day; at night an hour, a bell, or
+until 5 in the morning (card 3, 0E76:19D0(location, −1, −1), card 5).
+**verified** (code)
+
+- **The slum** (state 0x23, segment 19A2 of overlay 0x34 at file
+  0xAAEC0; the options through a switch at file 0xAB07A): *rest* (file
+  0xAB104) is card 5 and an hour. *Live very cheaply* (file 0xAB49E):
+  city size / 3 hours, card 2 where the city's property 0x21 is odd,
+  else card 3, a lesson in Streetwise of mode 7 for all (09C0:1F63(−2,
+  16, 7, 10, 0)), then the camp screen of type 3 (0E76:222A(3), see
+  "The residence"): a day costs one pfennig (file 0x7092B), and before
+  each day (the S key, file 0x6FDBE) if random(100) is at least
+  clamp(25, 95, the best Streetwise + 25) the camp ends with mark 0x52
+  for 2 hours. After it, with mark 0x52: random(2) + 2 hours, card 7,
+  DS:E7D8 = 0x23 and the thieves (state 0x24); with mark 0x51 (an
+  alchemy accident) state 0xB5; else the slum. The hidden option 7
+  (file 0xAB366) is an older version of the same, never offered.
+- **The thieves** (state 0x24, $CITYT00, 1838:0000 of overlay 0x35 at
+  file 0xAC140; also the map's random encounters, file 0x5E456, where
+  DS:A891 is 3): an hour; the member of the best Perception
+  (0E76:16FE(3)) is $ChosenOneName; unless an event of category 0x4F
+  runs (0E76:32CE), if random(100) is over his Perception the thieves
+  strike first: in a city the fight at once (on the map card 0 first).
+  Else card 1 (card 2 on the map, without saints and alchemy):
+  - *offer all your possessions* (file 0xAC6BE): the search
+    (09C0:1EB9(−2) = 18E7:0854), card 3, a club each (09C0:2067(−2,
+    15) = 18E7:0128);
+  - *street sense* (file 0xAC722): if random(100) is at most the
+    leader's Intelligence or Charisma, the higher, + (his skill 18,
+    Woodwise, + Speak Common) / 2 (file 0xAC822; the game reads
+    Streetwise on the map and Woodwise in a city, the reverse of its
+    lessons), lessons of mode 1 in Streetwise and Speak Common for the
+    leader, card 4, an hour; else card 5 and the fight;
+  - *armed and dangerous* (file 0xAC88E): $NamedOneName the leader's
+    weapon (09C0:1E9B, item 7 without one); if random(100) is at most
+    his best weapon skill (0E76:01C0(−1)), a lesson in it, card 6; else
+    card 7 and the fight;
+  - *a saint* (0E76:2180; saints DS:EE4B..: Apollinarius, Genevieve,
+    Godfrey): answered, card 8;
+  - *run* (file 0xACA66): with horses (0E76:1326(5)) card 10; else an
+    hour, and if random(100) is at most the slowest member's speed + 5
+    (0E76:0656) card 11, else card 12 and the fight;
+  - *alchemy* (file 0xACBE8): card 13, an hour;
+  - *attack*: the fight.
+  The fight (file 0xAC416): enemy 7 (the bandits) at variant s / 4 + 1,
+  clamp(party size, 8, random(s)) of them, s = 09C0:1C1B (see the
+  guardroom); the battlefield by the street the party came from
+  (DS:A88D). Won: the reputation +1..+5 (0E76:19D0), card 15 (on the
+  map), else 15, 17 or 18 at random; fled: 0E76:251A, card 11; lost:
+  the reputation −1..−2, the search, a club each, card 16, two hours.
+  Then back to DS:E7D8 (the map: state 0xC).
+- **The shell game** (state 0xB2, $SHELL00, segment 18EA of overlay 0x58
+  at file 0x110C20): the square (file 0x9D6EC) and the market (0x9F676)
+  by day show it instead of their card when the city's property 0x23
+  (0E76:1A8E: DARKLAND.CTY +0x6C, a day of the year, within 14 days of
+  the first of the current month) holds and mark 0x2F is not set; it is
+  then set for 24 hours. Paying (more than 12 pfennigs in the purse,
+  file 0x110D02) takes a groschen (1367:0180) and shows card 4, 5 or 6
+  at random; the right-hand shell wins with random(3) = 1, the others
+  with random(4) = 1, three groschen (1367:0130) and card 7, but only
+  once (DS:8E1C, never reset); else card 1..3 (the pea elsewhere, by
+  random(100) % 2). Walking away returns at once to the square or the
+  market (DS:A88D).
+- Reproduced in `CityVisit`: all of the above in the city, except the
+  alchemy, the thieves' battlefield, s (0), 0E76:251A and the alchemy
+  accident. The saint left unanswered is taken as card 9 and the fight
+  (*inferred*, as the guards'). **verified** (code)
+
 ## News and rumors
 
 State 0x66 ($CITYN00, 195D:0000 of overlay 0x45, segment 195D at file

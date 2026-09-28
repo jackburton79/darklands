@@ -478,7 +478,13 @@ Record (relative offsets, little-endian):
     +0x62   9     the quality of the city's shops, 0 if it has none:
                   blacksmith, goods merchant, swordsmith, armorer,
                   gunsmith, bowyer, artificer, jeweler, clothmaker
-    +0x6B   3     unknown
+    +0x6B   1     unknown
+    +0x6C   2     a day of the year (0-based), 42 in 61 of the 92 cities: the
+                  city's feast (*inferred*); DARKLAND.EXE 0E76:1A8E
+                  (property 0x23) is true within 14 days of it, counting
+                  from the first of the current month, which brings the
+                  shell game man to the square and the market
+                  (**verified**: code)
     +0x6E   32·16 names of the city's places, by slot (see below)
 
 - **Neighbors** — **verified** as a network of nearby cities: of 186

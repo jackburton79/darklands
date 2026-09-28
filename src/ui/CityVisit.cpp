@@ -134,6 +134,18 @@ enum option_action {
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
     ACTION_AFTER_CARD,			// fAfterCard, or the map
+    ACTION_SLUM_LODGING,		// live very cheaply in the slum
+    ACTION_SLUM_CAMP,			// then the residence screen
+    ACTION_MEET_THIEVES,		// state 0x24
+    ACTION_THIEVES_GROVEL,
+    ACTION_THIEVES_TALK,
+    ACTION_THIEVES_SCARE,
+    ACTION_THIEVES_RUN,
+    ACTION_THIEVES_FIGHT,
+    ACTION_THIEVES_RETURN,		// back where the party was (DS:E7D8)
+    ACTION_SHELL_PAY,			// the shell game
+    ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
+    ACTION_SHELL_LEAVE,
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -202,6 +214,7 @@ static const int kLockpickCode		= 64;	// in DARKLAND.LST
 static const int kDaggerCode		= 7;
 static const int kClubCode			= 15;
 static const int kSkillArtifice		= 14;	// picking locks
+static const int kSkillWoodwise		= 18;
 // or a member standing who knows one of the card's saints (150B:168C)
 static const int kNeedsSaint		= -32;
 // or the wall from inside: by the option (horses, a rope, the marks)
@@ -222,6 +235,9 @@ static const int kNeedsMediciTasks	= -38;
 // storming it needs allies (0E76:360C(3, 5 or 0x27, place))
 static const int kNeedsTowerWelcome	= -39;
 static const int kNeedsTowerAllies	= -40;
+// the shell game's "pay him and play": more than a groschen in the purse
+// (file 0x110D02)
+static const int kNeedsGroschen		= -41;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -240,6 +256,7 @@ static const int kMarkBribeRefused	= 0x19;
 static const int kMarkSneakFailed	= 0x1A;
 static const int kMarkWatchMet		= 0x40;
 static const int kMarkTowerAsked	= 0x26;	// the tower's options taken
+static const int kMarkShellGame		= 0x2F;	// the shell game man met
 
 // The game's day for some places (1367:072A): hour 5 to 18; the extra
 // hour to reach a guild then (file 0xA47A5)
@@ -362,6 +379,19 @@ struct screen_rules {
         DO_IF(ACTION_SAINT, kNeedsSaint),	/* a saint */ \
         DO_IF(ACTION_TOWER_STORM, kNeedsTowerAllies),	/* storm it */ \
         LEAVE								/* go away (state 0xC) */ \
+    }
+// The shell game (file 0x110CFB): pay and play, or walk away; the
+// shuffled shells' cards offer only the three shells
+#define SHELL_OPTIONS { \
+        DO_IF(ACTION_SHELL_PAY, kNeedsGroschen), \
+        DO(ACTION_SHELL_LEAVE), \
+        HIDE, HIDE, HIDE \
+    }
+#define SHELLS { \
+        HIDE, HIDE, \
+        { ACTION_SHELL_PICK, 0, kAlways, 0 },	/* the right-hand shell */ \
+        { ACTION_SHELL_PICK, 1, kAlways, 0 },	/* the center one */ \
+        { ACTION_SHELL_PICK, 2, kAlways, 0 }	/* the left-hand one */ \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
@@ -593,11 +623,11 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "The $slum of $PlaceName is full of paupers, drifters, thieves..."
     { "SLUMD00", 0, NULL, {
-        WAIT(SCREEN_SLUM, 60),				// rest for an hour
+        WAIT(SCREEN_SLUM_REST, 60),			// rest for an hour
         { ACTION_NEWS, CityVisit::SCREEN_SLUM, kAlways, kHalfSize },	// the
                                             // rumors (file 0xAB15A)
         TODO, TODO, TODO, TODO, TODO, TODO,	// placeholders
-        TODO,								// live very cheaply
+        DO(ACTION_SLUM_LODGING),			// live very cheaply
         GO(SCREEN_SIDE_STREET)
     } },
     // "The craft tied to the piers and wharves have many destinations."
@@ -1147,6 +1177,46 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "RAUBI03", 21, NULL, { DO(ACTION_AFTER_CARD) } },	// driven off
     { "RAUBI03", 22, NULL, { LEAVE } },		// left for dead
     { "RAUBI03", 23, NULL, { DO(ACTION_AFTER_CARD) } },	// his men beaten
+    // the slum (file 0xAB104, 0xAB49E): an hour's rest; living there
+    { "SLUMD00", 5, NULL, { GO(SCREEN_SLUM) } },
+    { "SLUMD00", 2, NULL, { DO(ACTION_SLUM_CAMP) } },
+    { "SLUMD00", 3, NULL, { DO(ACTION_SLUM_CAMP) } },
+    { "SLUMD00", 7, NULL, { DO(ACTION_MEET_THIEVES) } },
+    // "Suddenly alert, $ChosenOneName senses danger nearby..." (state
+    // 0x24, file 0xAC140)
+    { "CITYT00", 1, NULL, {
+        DO(ACTION_THIEVES_GROVEL),			// offer all your possessions
+        DO(ACTION_THIEVES_TALK),			// your street sense
+        DO(ACTION_THIEVES_SCARE),			// armed and dangerous
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_THIEVES_RUN),
+        TODO,								// alchemy
+        DO(ACTION_THIEVES_FIGHT)			// attack them first
+    } },
+    { "CITYT00", 3, NULL, { DO(ACTION_THIEVES_RETURN) } },	// robbed
+    { "CITYT00", 4, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 5, NULL, { DO(ACTION_THIEVES_FIGHT) } },
+    { "CITYT00", 6, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 7, NULL, { DO(ACTION_THIEVES_FIGHT) } },
+    { "CITYT00", 8, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 9, NULL, { DO(ACTION_THIEVES_FIGHT) } },
+    { "CITYT00", 10, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 11, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 12, NULL, { DO(ACTION_THIEVES_FIGHT) } },
+    { "CITYT00", 15, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 16, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 17, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    { "CITYT00", 18, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    // "Your eye is caught by a sleek-skulled little man with three walnut
+    // half-shells..." (state 0xB2, file 0x110C20)
+    { "SHELL00", 0, NULL, SHELL_OPTIONS },
+    { "SHELL00", 1, NULL, SHELL_OPTIONS },
+    { "SHELL00", 2, NULL, SHELL_OPTIONS },
+    { "SHELL00", 3, NULL, SHELL_OPTIONS },
+    { "SHELL00", 4, NULL, SHELLS },
+    { "SHELL00", 5, NULL, SHELLS },
+    { "SHELL00", 6, NULL, SHELLS },
+    { "SHELL00", 7, NULL, SHELL_OPTIONS },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1582,6 +1652,33 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1600,6 +1697,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef DAY_GATE_OPTIONS
 #undef WATCH_CAUGHT_OPTIONS
 #undef TOWER_OPTIONS
+#undef SHELL_OPTIONS
+#undef SHELLS
 #undef CELL_OPTIONS
 #undef COURT_OPTIONS
 #undef DO
@@ -1688,6 +1787,10 @@ CityVisit::CityVisit(GameData& data)
     fQuestPlace(-1),
     fQuestRobber(false),
     fAfterCard(-1),
+    fSlumCamp(false),
+    fThievesReturn(SCREEN_SLUM),
+    fShellReturn(SCREEN_SQUARE),
+    fShellWon(false),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1779,7 +1882,17 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
                 return PARTY_LOST;
             }
         }
-        if (fPendingResidence) {
+        if (fPendingResidence && fSlumCamp) {
+            // file 0xAB4EE: the camp of the slum (0E76:222A(3)), a
+            // pfennig a day (file 0x70926), the thieves before each day
+            fResidence.SetClock(fClock);
+            fResidence.SetPlace(fCity, _Reputation(), 1, NULL);
+            fResidence.SetAmbush(std::max(25, std::min(95,
+                _BestSkill(kSkillStreetwise) + 25)));
+            fResidence.Run(window);
+            fPendingResidence = false;
+            _Show(_AfterSlumCamp(), false);
+        } else if (fPendingResidence) {
             // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
             // a day costs the inn's price
             std::map<int, city_tutor>::const_iterator tutor
@@ -2157,6 +2270,49 @@ CityVisit::Choose(int option)
         case ACTION_TOWER_INSIDE:
             _Show(_TowerInside(rule.target));
             return true;
+        case ACTION_SLUM_LODGING:
+            _Show(_SlumLodging());
+            return true;
+        case ACTION_SLUM_CAMP:
+            fSlumCamp = true;
+            fPendingResidence = true;
+            return true;
+        case ACTION_MEET_THIEVES:
+            _Show(_MeetThieves());
+            return true;
+        case ACTION_THIEVES_GROVEL:
+            _Robbed();
+            _Show(SCREEN_THIEVES_ROBBED);
+            return true;
+        case ACTION_THIEVES_TALK:
+            _Show(_TalkToThieves());
+            return true;
+        case ACTION_THIEVES_SCARE:
+            _Show(_ScareThieves());
+            return true;
+        case ACTION_THIEVES_RUN:
+            _Show(_RunFromThieves());
+            return true;
+        case ACTION_THIEVES_FIGHT:
+            _FightThieves();
+            return true;
+        case ACTION_THIEVES_RETURN:
+            _Show(fThievesReturn);
+            return true;
+        case ACTION_SHELL_PAY:
+            // file 0x110DCA: a groschen, and the pea seems to be under one
+            // of the shells at random (cards 4..6)
+            if (fParty != NULL)
+                fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+                    - 12);
+            _Show(SCREEN_SHELL_RIGHT + int(fRandom() % 3));
+            return true;
+        case ACTION_SHELL_PICK:
+            _Show(_PlayShells(rule.target));
+            return true;
+        case ACTION_SHELL_LEAVE:
+            _Show(fShellReturn);			// file 0x110E48: no time passes
+            return true;
         case ACTION_AFTER_CARD:
             if (fAfterCard < 0)
                 return false;			// back to the map (state 0xC)
@@ -2379,6 +2535,15 @@ CityVisit::_Show(int screen, bool withScene)
     if (fClock != NULL) {
         fVariables["CurrentBell"] = fClock->BellName();
         fVariables["MonthName"] = fClock->MonthName();
+    }
+    // the shell game man, by day, around the city's feast, once a day
+    // (the square, file 0x9D6EC; the market, 0x9F676)
+    if ((screen == SCREEN_SQUARE || screen == SCREEN_MARKET)
+            && previous != screen && !fNight && _FeastNear()
+            && !_Marked(kMarkShellGame)) {
+        _Mark(kMarkShellGame, 24);
+        fShellReturn = screen;
+        screen = SCREEN_SHELL_GAME;
     }
     // a wanted party is not welcome at the inn (DARKLAND.EXE: a
     // reputation of -40 or less)
@@ -2623,6 +2788,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = !_SaintKnown(screen);
         } else if (rule.needs == kNeedsTowerWelcome) {
             hide = _Marked(kMarkTowerAsked);
+        } else if (rule.needs == kNeedsGroschen) {
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) <= 12;
         } else if (rule.needs == kNeedsTowerAllies) {
             hide = !_EventHere(3, 5) && !_EventHere(3, 0x27);
         } else if (rule.needs == kNeedsFuggerTasks
@@ -3048,6 +3215,263 @@ CityVisit::_TowerInside(int state)
     (void)state;
     fPreviousScreen = _TowerScreen();
     return SCREEN_NOT_IMPLEMENTED;
+}
+
+
+// Living very cheaply in the slum (file 0xAB49E): city size / 3 hours,
+// a room (card 2) where the city's property 0x21 is odd, else a shanty
+// (card 3), a lesson in Streetwise of mode 7 for all; then the camp
+// (ACTION_SLUM_CAMP)
+int
+CityVisit::_SlumLodging()
+{
+    if (fClock != NULL)
+        fClock->AddHours(uint32(_City().size / 3));
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (fParty != NULL)
+        TrainParty(*fParty, kSkillStreetwise, 7, 10, random);
+    return _PeopleSeed() % 2 != 0 ? SCREEN_SLUM_ROOM : SCREEN_SLUM_SHANTY;
+}
+
+
+// After the camp (file 0xAB4F8): the thieves came (mark 0x52): random(2)
+// + 2 hours, card 7, then state 0x24, back to the slum after; else the
+// slum (the alchemy's accident, mark 0x51, state 0xB5, is not
+// reproduced)
+int
+CityVisit::_AfterSlumCamp()
+{
+    fSlumCamp = false;
+    if (!fResidence.Interrupted())
+        return SCREEN_SLUM;
+    if (fClock != NULL)
+        fClock->AddHours(fRandom() % 2 + 2);
+    fThievesReturn = SCREEN_SLUM;
+    return SCREEN_SLUM_DISTURBED;
+}
+
+
+// The thieves (state 0x24, file 0xAC140): an hour; the most perceptive
+// member (0E76:16FE(3)) is $ChosenOneName. Unless an event of category
+// 0x4F runs (0E76:32CE), if random(100) is over his Perception they
+// strike first: in a city without a card, the fight. Else card 1.
+int
+CityVisit::_MeetThieves()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    int best = 0;
+    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
+        if (fParty->members[i].attributes[ATTRIBUTE_PERCEPTION]
+                > fParty->members[size_t(best)].attributes[ATTRIBUTE_PERCEPTION])
+            best = int(i);
+    }
+    const int perception = fParty != NULL && !fParty->members.empty()
+        ? fParty->members[size_t(best)].attributes[ATTRIBUTE_PERCEPTION] : 0;
+    bool warned = false;
+    for (size_t i = 0; fEvents != NULL && i < fEvents->size(); i++) {
+        if ((*fEvents)[i].category == 0x4F && _EventRunning((*fEvents)[i]))
+            warned = true;
+    }
+    if (!warned && int(fRandom() % 100) > perception) {
+        _FightThieves();
+        return fScreen;
+    }
+    _SetChosen(best);
+    return SCREEN_THIEVES;
+}
+
+
+// Talking (file 0xAC822): the leader's Intelligence or Charisma, the
+// higher, + (his Woodwise + Speak Common) / 2; the game reads Woodwise
+// (skill 18) in a city and Streetwise on the map, the reverse of its
+// lessons
+int
+CityVisit::_ThievesTalkChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    return std::max(leader.attributes[ATTRIBUTE_INTELLIGENCE],
+            leader.attributes[ATTRIBUTE_CHARISMA])
+        + (leader.skills[kSkillWoodwise] + leader.skills[kSkillSpeakCommon]) / 2;
+}
+
+
+// File 0xAC722: if random(100) is at most the chance, lessons of mode 1
+// in Streetwise and Speak Common for the leader, card 4, an hour; else
+// card 5 and the fight
+int
+CityVisit::_TalkToThieves()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return fThievesReturn;
+    if (int(fRandom() % 100) > _ThievesTalkChance())
+        return SCREEN_THIEVES_UNCONVINCED;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    character& leader = fParty->members[size_t(fParty->leader)];
+    TrainSkill(leader, kSkillStreetwise, 10, random);
+    TrainSkill(leader, kSkillSpeakCommon, 10, random);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_THIEVES_TALKED;
+}
+
+
+// The leader's best weapon skill (0E76:01C0(-1))
+int
+CityVisit::_ThievesScareChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    int best = 0;
+    for (int s = 0; s < kWeaponSkillCount; s++)
+        best = std::max(best, int(leader.skills[s]));
+    return best;
+}
+
+
+// Showing off (file 0xAC88E): $NamedOneName the leader's weapon
+// (09C0:1E9B, taken as the one in hand; without one, item 7, a dagger);
+// if random(100) is at most the chance, a lesson in that skill for the
+// leader, card 6; else card 7 and the fight
+int
+CityVisit::_ScareThieves()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return fThievesReturn;
+    character& leader = fParty->members[size_t(fParty->leader)];
+    const std::vector<item_definition>& items = fData.Lists().Items();
+    const int weapon = leader.equipment[EQUIPMENT_WEAPON];
+    std::string name = items.size() > size_t(kDaggerCode)
+        ? items[size_t(kDaggerCode)].name : "";
+    for (size_t code = 0; weapon != kNoEquipment && code < items.size();
+            code++) {
+        if (!items[code].name.empty() && items[code].type == weapon) {
+            name = items[code].name;
+            break;
+        }
+    }
+    fVariables["NamedOneName"] = name;
+    if (int(fRandom() % 100) > _ThievesScareChance())
+        return SCREEN_THIEVES_UNIMPRESSED;
+    int skill = 0;
+    for (int s = 1; s < kWeaponSkillCount; s++) {
+        if (leader.skills[s] > leader.skills[skill])
+            skill = s;
+    }
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    TrainSkill(leader, skill, 10, random);
+    return SCREEN_THIEVES_SCARED;
+}
+
+
+// Running (file 0xACA66): on horseback, card 10; else if random(100) is
+// at most the slowest member's speed + 5 (0E76:0656, Agility here), an
+// hour, card 11; else an hour, card 12 and the fight
+int
+CityVisit::_RunFromThieves()
+{
+    if (_HasHorses())
+        return SCREEN_THIEVES_OUTRIDDEN;
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    const int speed = fParty != NULL && !fParty->members.empty()
+        ? fParty->members[size_t(_Slowest())].attributes[ATTRIBUTE_AGILITY] : 0;
+    return int(fRandom() % 100) <= speed + 5 ? SCREEN_THIEVES_ELUDED
+        : SCREEN_THIEVES_CAUGHT;
+}
+
+
+// The fight (file 0xAC416): enemy 7 (the bandits) at variant s / 4 + 1,
+// clamp(party size, 8, random(s)) of them, s the party's strength
+// (09C0:1C1B, not reproduced: 0); the battlefield (by the street, and
+// whether the thieves struck first) is not reproduced
+void
+CityVisit::_FightThieves()
+{
+    fFoes.clear();
+    const int size = fParty != NULL ? int(fParty->members.size()) : 1;
+    fFoes.push_back(foes{ 7, 1, std::max(1, std::min(size, 8)) });
+    fBattleKind = BATTLE_WITH_THIEVES;
+    fPendingBattle = true;
+}
+
+
+// Won (file 0xAC512): the reputation up by 1..5 (0E76:19D0), card 15, 17
+// or 18 at random; fled, card 11 (0E76:251A before it, not decoded); lost, the reputation down by 1..2, the
+// party robbed (card 16), two hours. Then back (DS:E7D8).
+int
+CityVisit::_ResolveThievesBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        _ChangeReputation(1, 5);
+        static const int kThanks[3] = { SCREEN_THIEVES_SLAIN,
+            SCREEN_THIEVES_THANKED, SCREEN_THIEVES_BLESSED };
+        return kThanks[fRandom() % 3];
+    }
+    if (outcome != BATTLE_LOST)
+        return SCREEN_THIEVES_ELUDED;
+    _ChangeReputation(-2, -1);
+    _Robbed();
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    return SCREEN_THIEVES_LEFT_FOR_DEAD;
+}
+
+
+// Robbed (09C0:1EB9(-2), the search 18E7:0854), then a club each
+// (09C0:2067(-2, 15))
+void
+CityVisit::_Robbed()
+{
+    _Search();
+    _GiveEach(kClubCode);
+}
+
+
+// The city's feast near (0E76:1A8E(location, 0x23)): within 14 days of
+// its day (DARKLAND.CTY +0x6C), counted from the first of this month
+bool
+CityVisit::_FeastNear() const
+{
+    if (!_InCity() || fClock == NULL)
+        return false;
+    static const int kMonthDays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30,
+        31, 30, 31 };
+    int start = 0;
+    for (int m = 0; m < int(fClock->Month()) && m < 12; m++)
+        start += kMonthDays[m];
+    return std::abs(int(_City().feastDay) - start) <= 14;
+}
+
+
+// A shell picked (file 0x110E92): the man lets a party win only once
+// (DS:8E1C): with a chance of 1 in 3 for the right-hand shell, 1 in 4
+// for the others, three groschen (card 7); else the pea was under one of
+// the other two (cards 1..3)
+int
+CityVisit::_PlayShells(int shell)
+{
+    if (!fShellWon && int(fRandom() % uint32(shell == 0 ? 3 : 4)) == 1) {
+        fShellWon = true;
+        if (fParty != NULL)
+            fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) + 36);
+        return SCREEN_SHELL_WON;
+    }
+    const bool even = fRandom() % 2 == 0;
+    switch (shell) {
+        case 0:
+            return even ? SCREEN_SHELL_LOST_LEFT : SCREEN_SHELL_LOST_MIDDLE;
+        case 1:
+            return even ? SCREEN_SHELL_LOST_LEFT : SCREEN_SHELL_LOST_RIGHT;
+        default:
+            return even ? SCREEN_SHELL_LOST_MIDDLE : SCREEN_SHELL_LOST_RIGHT;
+    }
 }
 
 
@@ -4487,6 +4911,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveMenBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_THIEVES) {
+        _Show(_ResolveThievesBattle(outcome));
+        return;
+    }
     switch (outcome) {
         case BATTLE_WON:
             _Show(SCREEN_WATCH_BEATEN);
@@ -5559,6 +5987,9 @@ CityVisit::_SaintsFor(int screen) const
     // Eric, Hedwig, Reinold
     if (screen == SCREEN_TOWER || screen == SCREEN_FORT)
         saints = { 41, 46, 64, 114 };
+    // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
+    if (screen == SCREEN_THIEVES)
+        saints = { 12, 54, 61 };
     return saints;
 }
 
@@ -5768,6 +6199,8 @@ CityVisit::_SaintAnswered(int screen, int index)
             if (fClock != NULL)
                 fClock->AddHours(1);
             return SCREEN_INNER_SAINT;
+        case SCREEN_THIEVES:
+            return SCREEN_THIEVES_SAINT;			// card 8 (file 0xACA1A)
         case SCREEN_TOWER:
         case SCREEN_FORT:
             // file 0x1005F3: an hour; the first three, card 15 and the
@@ -5834,6 +6267,8 @@ CityVisit::_SaintIgnored(int screen)
             if (fClock != NULL)
                 fClock->AddHours(1);
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
+        case SCREEN_THIEVES:
+            return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
         case SCREEN_TOWER:
         case SCREEN_FORT:
             _Mark(kMarkTowerAsked, 6480);

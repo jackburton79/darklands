@@ -46,8 +46,10 @@ The goal is twofold:
   with the game's own rules for stock and prices, decoded from the
   executable; in a city church the party can hear Mass, confess and
   donate, gaining divine favor by the game's own rules; at the inn it
-  can sleep (for the game's price) and buy horses; what happens in
-  the other places is not implemented yet.
+  can sleep (for the game's price) and buy horses; living in the slum
+  may bring thieves, and around a city's feast a man with three walnut
+  shells waits in the square and the market; what happens in the other
+  places is not implemented yet.
   Time
   passes (traveling, sleeping at the inn) and the city shows its night
   cards after Compline. The
