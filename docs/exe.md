@@ -325,8 +325,8 @@ one for n hours, 0E76:2A32 adds hours to it).
   card 10 (a retreat), 3 card 11 (the dungeon). **verified** (code).
   Reproduced with BattleView; the map among ICITY.000..003 and the
   starting places are not the game's (not decoded), a retreat is Esc
-  and leads to the side streets (inferred), the dungeon is not
-  implemented.
+  and leads to the side streets (inferred); for the dungeon see "The
+  dungeon, the magistrate and the execution".
 - Not reproduced: the burglary, potions, saints, the load's effect on
   speed.
 
@@ -470,9 +470,9 @@ coming from the map the party stands before the walls. **verified**
     (states 9, 10);
   - *fight* (file 0x917B0, the battle at 0x92370): the battlefield type
     by the previous state as for the watch, a seed (that state + the
-    location), clamp(09C0:2161(), 7, random(7) + 2) of enemy 3 at
-    variant 1 and one of enemy 0 at variant 2 (09C0:2161 is not
-    decoded), the reputation −15..−24 (0E76:19D0(location, −15, −25)).
+    location), clamp(the party's size (09C0:2161, 1462:1DE6), 7,
+    random(7) + 2) of enemy 3 at variant 1 and one of enemy 0 at
+    variant 2, the reputation −15..−24 (0E76:19D0(location, −15, −25)).
     The result (file 0x9241E): 0 card 1, mark 0x12 for 2000 / size
     hours, no time, back (state 0xC after state 0x3A); 1 (0E76:23E2)
     card 2, mark 0x12, an hour, the side streets (state 9 or 10 by
@@ -498,8 +498,123 @@ coming from the map the party stands before the walls. **verified**
   BattleView: a won battle is result 0, a retreat (Esc) result 2, a
   lost one result 4; result 1 has no BattleView counterpart. Card 7
   names the weapon in the leader's hand (*inferred*), cards 5 or 6
-  without one. Not reproduced: running, potions, saints, the dungeon,
-  the lesson of mode 0, 09C0:2161 (the guards are 2..7).
+  without one. Not reproduced: running, potions, saints, the lesson of
+  mode 0.
+
+## The dungeon, the magistrate and the execution
+
+The state table (DS far pointers at file 0x18C700, one per state, to
+RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
+0x2F (segment 1852 at file 0x988C0), 0x8C at 1838:0000 of overlay 0x4F
+(file 0xFB4A0), 0x8D in the same overlay (file 0xFBEA8, segment 18D8).
+**verified** (code)
+
+- **The dungeon** (state 0xD, $DUNGE00, file 0x988C6; actions through a
+  switch at file 0x98B9A, chances in the table at DS:EA14): on entry
+  the search (18E7:0854(-2), file 0x66484): the purse is emptied, and
+  each item goes if its quantity · weight is over 2, else if random(100)
+  is under h / 2 (for 2) or h (less), h = (Agility + Stealth) / 2 of its
+  owner (so the nimbler lose more, as the code has it). DS:8DEE is the
+  cell (card 0 the best, 1 the dark one, 2 the oubliette, 3 the dark
+  one in Saint Lucy's light), DS:8DEC the tunnel in %; both are kept
+  (DS:E3D0, E3D2) while the priest (state 0x83, $DUNGE01) visits. The
+  cards of the worse cells have placeholders for the options they lack;
+  "pick the lock" needs item 64, the lockpicks (0E76:0C76(-2, 0x40)),
+  "seduce" a woman standing (0E76:007C: status 1 and the member's byte
+  +3). Mark 0x4D with fewer than four members brings card 18 (a friend
+  already in prison joins; not reproduced).
+  - *pick the lock* (file 0x98C1E): the picker is the best at Artifice
+    (0E76:14A4(14)); c = his Artifice, + 50 in cell 1, − 50 in cell 3,
+    0 in cell 2, within 0..99 (1367:000A) (file 0x98D36); if random(100)
+    <= c: a lesson (mode 1), an hour, a dagger (item 7) for every member
+    (18E7:0128(-2, 7)), card 6 and the guardroom; else card 5, a beating
+    (1462:026A(-2, 0, 1, 20): a fall of amount 20 for all), three hours,
+    the lockpicks taken (18E7:0668(-2, 64)), a lesson of mode 0, cell 1
+    from cell 0, else 2, the tunnel lost;
+  - *the guardroom* (file 0x999C2): battlefield type 8, the seed
+    location + 0x6F, random(5) + 4 of enemy 3 at variant random(3) + |s|
+    / 4 + 1, one of enemy 0 at variant random(3) + 1; s is 09C0:1C1B
+    (1462:0470), a measure of the party (the average best weapon skill +
+    0E76:026A + the average Virtue and Alchemy, / 37; not reproduced).
+    Results 0..2: two hours, card 8, the chase (state 0x7A); 3, 4:
+    0E76:23E2, two hours, card 9, the search again, a beating, the same
+    cell;
+  - *climb to the window* (file 0x98DAA): an hour; the climber
+    (0E76:179C(2, 1)): a member whose Agility + Strength is over the
+    best score so far becomes the climber and the score becomes twice
+    his Agility; c = score / 3 within 0..100 (file 0x98E86); success:
+    card 10, a lesson in Stealth (mode 1), a club (item 15) each, the
+    chase; else card 11, a worse cell;
+  - *dig* (file 0x98EBE): 12 hours; after 12 o'clock (DS:00E0) one time
+    in nine (random(9) == 1) card 16 and the magistrate (state 0x8C);
+    else the tunnel + random(6) + 12 (+ 50 in cell 3): over 95 card 12,
+    the reputation −1..−6 (0E76:19D0), the side streets; else if
+    random(100) < tunnel / 4, card 13, a beating, the tunnel lost, the
+    cell + 1 (from 3 to 2); else card 22 ($Number1: the tunnel);
+  - *seduce the turnkey* (file 0x9909A): the woman with the best
+    Charisma (0E76:174A(5)); if random(100) <= her Charisma: 48 hours,
+    card 14, a lesson in Speak Common, her Virtue − 0E76:18A8(Virtue, 2,
+    6) (2, or 2 + random(4) if random(100) <= |100 − Virtue|), the side
+    streets; else two hours, card 15, a lesson of mode 0;
+  - *ask for a priest* (file 0x991CA): three hours, state 0x83 (not
+    reproduced);
+  - *pray* (file 0x99220): every member's divine favor + random(10) + 2
+    (+ 12 in cell 3), card 17, 12 hours, then after 12 o'clock one time
+    in ten the magistrate;
+  - *wait* (file 0x995A2): until 13 o'clock (1367:0716), then the
+    magistrate if random(100) <= 11;
+  - saint (file 0x9932A), acid (0x99638: an Eater Water used, clubs,
+    card 24, the guardroom): not reproduced.
+- **The magistrate** (state 0x8C, $MAGIS00, file 0xFB4A0): card 1
+  instead of 0 after a torture (DS:8E14, reset on entry). Pleading
+  and confessing call 0E76:3CDE(0x11, ...) (the wanted mark lifted,
+  *inferred*). 1838:0A04 (file 0xFBEA4) returns 0.
+  - *say nothing* (file 0xFB61C): under three tortures, card 1, six
+    hours, every member loses random(18) Endurance and random(12)
+    Strength, the leader's Endurance at least 1; else card 4, an hour,
+    the square (state 0x12 by day, 0x19 at night);
+  - *plead innocence* (file 0xFB74C): s = random(5) + reputation / 40
+    − 3: under −6 or over 1 card 9 (acquitted), an hour, the square; −6..−1
+    card 5, three hours, the execution (state 0x8D); 0 card 6, three
+    hours, a flogging (as the torture), the square; 1 the fine;
+  - *confess* (file 0xFBB02): s = random(3) + reputation / 40 − 2: the
+    same, but −5 and below or over 5 does nothing (never happens);
+  - *the fine* (file 0xFB85A): random(3) + size / 3 florins, at least
+    one ($Money1); with that many florins in the purse, 24 hours and
+    card 7, else three hours, card 8 and a flogging; the square. The
+    purse is not touched in either case (as the code has it).
+  - saint (file 0xFB978): not reproduced.
+- **The execution** (state 0x8D, $EXECU01, file 0xFBEA8):
+  - *refuse to struggle* (file 0xFC57A) is 1838:0CF6(−1) (file 0xFC196),
+    the rescues, each tried with random(100) (random(50) for argument
+    0x50), then an hour: the reputation / 10 or less, card 7, the
+    pardon (reputation set to −9, the square); the best Virtue +
+    Religion + Charisma + Speak Latin / 10 (while 0E76:360C(2, 0,
+    location), not decoded, is true), card 8, the abbot (the church,
+    state 0x34 or 0x35); the florins in the purse, card 9, the bankers
+    (five hours, reputation −9, the square; the bank is not touched);
+    |reputation / 5|, card 10, the mob (a falchion, mace or short spear
+    each by the best weapon skill, 0E76:01C0, and the fight); two more
+    on DS:9082 / 10 (state 0x84, the ruler's quest, and a case 5). Else
+    (file 0xFC4CE) a member at random is beheaded (card 1, 09C0:18B5,
+    status 0) and the execution goes on;
+  - *break the ropes* (file 0xFC5BC): if random(100) <= the strongest's
+    Strength (0E76:16FE(1)), card 6, a dagger each, the fight; else card
+    11 (a member at random) and the rescues;
+  - *the fight* (file 0xFC004): battlefield 0x1B, random(4) + s / 3 + 1
+    of enemy 3 at variant random(2) + |s| / 4 + 1, enemy 23
+    ("Executioner") at variant s % 3 + 1; the reputation − 5..19
+    (0E76:1DFE sets location property 0, the reputation). Results
+    0..2: 0E76:23E2, card 12, 0E76:2C4E(...), an hour, the chase; 3, 4:
+    card 13, three hours, the execution again. Then mark 0x11 for 240
+    hours (480 at −75 or less; 0E76:2930).
+  - saint (file 0xFC6B2): not reproduced.
+- Reproduced in `CityVisit`, from the arrests (the gate's challenge,
+  the night watch). Not reproduced: the priest, saints, potions, the
+  chase (state 0x7A: the party gets away to the side streets), the
+  lessons of mode 0, s (taken as 0), the rescues on DS:9082, card 18.
+  A weapon given in the dungeon is taken in hand when the hand is empty
+  (*inferred*).
 
 ## The alchemist
 

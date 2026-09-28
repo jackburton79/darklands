@@ -174,6 +174,41 @@ public:
         SCREEN_CHALLENGE_TALK_FAILED,
         SCREEN_CHALLENGE_BRIBED,
         SCREEN_CHALLENGE_REFUSED,
+        SCREEN_CELL,			// the dungeon: $DUNGE00 cards 0..3, the
+        SCREEN_DARK_CELL,		// cells from the best to the worst and the
+        SCREEN_OUBLIETTE,		// dark one lit by Saint Lucy,
+        SCREEN_LIT_CELL,
+        SCREEN_PICK_CAUGHT,		// the lock: caught (5), picked (6),
+        SCREEN_LOCK_PICKED,
+        SCREEN_GUARDROOM_WON,	// the guardroom won (8) or lost (9),
+        SCREEN_RECAPTURED,
+        SCREEN_WINDOW_ESCAPED,	// the window: out (10) or caught (11),
+        SCREEN_WINDOW_CAUGHT,
+        SCREEN_TUNNEL_DONE,		// the tunnel: out (12), found (13), how
+        SCREEN_TUNNEL_FOUND,	// far (22),
+        SCREEN_TUNNEL_PROGRESS,
+        SCREEN_SEDUCED,			// the turnkey seduced (14) or not (15),
+        SCREEN_SCOFFED,
+        SCREEN_PRAYED,			// prayers (17), to the magistrate (16)
+        SCREEN_TO_MAGISTRATE,
+        SCREEN_MAGISTRATE,		// the magistrate: $MAGIS00 card 0, after
+        SCREEN_MAGISTRATE_AGAIN,	// the torture (1), no plea (4), the
+        SCREEN_UNPLEADED,		// sentences: death (5), flogging (6), a
+        SCREEN_SENTENCED,		// fine (7), a fine and a flogging (8),
+        SCREEN_FLOGGED,			// acquitted (9)
+        SCREEN_FINED,
+        SCREEN_FINED_FLOGGED,
+        SCREEN_ACQUITTED,
+        SCREEN_EXECUTION,		// the execution: $EXECU01 card 0, one
+        SCREEN_BEHEADED,		// member beheaded (1), the ropes broken
+        SCREEN_ROPES_BROKEN,	// (6) or not (11), the rescues: pardon
+        SCREEN_ROPES_HOLD,		// (7), the abbot (8), the bankers (9),
+        SCREEN_PARDONED,		// the mob (10); the fight won (12) or
+        SCREEN_CLAIMED_BY_ABBOT,	// lost (13)
+        SCREEN_BOUGHT_OFF,
+        SCREEN_MOB,
+        SCREEN_EXECUTION_ESCAPED,
+        SCREEN_EXECUTION_RECAPTURED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -305,7 +340,7 @@ private:
     int				_BestClimber(int first) const;
     int				_WeakestClimber() const;
     int				_Strongest() const;
-    void			_Fall(int member);
+    void			_Fall(int member, int amount = 10);
     int				_BribeWall();
     int				_ClimbWithRope(bool byDay);
     int				_ClimbAlone(bool byDay);
@@ -322,6 +357,36 @@ private:
     int				_BribeChallenge();
     void			_FightGuards();
     int				_ResolveGuardBattle(int outcome);
+    // The dungeon (DARKLAND.EXE, file 0x988C6, state 0xD), the
+    // magistrate (file 0xFB4A0, state 0x8C) and the execution (file
+    // 0xFBEA8, state 0x8D)
+    int				_EnterPrison();
+    void			_Search();
+    int				_CellScreen() const;
+    void			_WorseCell();
+    void			_Beating();
+    void			_Flogging();
+    void			_GiveEach(int code);
+    int				_Picker() const;
+    int				_PickChance() const;
+    int				_Climber(int* score) const;
+    int				_Seductress() const;
+    int				_PickLock();
+    int				_ClimbWindow();
+    int				_Dig();
+    int				_Seduce();
+    int				_Pray();
+    int				_WaitForMagistrate();
+    void			_FightJailGuards();
+    int				_EnterCourt();
+    int				_KeepSilent();
+    int				_Plead(bool guilty);
+    int				_CourtFine();
+    int				_Rescue();
+    int				_BreakRopes();
+    void			_FightAtExecution();
+    int				_ResolveJailBattle(int outcome);
+    int				_ResolveExecutionBattle(int outcome);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
@@ -376,8 +441,23 @@ private:
     std::map<std::pair<int, int>, uint32> fMarks;	// (kind, city): until
     int				fWatchReturn;	// where paying the fine leads
     bool			fPendingBattle;
-    bool			fGuardBattle;	// the battle is with the gate's guards
-    int				fGuards;		// how many, the sergeant aside
+    enum battle_kind {
+        BATTLE_WITH_WATCH,
+        BATTLE_WITH_GATE_GUARDS,
+        BATTLE_WITH_JAIL_GUARDS,
+        BATTLE_AT_EXECUTION
+    };
+    struct foes {
+        int enemy;				// in DARKLAND.ENM
+        int variant;
+        int count;
+    };
+    int				fBattleKind;	// a battle_kind
+    std::vector<foes> fFoes;
+    int				fCell;			// 0..3, as the game's DS:8DEE
+    int				fTunnel;		// how far the tunnel is dug, in %
+    int				fTortures;
+    bool			fMagistrateComing;
     int				fChallengeReturn;	// where the party came from
     int				fChallengeReputation;	// the reputation then
     bool			fPartyLost;

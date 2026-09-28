@@ -71,6 +71,26 @@ enum option_action {
     ACTION_GUARDS_TALK,
     ACTION_GUARDS_BRIBE,
     ACTION_CHALLENGE_RETURN,	// back where the guards met the party
+    ACTION_TO_PRISON,			// the dungeon
+    ACTION_BACK_TO_CELL,
+    ACTION_PICK_LOCK,
+    ACTION_CLIMB_WINDOW,
+    ACTION_DIG,
+    ACTION_SEDUCE,
+    ACTION_PRAY,
+    ACTION_AFTER_PRAYER,		// the magistrate, or the cell
+    ACTION_WAIT_MAGISTRATE,
+    ACTION_JAIL_FIGHT,			// the guardroom
+    ACTION_TO_COURT,			// the magistrate
+    ACTION_KEEP_SILENT,
+    ACTION_PLEAD_INNOCENT,
+    ACTION_CONFESS_GUILT,
+    ACTION_TO_EXECUTION,		// the execution
+    ACTION_SUBMIT,
+    ACTION_BREAK_ROPES,
+    ACTION_RESCUE,				// the rescues' roll
+    ACTION_EXECUTION_FIGHT,
+    ACTION_MOB_FIGHT,
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
 };
@@ -126,6 +146,13 @@ static const int kNeedsGrate		= -28;
 // or the guards who recognize the party: their bribe in the purse, the
 // party come from the side streets
 static const int kNeedsGuardsBribe	= -29;
+// or the dungeon: lockpicks (item 64), a woman standing
+static const int kNeedsLockpicks	= -30;
+static const int kNeedsWoman		= -31;
+static const int kLockpickCode		= 64;	// in DARKLAND.LST
+static const int kDaggerCode		= 7;
+static const int kClubCode			= 15;
+static const int kSkillArtifice		= 14;	// picking locks
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -232,6 +259,23 @@ struct screen_rules {
         DO(ACTION_RUN),						/* run away */ \
         TODO, TODO,							/* potion, saint */ \
         DO(ACTION_FIGHT)					/* attack them */ \
+    }
+#define CELL_OPTIONS { \
+        DO_IF(ACTION_PICK_LOCK, kNeedsLockpicks), \
+        DO(ACTION_CLIMB_WINDOW), \
+        DO(ACTION_DIG),						/* with a spoon */ \
+        DO_IF(ACTION_SEDUCE, kNeedsWoman),	/* the turnkey */ \
+        TODO,								/* ask for a priest */ \
+        DO(ACTION_PRAY), \
+        TODO,								/* invoke a saint */ \
+        DO(ACTION_WAIT_MAGISTRATE), \
+        TODO								/* acid on the lock */ \
+    }
+#define COURT_OPTIONS { \
+        DO(ACTION_KEEP_SILENT), \
+        DO(ACTION_PLEAD_INNOCENT), \
+        TODO,								/* invoke a saint */ \
+        DO(ACTION_CONFESS_GUILT) \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
@@ -543,7 +587,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "NIGHT00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },
     // "The night watch strips you of weapons, armor..." (the dungeon is
     // not implemented)
-    { "NIGHT00", 11, NULL, { GO(SCREEN_NOT_IMPLEMENTED) } },
+    { "NIGHT00", 11, NULL, { DO(ACTION_TO_PRISON) } },
     // "You carefully select which items to leave with the innkeeper...",
     // "You sort through the various goods...": the cache, then an hour
     { "URBAN00", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
@@ -751,7 +795,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CHALL00", 1, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
     { "CHALL00", 3, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
     // "...you troop off to the dungeon." (state 0xD)
-    { "CHALL00", 4, NULL, { GO(SCREEN_NOT_IMPLEMENTED) } },
+    { "CHALL00", 4, NULL, { DO(ACTION_TO_PRISON) } },
     // talked away: the decoy, the "test", the threat
     { "CHALL00", 5, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
     { "CHALL00", 6, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
@@ -760,6 +804,55 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CHALL00", 8, NULL, { DO(ACTION_GUARDS_FIGHT) } },
     { "CHALL00", 9, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
     { "CHALL00", 10, NULL, { DO(ACTION_GUARDS_FIGHT) } },
+    // "Dank tassels of moss festoon the walls..." (state 0xD, file
+    // 0x988C6), the dark cell, the oubliette, Saint Lucy's light; the
+    // options missing from the worse cells are placeholders there
+    { "DUNGE00", 0, NULL, CELL_OPTIONS },
+    { "DUNGE00", 1, NULL, CELL_OPTIONS },
+    { "DUNGE00", 2, NULL, CELL_OPTIONS },
+    { "DUNGE00", 3, NULL, CELL_OPTIONS },
+    // "...confiscate the lockpicks, and hand out a sound beating."
+    { "DUNGE00", 5, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    // "...Ahead is the guardroom." (file 0x999C2)
+    { "DUNGE00", 6, NULL, { DO(ACTION_JAIL_FIGHT) } },
+    // "...more guards rush after you." (state 0x7A, the chase: not
+    // implemented, the party gets away)
+    { "DUNGE00", 8, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "DUNGE00", 9, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    { "DUNGE00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },	// the chase
+    { "DUNGE00", 11, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    { "DUNGE00", 12, NULL, { GO(SCREEN_SIDE_STREET) } },	// "back alley"
+    { "DUNGE00", 13, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    { "DUNGE00", 22, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    { "DUNGE00", 14, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "DUNGE00", 15, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    { "DUNGE00", 17, NULL, { DO(ACTION_AFTER_PRAYER) } },
+    { "DUNGE00", 16, NULL, { DO(ACTION_TO_COURT) } },
+    // "...Then he says, 'Art thou guilty?'" (state 0x8C, file 0xFB4A0)
+    { "MAGIS00", 0, NULL, COURT_OPTIONS },
+    { "MAGIS00", 1, NULL, COURT_OPTIONS },
+    { "MAGIS00", 4, NULL, { GO(SCREEN_SQUARE) } },	// "left in the town square"
+    { "MAGIS00", 5, NULL, { DO(ACTION_TO_EXECUTION) } },
+    { "MAGIS00", 6, NULL, { GO(SCREEN_SQUARE) } },
+    { "MAGIS00", 7, NULL, { GO(SCREEN_SQUARE) } },
+    { "MAGIS00", 8, NULL, { GO(SCREEN_SQUARE) } },
+    { "MAGIS00", 9, NULL, { GO(SCREEN_SQUARE) } },
+    // "In ominous stillness, a bare-chested, black-hooded executioner..."
+    // (state 0x8D, file 0xFBEA8)
+    { "EXECU01", 0, NULL, {
+        DO(ACTION_SUBMIT),					// refuse to struggle
+        DO(ACTION_BREAK_ROPES),
+        TODO								// pray for deliverance
+    } },
+    { "EXECU01", 1, NULL, { GO(SCREEN_EXECUTION) } },	// the next one
+    { "EXECU01", 6, NULL, { DO(ACTION_EXECUTION_FIGHT) } },
+    { "EXECU01", 11, NULL, { DO(ACTION_RESCUE) } },
+    { "EXECU01", 7, NULL, { GO(SCREEN_SQUARE) } },	// pardoned
+    { "EXECU01", 8, NULL, { GO(SCREEN_CHURCH) } },	// "taken to the city church"
+    { "EXECU01", 9, NULL, { GO(SCREEN_SQUARE) } },
+    { "EXECU01", 10, NULL, { DO(ACTION_MOB_FIGHT) } },
+    { "EXECU01", 12, NULL, { GO(SCREEN_SIDE_STREET) } },	// the chase
+    { "EXECU01", 13, NULL, { GO(SCREEN_EXECUTION) } },	// the block again
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1052,6 +1145,41 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1069,6 +1197,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef OUTSIDE_OPTIONS
 #undef DAY_GATE_OPTIONS
 #undef WATCH_CAUGHT_OPTIONS
+#undef CELL_OPTIONS
+#undef COURT_OPTIONS
 #undef DO
 #undef DO_IF
 #undef SHOP_OPTIONS
@@ -1137,8 +1267,11 @@ CityVisit::CityVisit(GameData& data)
     fStoneOffered(false),
     fWatchReturn(SCREEN_NOT_IMPLEMENTED),
     fPendingBattle(false),
-    fGuardBattle(false),
-    fGuards(0),
+    fBattleKind(BATTLE_WITH_WATCH),
+    fCell(0),
+    fTunnel(0),
+    fTortures(0),
+    fMagistrateComing(false),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1200,6 +1333,8 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             return QUIT;
         if (!Choose(option))
             return LEAVE_CITY;
+        if (fParty != NULL && fParty->members.empty())
+            return PARTY_LOST;			// all executed
         if (fPendingTrade >= 0) {
             const int reputation = fReputations != NULL
                 && fCity < int(fReputations->size()) ? (*fReputations)[fCity] : 0;
@@ -1388,6 +1523,62 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_CHALLENGE_RETURN:
             _Show(fChallengeReturn);
+            return true;
+        case ACTION_TO_PRISON:
+            _Show(_EnterPrison());
+            return true;
+        case ACTION_BACK_TO_CELL:
+            _Show(SCREEN_CELL);
+            return true;
+        case ACTION_PICK_LOCK:
+            _Show(_PickLock());
+            return true;
+        case ACTION_CLIMB_WINDOW:
+            _Show(_ClimbWindow());
+            return true;
+        case ACTION_DIG:
+            _Show(_Dig());
+            return true;
+        case ACTION_SEDUCE:
+            _Show(_Seduce());
+            return true;
+        case ACTION_PRAY:
+            _Show(_Pray());
+            return true;
+        case ACTION_AFTER_PRAYER:
+            _Show(fMagistrateComing ? SCREEN_TO_MAGISTRATE : SCREEN_CELL);
+            return true;
+        case ACTION_WAIT_MAGISTRATE:
+            _Show(_WaitForMagistrate());
+            return true;
+        case ACTION_JAIL_FIGHT:
+            _FightJailGuards();
+            return true;
+        case ACTION_TO_COURT:
+            _Show(_EnterCourt());
+            return true;
+        case ACTION_KEEP_SILENT:
+            _Show(_KeepSilent());
+            return true;
+        case ACTION_PLEAD_INNOCENT:
+            _Show(_Plead(false));
+            return true;
+        case ACTION_CONFESS_GUILT:
+            _Show(_Plead(true));
+            return true;
+        case ACTION_TO_EXECUTION:
+            _Show(SCREEN_EXECUTION);
+            return true;
+        case ACTION_SUBMIT:
+        case ACTION_RESCUE:
+            _Show(_Rescue());
+            return true;
+        case ACTION_BREAK_ROPES:
+            _Show(_BreakRopes());
+            return true;
+        case ACTION_EXECUTION_FIGHT:
+        case ACTION_MOB_FIGHT:
+            _FightAtExecution();
             return true;
         case ACTION_GATE_DAY:
             _Show(_GoToGate(true));
@@ -1680,6 +1871,11 @@ CityVisit::_Show(int screen, bool withScene)
     // when the day turns to night and back
     if (screen == SCREEN_DAY_WALL || screen == SCREEN_DAY_WALL_BRIBED)
         fVariables["Money1"] = MoneyText(_WallBribe());
+    // the dungeon's cell, the magistrate after the torture
+    if (screen == SCREEN_CELL)
+        screen = _CellScreen();
+    if (screen == SCREEN_MAGISTRATE && fTortures > 0)
+        screen = SCREEN_MAGISTRATE_AGAIN;
     if (screen == SCREEN_CHALLENGE || screen == SCREEN_CHALLENGE_BRIBED
             || screen == SCREEN_CHALLENGE_REFUSED)
         fVariables["Money1"] = MoneyText(_ChallengeBribe());
@@ -1797,6 +1993,19 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = hide || rope;
         } else if (rule.needs == kNeedsGrate) {
             hide = _Marked(kMarkGrateFailed);
+        } else if (rule.needs == kNeedsLockpicks) {
+            bool lockpicks = false;
+            if (fParty != NULL) {
+                for (const character& member : fParty->members) {
+                    for (const item& carried : member.items) {
+                        lockpicks = lockpicks
+                            || (carried.code & 0x0FFF) == kLockpickCode;
+                    }
+                }
+            }
+            hide = !lockpicks;
+        } else if (rule.needs == kNeedsWoman) {
+            hide = _Seductress() < 0;
         } else if (rule.needs == kNeedsGuardsBribe) {
             hide = fParty == NULL
                 || TotalPfennigs(fParty->cash) < _ChallengeBribe()
@@ -2970,21 +3179,22 @@ CityVisit::_Strongest() const
 }
 
 
-// A fall (1462:026A(member, 0, 1, 10), file 0x80C0A): Strength loses
-// random(10 · Strength / 40 + 1) - 1, at least 0; Endurance random(10 ·
+// A fall (1462:026A(member, 0, 1, amount), file 0x80C0A; amount 10 for
+// a fall, 20 for the dungeon's beatings): Strength loses random(amount ·
+// Strength / 40 + 1) - 1, at least 0; Endurance random(amount ·
 // Endurance / 20 + 1) - 1, at least that and at least 1; neither more
 // than the attribute's maximum (0E76:0B64); AddToAttribute() keeps them
 // at 1 at least
 void
-CityVisit::_Fall(int member)
+CityVisit::_Fall(int member, int amount)
 {
     character& c = fParty->members[size_t(member)];
     const int strength = c.attributes[ATTRIBUTE_STRENGTH];
-    int lost = int(fRandom() % uint32(10 * strength / 40 + 1)) - 1;
+    int lost = int(fRandom() % uint32(amount * strength / 40 + 1)) - 1;
     lost = std::min(std::max(lost, 0), int(c.maxAttributes[ATTRIBUTE_STRENGTH]));
     AddToAttribute(c, ATTRIBUTE_STRENGTH, -lost);
     const int endurance = c.attributes[ATTRIBUTE_ENDURANCE];
-    int wounds = int(fRandom() % uint32(10 * endurance / 20 + 1)) - 1;
+    int wounds = int(fRandom() % uint32(amount * endurance / 20 + 1)) - 1;
     wounds = std::min(std::max(std::max(wounds, lost), 1),
         int(c.maxAttributes[ATTRIBUTE_ENDURANCE]));
     AddToAttribute(c, ATTRIBUTE_ENDURANCE, -wounds);
@@ -3136,18 +3346,22 @@ CityVisit::_FightWatch()
                 reputation - 15 - int(fRandom() % 10)));
         }
     }
+    fBattleKind = BATTLE_WITH_WATCH;
+    fFoes.clear();
+    fFoes.push_back(foes{ 3, 1, int(fRandom() % 5) + 4 });
+    fFoes.push_back(foes{ 0, 2, 1 });
     fPendingBattle = true;
     return -1;
 }
 
 
-// The battle with the watch (file 0xBF3A2): die(5) + 3 of enemy 3 (the
-// "Guard" types) at variant 1 and one of enemy 0 ("Sergeant") at
-// variant 2, as TAC.TXT prints them; with the gate's guards, fGuards of
-// them and the sergeant (file 0x92370). On a city map: which one the game
+// A battle with fFoes: enemies of DARKLAND.ENM at a variant of their
+// group (e.g. the watch, file 0xBF3A2: die(5) + 3 of enemy 3, the
+// "Guard" types, at variant 1 and one of enemy 0, "Sergeant", at
+// variant 2, as TAC.TXT prints them). On a city map: which one the game
 // picks (from the battlefield type) and where everybody starts are not
-// decoded, so the map is one of ICITY.000..003 and the watch starts
-// near the party.
+// decoded, so the map is one of ICITY.000..003 and the foes start near
+// the party.
 void
 CityVisit::_RunBattle(GameWindow& window)
 {
@@ -3172,14 +3386,16 @@ CityVisit::_RunBattle(GameWindow& window)
         }
     }
     const EnemyFile& enemies = fData.Enemies();
-    const uint32 guard = enemies.EnemyAt(3).type + 1;
-    const uint32 sergeant = enemies.EnemyAt(0).type + 2;
-    const int guards = fGuardBattle ? fGuards : int(fRandom() % 5) + 4;
-    for (int i = 0; i <= guards; i++) {
-        int x = 20;
-        int y = 20;
-        if (view.FindFreeCell(x, y))
-            view.AddEnemy(i < guards ? guard : sergeant, x, y, 6);
+    for (const foes& group : fFoes) {
+        const uint32 first = enemies.EnemyAt(uint32(group.enemy)).type;
+        const int variants = std::max(1, int(enemies.TypeAt(first).variants));
+        const uint32 type = first + uint32(std::min(group.variant, variants - 1));
+        for (int i = 0; i < group.count; i++) {
+            int x = 20;
+            int y = 20;
+            if (view.FindFreeCell(x, y))
+                view.AddEnemy(type, x, y, 6);
+        }
     }
     view.Scroll(0, 12);
     const battle_outcome outcome = view.Run(window);
@@ -3213,9 +3429,16 @@ void
 CityVisit::ResolveBattle(int outcome)
 {
     fPendingBattle = false;
-    if (fGuardBattle) {
-        fGuardBattle = false;
+    if (fBattleKind == BATTLE_WITH_GATE_GUARDS) {
         _Show(_ResolveGuardBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_WITH_JAIL_GUARDS) {
+        _Show(_ResolveJailBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_AT_EXECUTION) {
+        _Show(_ResolveExecutionBattle(outcome));
         return;
     }
     switch (outcome) {
@@ -3340,16 +3563,20 @@ CityVisit::_BribeChallenge()
 }
 
 
-// Fighting the guards (file 0x92370): clamp(09C0:2161(), 7, random(7) +
-// 2) of enemy 3 at variant 1 (09C0:2161 is not decoded: 2..7 here) and
-// the sergeant; the reputation falls by 15..24 with a chance of 100 -
-// |reputation| % (0E76:19D0(location, -15, -25))
+// Fighting the guards (file 0x92370): clamp(the party's size (09C0:2161,
+// 1462:1DE6), 7, random(7) + 2) of enemy 3 at variant 1 and the
+// sergeant (enemy 0) at variant 2; the reputation falls by 15..24 with a
+// chance of 100 - |reputation| % (0E76:19D0(location, -15, -25))
 void
 CityVisit::_FightGuards()
 {
-    fGuards = std::min(7, int(fRandom() % 7) + 2);
+    const int size = fParty != NULL ? int(fParty->members.size()) : 1;
+    const int guards = std::max(size, std::min(7, int(fRandom() % 7) + 2));
     _ChangeReputation(-24, -15);
-    fGuardBattle = true;
+    fBattleKind = BATTLE_WITH_GATE_GUARDS;
+    fFoes.clear();
+    fFoes.push_back(foes{ 3, 1, guards });
+    fFoes.push_back(foes{ 0, 2, 1 });
     fPendingBattle = true;
 }
 
@@ -3378,6 +3605,580 @@ CityVisit::_ResolveGuardBattle(int outcome)
     if (fClock != NULL)
         fClock->AddHours(uint32(hours));
     _Mark(kMarkWanted, fChallengeReputation <= -75 ? 240 : 120);
+    return next;
+}
+
+
+// Entering the dungeon (file 0x988C6): the guards search the party
+// (18E7:0854(-2)), the best cell, no tunnel yet
+int
+CityVisit::_EnterPrison()
+{
+    _Search();
+    fCell = 0;
+    fTunnel = 0;
+    return SCREEN_CELL;
+}
+
+
+// The search (18E7:0854(-2), file 0x66484): the purse is emptied; each
+// item goes if its quantity · weight is over 2, else if random(100) is
+// under h / 2 (2) or h (less), h = (Agility + Stealth) / 2 of its
+// owner. As the game has it, the nimbler lose more. What is gone is no
+// longer in use.
+void
+CityVisit::_Search()
+{
+    if (fParty == NULL)
+        return;
+    fParty->cash = money{ 0, 0, 0 };
+    for (character& member : fParty->members) {
+        const int h = (member.attributes[ATTRIBUTE_AGILITY]
+            + member.skills[kSkillStealth]) / 2;
+        std::vector<item> kept;
+        for (const item& carried : member.items) {
+            const int bulk = carried.quantity * carried.weight;
+            const int roll = int(fRandom() % 100);
+            const bool taken = bulk > 2 || (bulk == 2 ? roll < h / 2
+                : roll < h);
+            if (!taken)
+                kept.push_back(carried);
+        }
+        member.items = kept;
+        for (uint8& slot : member.equipment) {
+            bool left = false;
+            for (const item& carried : member.items)
+                left = left || carried.type == slot;
+            if (!left)
+                slot = kNoEquipment;
+        }
+    }
+}
+
+
+int
+CityVisit::_CellScreen() const
+{
+    return SCREEN_CELL + std::max(0, std::min(fCell, 3));
+}
+
+
+// Caught trying to escape: from the best cell to the dark one, else to
+// the oubliette; the tunnel is lost
+void
+CityVisit::_WorseCell()
+{
+    fCell = fCell == 0 ? 1 : 2;
+    fTunnel = 0;
+}
+
+
+// A sound beating (1462:026A(-2, 0, 1, 20)): a fall of amount 20 for all
+void
+CityVisit::_Beating()
+{
+    if (fParty == NULL)
+        return;
+    for (int i = 0; i < int(fParty->members.size()); i++)
+        _Fall(i, 20);
+}
+
+
+// A flogging (file 0xFB8F8): every member loses random(18) Endurance and
+// random(12) Strength (0E76:0A72(-2, ...))
+void
+CityVisit::_Flogging()
+{
+    if (fParty == NULL)
+        return;
+    for (character& member : fParty->members) {
+        AddToAttribute(member, ATTRIBUTE_ENDURANCE, -int(fRandom() % 18));
+        AddToAttribute(member, ATTRIBUTE_STRENGTH, -int(fRandom() % 12));
+    }
+}
+
+
+// An item of DARKLAND.LST for every member (18E7:0128(-2, code)), at its
+// default quality; a weapon is taken in hand when the hand is empty
+// (inferred)
+void
+CityVisit::_GiveEach(int code)
+{
+    if (fParty == NULL)
+        return;
+    const item_definition& definition = fData.Lists().Items()[size_t(code)];
+    for (character& member : fParty->members) {
+        member.items.push_back(item{ uint16(code), uint8(definition.type),
+            definition.quality, 1, definition.weight });
+        if (member.equipment[EQUIPMENT_WEAPON] == kNoEquipment)
+            member.equipment[EQUIPMENT_WEAPON] = uint8(definition.type);
+    }
+}
+
+
+// The best at Artifice (0E76:14A4(14))
+int
+CityVisit::_Picker() const
+{
+    return _BestSkill(kSkillArtifice);
+}
+
+
+// Picking the lock's chance (file 0x98D36): the picker's Artifice, + 50
+// in the dark cell, - 50 in Saint Lucy's light, none in the oubliette,
+// within 0..99 (1367:000A)
+int
+CityVisit::_PickChance() const
+{
+    if (fParty == NULL || fParty->members.empty() || fCell == 2)
+        return 0;
+    int chance = fParty->members[size_t(_Picker())].skills[kSkillArtifice];
+    if (fCell == 1)
+        chance += 50;
+    else if (fCell == 3)
+        chance -= 50;
+    return std::max(0, std::min(99, chance));
+}
+
+
+// The climber (0E76:179C(2, 1)): as the game has it, a member whose
+// Agility + Strength is over the best score so far becomes the climber,
+// and the score becomes twice his Agility
+int
+CityVisit::_Climber(int* score) const
+{
+    int best = 0;
+    int climber = 0;
+    for (int i = 0; fParty != NULL && i < int(fParty->members.size()); i++) {
+        const character& member = fParty->members[size_t(i)];
+        if (member.attributes[ATTRIBUTE_AGILITY]
+                + member.attributes[ATTRIBUTE_STRENGTH] > best) {
+            best = 2 * member.attributes[ATTRIBUTE_AGILITY];
+            climber = i;
+        }
+    }
+    if (score != NULL)
+        *score = best;
+    return climber;
+}
+
+
+// The woman with the best Charisma (0E76:174A(5)), or -1
+int
+CityVisit::_Seductress() const
+{
+    int best = -1;
+    for (int i = 0; fParty != NULL && i < int(fParty->members.size()); i++) {
+        const character& member = fParty->members[size_t(i)];
+        if (member.female && (best < 0 || member.attributes[ATTRIBUTE_CHARISMA]
+                > fParty->members[size_t(best)].attributes[ATTRIBUTE_CHARISMA]))
+            best = i;
+    }
+    return best;
+}
+
+
+// Picking the lock (file 0x98C1E): if random(100) is at most the chance,
+// a lesson in Artifice for the picker (mode 1), an hour, a dagger for
+// every member (18E7:0128(-2, 7)), card 6 and the guardroom; else card
+// 5, a beating, three hours, the lockpicks taken (18E7:0668(-2, 64)), a
+// lesson of mode 0 (not reproduced) and a worse cell
+int
+CityVisit::_PickLock()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CELL;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    const int picker = _Picker();
+    _SetChosen(picker);
+    if (random(100) <= _PickChance()) {
+        TrainSkill(fParty->members[size_t(picker)], kSkillArtifice, 10,
+            random);
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _GiveEach(kDaggerCode);
+        return SCREEN_LOCK_PICKED;
+    }
+    _Beating();
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    for (character& member : fParty->members) {
+        std::vector<item> kept;
+        for (const item& carried : member.items) {
+            if ((carried.code & 0x0FFF) != kLockpickCode)
+                kept.push_back(carried);
+        }
+        member.items = kept;
+    }
+    _WorseCell();
+    return SCREEN_PICK_CAUGHT;
+}
+
+
+// Climbing to the window (file 0x98DAA; the best cell only): an hour;
+// if random(100) is at most the climber's score / 3 (file 0x98E86), card
+// 10, a lesson in Stealth for the climber (mode 1), a club for every
+// member and the chase (state 0x7A: not implemented, the party gets
+// away); else card 11 and a worse cell
+int
+CityVisit::_ClimbWindow()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CELL;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    int score = 0;
+    const int climber = _Climber(&score);
+    _SetChosen(climber);
+    if (random(100) <= std::min(100, score / 3)) {
+        TrainSkill(fParty->members[size_t(climber)], kSkillStealth, 10,
+            random);
+        _GiveEach(kClubCode);
+        return SCREEN_WINDOW_ESCAPED;
+    }
+    _WorseCell();
+    return SCREEN_WINDOW_CAUGHT;
+}
+
+
+// Digging (file 0x98EBE): 12 hours; after 12 o'clock the magistrate
+// sends for the party one time in nine (card 16). Else the tunnel grows
+// by 12..17 % (50 in Saint Lucy's light): over 95, card 12, the
+// reputation down by 1..6 (0E76:19D0) and the side streets; else found if
+// random(100) is under a quarter of it (card 13, a beating, the tunnel
+// lost, a worse cell: the light's cell is the oubliette's); else card 22
+int
+CityVisit::_Dig()
+{
+    if (fClock != NULL) {
+        fClock->AddHours(12);
+        if (fClock->Hour() > 12 && fRandom() % 9 == 1)
+            return SCREEN_TO_MAGISTRATE;
+    }
+    fTunnel += fCell == 3 ? 50 : int(fRandom() % 6) + 12;
+    if (fTunnel > 95) {
+        fTunnel = 0;
+        _ChangeReputation(-6, -1);
+        return SCREEN_TUNNEL_DONE;
+    }
+    if (int(fRandom() % 100) < fTunnel / 4) {
+        _Beating();
+        fTunnel = 0;
+        fCell = fCell == 3 ? 2 : fCell + 1;
+        return SCREEN_TUNNEL_FOUND;
+    }
+    fVariables["Number1"] = std::to_string(fTunnel);
+    return SCREEN_TUNNEL_PROGRESS;
+}
+
+
+// Seducing the turnkey (file 0x9909A; a woman in the best cell): if
+// random(100) is at most her Charisma, two days, card 14, a lesson in
+// Speak Common for her (mode 1), her Virtue down by 2, or 2..5 with a
+// chance of 100 - Virtue % (0E76:18A8(virtue, 2, 6)), and the side
+// streets; else two hours and card 15
+int
+CityVisit::_Seduce()
+{
+    const int woman = _Seductress();
+    if (woman < 0)
+        return SCREEN_CELL;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    character& her = fParty->members[size_t(woman)];
+    _SetChosen(woman);
+    if (random(100) > her.attributes[ATTRIBUTE_CHARISMA]) {
+        if (fClock != NULL)
+            fClock->AddHours(2);
+        return SCREEN_SCOFFED;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(48);
+    TrainSkill(her, kSkillSpeakCommon, 10, random);
+    const int virtue = her.skills[kSkillVirtue];
+    const int loss = random(100) <= std::abs(100 - virtue) ? 2 + random(4) : 2;
+    her.skills[kSkillVirtue] = uint8(std::max(0, virtue - loss));
+    return SCREEN_SEDUCED;
+}
+
+
+// Praying (file 0x99220): every member's divine favor + 2..11 (12..21 in
+// Saint Lucy's light), card 17, 12 hours; then after 12 o'clock the
+// magistrate one time in ten
+int
+CityVisit::_Pray()
+{
+    if (fParty != NULL) {
+        for (character& member : fParty->members) {
+            AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
+                int(fRandom() % 10) + (fCell == 3 ? 12 : 2));
+        }
+    }
+    fMagistrateComing = false;
+    if (fClock != NULL) {
+        fClock->AddHours(12);
+        fMagistrateComing = fClock->Hour() > 12 && fRandom() % 10 == 1;
+    }
+    return SCREEN_PRAYED;
+}
+
+
+// Waiting (file 0x995A2): until 13 o'clock (1367:0716), then the
+// magistrate if random(100) is at most 11
+int
+CityVisit::_WaitForMagistrate()
+{
+    if (fClock != NULL) {
+        const int hour = fClock->Hour();
+        fClock->AddHours(uint32(hour > 13 ? 13 - hour + 24 : 13 - hour));
+    }
+    return fRandom() % 100 <= 11 ? SCREEN_TO_MAGISTRATE : SCREEN_CELL;
+}
+
+
+// The guardroom (file 0x999C2): random(5) + 4 of enemy 3 at variant
+// random(3) + |s| / 4 + 1 and the sergeant at variant random(3) + 1; s
+// (09C0:1C1B, 1462:0470) is a measure of the party's strength, not
+// reproduced (0)
+void
+CityVisit::_FightJailGuards()
+{
+    fBattleKind = BATTLE_WITH_JAIL_GUARDS;
+    fFoes.clear();
+    const int variant = int(fRandom() % 3) + 1;
+    fFoes.push_back(foes{ 3, variant, int(fRandom() % 5) + 4 });
+    fFoes.push_back(foes{ 0, int(fRandom() % 3) + 1, 1 });
+    fPendingBattle = true;
+}
+
+
+// The guardroom's result (file 0x99A1B): won or fled, two hours, card 8
+// and the chase (not implemented: the side streets); lost, two hours,
+// card 9, the search again, a beating, the same cell
+int
+CityVisit::_ResolveJailBattle(int outcome)
+{
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    if (outcome != BATTLE_LOST)
+        return SCREEN_GUARDROOM_WON;
+    _Search();
+    _Beating();
+    return SCREEN_RECAPTURED;
+}
+
+
+// Before the magistrate (file 0xFB4A0): no torture yet
+int
+CityVisit::_EnterCourt()
+{
+    fTortures = 0;
+    return SCREEN_MAGISTRATE;
+}
+
+
+// Saying nothing (file 0xFB61C): three times the torture (card 1, six
+// hours, every member loses random(18) Endurance and random(12)
+// Strength); the fourth time card 4, an hour, free in the square
+int
+CityVisit::_KeepSilent()
+{
+    if (fTortures >= 3) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_UNPLEADED;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(6);
+    _Flogging();
+    fTortures++;
+    return SCREEN_MAGISTRATE_AGAIN;
+}
+
+
+// Pleading (file 0xFB74C) or confessing (file 0xFBB02): the wanted mark
+// is lifted (0E76:3CDE(0x11, ...), inferred); s = random(5) - 3 (random(3)
+// - 2 confessing) + the reputation / 40 (+ 1462's 0xFBEA4, always 0):
+// under 0 death (card 5, three hours, the execution), 0 a flogging (card
+// 6, three hours), 1 a fine; pleading, s under -6 or over 1 acquits (card
+// 9, an hour); then the square
+int
+CityVisit::_Plead(bool guilty)
+{
+    fMarks.erase(std::make_pair(kMarkWanted, fCity));
+    const int s = guilty ? int(fRandom() % 3) - 2 + _Reputation() / 40
+        : int(fRandom() % 5) - 3 + _Reputation() / 40;
+    if (!guilty && (s < -6 || s > 1)) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_ACQUITTED;
+    }
+    if (guilty && (s < -5 || s > 5))
+        return SCREEN_MAGISTRATE;		// cannot happen: nothing
+    if (s < 0) {
+        if (fClock != NULL)
+            fClock->AddHours(3);
+        return SCREEN_SENTENCED;
+    }
+    if (s == 0) {
+        if (fClock != NULL)
+            fClock->AddHours(3);
+        _Flogging();
+        return SCREEN_FLOGGED;
+    }
+    return _CourtFine();
+}
+
+
+// The fine (file 0xFB85A): random(3) + city size / 3 florins, at least
+// one ($Money1); with that many florins in the purse, a day and card 7,
+// else three hours, card 8 and a flogging. As the game has it, the fine
+// is not taken.
+int
+CityVisit::_CourtFine()
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int florins = std::max(1, int(fRandom() % 3) + size / 3);
+    fVariables["Money1"] = MoneyText(uint32(florins) * 240);
+    if (fParty != NULL && florins <= fParty->cash.florins) {
+        if (fClock != NULL)
+            fClock->AddHours(24);
+        return SCREEN_FINED;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    _Flogging();
+    return SCREEN_FINED_FLOGGED;
+}
+
+
+// The rescues (file 0xFC196 with -1), each tried in turn, then an hour:
+// the ruler's pardon if random(100) is at most the reputation / 10 (card
+// 7, the reputation set to -9, the square); the abbot if at most the
+// best Virtue + Religion + Charisma + Speak Latin / 10 (card 8, the
+// church; 0E76:360C(2, 0, location), not decoded, taken as true); the
+// bankers if at most the florins in the purse (card 9, five more hours,
+// the reputation -9, the square); the mob if at most |reputation / 5|
+// (card 10, a weapon each by the best weapon skill, the fight). Two
+// more, on DS:9082 (a city ruler's quest, state 0x84), are not
+// reproduced. Else a member is beheaded (card 1) and the execution goes
+// on.
+int
+CityVisit::_Rescue()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_EXECUTION;
+    const int reputation = _Reputation();
+    int best = 0;
+    for (const character& member : fParty->members) {
+        best = std::max(best, member.skills[kSkillVirtue]
+            + member.skills[kSkillReligion]
+            + member.attributes[ATTRIBUTE_CHARISMA]
+            + member.skills[kSkillSpeakLatin]);
+    }
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (int(fRandom() % 100) <= reputation / 10) {
+        if (fReputations != NULL && fCity < int(fReputations->size()))
+            (*fReputations)[fCity] = -9;
+        return SCREEN_PARDONED;
+    }
+    if (int(fRandom() % 100) <= best / 10)
+        return SCREEN_CLAIMED_BY_ABBOT;
+    if (int(fRandom() % 100) <= fParty->cash.florins) {
+        if (fClock != NULL)
+            fClock->AddHours(5);
+        if (fReputations != NULL && fCity < int(fReputations->size()))
+            (*fReputations)[fCity] = -9;
+        return SCREEN_BOUGHT_OFF;
+    }
+    if (int(fRandom() % 100) <= std::abs(reputation / 5)) {
+        // the weapon of the best weapon skill (0E76:01C0, file 0xFC46A):
+        // a falchion (edged, bows, missiles), a mace (impact, flails), a
+        // short spear (polearms, thrown)
+        static const int kWeapons[kWeaponSkillCount]
+            = { 4, 14, 14, 21, 21, 4, 4 };
+        for (character& member : fParty->members) {
+            int skill = 0;
+            for (int s = 1; s < kWeaponSkillCount; s++) {
+                if (member.skills[s] > member.skills[skill])
+                    skill = s;
+            }
+            const item_definition& definition
+                = fData.Lists().Items()[size_t(kWeapons[skill])];
+            member.items.push_back(item{ uint16(kWeapons[skill]),
+                uint8(definition.type), definition.quality, 1,
+                definition.weight });
+            if (member.equipment[EQUIPMENT_WEAPON] == kNoEquipment)
+                member.equipment[EQUIPMENT_WEAPON] = uint8(definition.type);
+        }
+        return SCREEN_MOB;
+    }
+    // file 0xFC4CE: a member at random (the next one standing)
+    const int victim = int(fRandom() % fParty->members.size());
+    _SetChosen(victim);
+    RemoveMember(*fParty, size_t(victim));
+    return SCREEN_BEHEADED;
+}
+
+
+// Breaking the ropes (file 0xFC5BC): if random(100) is at most the
+// strongest's Strength (0E76:16FE(1)), card 6, a dagger each and the
+// fight; else card 11 with a member at random, then the rescues
+int
+CityVisit::_BreakRopes()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_EXECUTION;
+    const int strongest = _Strongest();
+    if (int(fRandom() % 100)
+            <= fParty->members[size_t(strongest)].attributes[ATTRIBUTE_STRENGTH]) {
+        _SetChosen(strongest);
+        _GiveEach(kDaggerCode);
+        return SCREEN_ROPES_BROKEN;
+    }
+    _SetChosen(int(fRandom() % fParty->members.size()));
+    return SCREEN_ROPES_HOLD;
+}
+
+
+// The fight at the execution (file 0xFC004): random(4) + s / 3 + 1 of
+// enemy 3 at variant random(2) + |s| / 4 + 1 and enemy 23, the
+// "Executioner", at variant s % 3 + 1 (s: see _FightJailGuards(), 0
+// here); the reputation falls by 5..19 (0E76:1DFE)
+void
+CityVisit::_FightAtExecution()
+{
+    if (fReputations != NULL && fCity >= 0
+            && fCity < int(fReputations->size())) {
+        int16& reputation = (*fReputations)[fCity];
+        reputation = int16(std::max(-99, reputation - 5
+            - int(fRandom() % 15)));
+    }
+    fBattleKind = BATTLE_AT_EXECUTION;
+    fFoes.clear();
+    const int variant = int(fRandom() % 2) + 1;
+    fFoes.push_back(foes{ 3, variant, int(fRandom() % 4) + 1 });
+    fFoes.push_back(foes{ 23, 1, 1 });
+    fPendingBattle = true;
+}
+
+
+// Its result (file 0xFC0A4): won or fled, card 12, an hour and the chase
+// (not implemented: the side streets); lost, card 13, three hours and
+// the block again. Then the party is wanted (mark 0x11) for 240 hours,
+// 480 with a reputation of -75 or less.
+int
+CityVisit::_ResolveExecutionBattle(int outcome)
+{
+    const int next = outcome == BATTLE_LOST ? SCREEN_EXECUTION_RECAPTURED
+        : SCREEN_EXECUTION_ESCAPED;
+    if (fClock != NULL)
+        fClock->AddHours(outcome == BATTLE_LOST ? 3 : 1);
+    _Mark(kMarkWanted, _Reputation() <= -75 ? 480 : 240);
     return next;
 }
 

@@ -265,15 +265,7 @@ AfterBattle(party& members, const std::vector<fighter>& fighters)
             = uint8(std::max(fighters[i].strength, 0));
         if (fighters[i].status != FIGHTER_DEAD)
             continue;
-        members.members.erase(members.members.begin() + long(i));
-        if (i < members.images.size())
-            members.images.erase(members.images.begin() + long(i));
-        if (i < members.colors.size())
-            members.colors.erase(members.colors.begin() + long(i));
-        if (members.leader > int(i))
-            members.leader--;
-        else if (members.leader == int(i))
-            members.leader = 0;
+        RemoveMember(members, i);
         dead++;
     }
     if (members.leader >= int(members.members.size()))

@@ -96,6 +96,10 @@ money MoneyFromPfennigs(uint32 pfennigs);
 // (DARKLAND.EXE 1367:0376)
 std::string MoneyText(uint32 pfennigs);
 
+// A member leaves the party (dead, executed): his images and colors go
+// too; the leader stays the same member, or becomes the first.
+void RemoveMember(party& members, size_t index);
+
 // The word of a local reputation (DARKLAND.EXE 0E76:1B12): "a local
 // hero" over 50, "respected" over 10, "unknown" over -10, "suspected"
 // over -40, "wanted" over -75, else "hunted"

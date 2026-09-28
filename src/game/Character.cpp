@@ -235,3 +235,22 @@ ReputationWord(int reputation)
         return "respected";
     return "a local hero";
 }
+
+
+void
+RemoveMember(party& members, size_t index)
+{
+    if (index >= members.members.size())
+        return;
+    members.members.erase(members.members.begin() + long(index));
+    if (index < members.images.size())
+        members.images.erase(members.images.begin() + long(index));
+    if (index < members.colors.size())
+        members.colors.erase(members.colors.begin() + long(index));
+    if (members.leader > int(index))
+        members.leader--;
+    else if (members.leader == int(index))
+        members.leader = 0;
+    if (members.leader >= int(members.members.size()))
+        members.leader = 0;
+}
