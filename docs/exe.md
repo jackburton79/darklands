@@ -1049,8 +1049,16 @@ their content comes from the game's events. **verified** (code)
   kind, +0 = a, +0x1C = the location, still valid (0E76:3230). 0E76:
   3470(kind, location): one of category 8, started; 32FE(kind): one of
   category 8, started; 3C28(category, subject, +0x1A, kind, +0x2A),
-  −1 for "any", returns its location. The records: formats.md
-  "Events". Not used yet by `CityVisit`: every event query is false.
+  −1 for "any", returns its location (without looking at the dates).
+  The records: formats.md "Events".
+- **Card variables of places** (the switch at file 0x8E170): $Direction
+  is one of "North", "Northeast"... (290E:20E3, 8 far pointers) by
+  1462:29FA(x1, y1, x2, y2) (overlay 0x1E, segment 1462 at file
+  0x5DAA0): dx = |x2 − x1|, dy = |y2 − y1| / 3; West/East when dx / 2
+  >= dy, else North/South when dy / 2 >= dx, else the diagonal; from
+  the location in DS:ED54 to the one in DS:E89B. 1462:271A(x, y): the
+  nearest of the first 92 locations (the cities; not one at (x, y)
+  itself), by max + min / 2 of dx, dy (dy a third). **verified** (code)
 - **The notices** (state 0x6D, $OFFIC00, segment 1910 at file 0xE97C0,
   overlay 0x47): nobody reading better than 10 (0E76:14A4(12)): by day
   card 4 (a citizen reads them), at night card 5 and nothing more; then
@@ -1074,10 +1082,14 @@ their content comes from the game's events. **verified** (code)
   property 0x21 % 20 is 0 and not mark 0x65, 1 and 2 with an event of
   kind 2 here (0E76:360C(2, 0, location)), 3..8 hidden; the employers'
   names are 1367:0DB4(number + 12, ...) and (number + 22, ...).
-- Reproduced in `CityVisit`: the menu, the notices, "elsewhere" and the
-  situation as with no events and a location in its first state (card
-  3 of $AFFAI00, the curfew and the gossip by the city's number), the
-  special jobs' menu (the jobs are quests: not implemented).
+- Reproduced in `CityVisit` with the game's events and the locations'
+  state (a saved game's; a new game's are those of SAVES/DEFAULT): the
+  menu, the notices, "elsewhere", the situation, one card after the
+  other, the special jobs' menu (the jobs are quests: not
+  implemented). Ended events count as gone (*inferred*: the game takes
+  them away as time passes); $Direction is from the city where the
+  party is (*inferred*: DS:ED54 is not set by these handlers);
+  $NearestCity is the city nearest to the event.
 
 ## Time and travel
 

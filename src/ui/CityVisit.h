@@ -15,6 +15,7 @@
 #pragma once
 
 #include "CardView.h"
+#include "EventFile.h"
 #include "MsgFile.h"
 #include "ResidenceView.h"
 #include "TradeView.h"
@@ -285,6 +286,19 @@ public:
         SCREEN_GOSSIP_DULL,
         SCREEN_GOSSIP_NOTHING_EVER,
         SCREEN_JOBS,
+        SCREEN_NOTICE_PRICES,	// the notices of the city's state: prices
+        SCREEN_NOTICE_SIEGE,	// (1), a siege (2), no assemblies (3); news
+        SCREEN_NOTICE_ASSEMBLY,	// from elsewhere: the city's ruler
+        SCREEN_AFFAIRS_OVERTHROWN,	// overthrown (1), a rebellion put down
+        SCREEN_AFFAIRS_CRUSHED,	// (2), unrest elsewhere (4), a dragon (5),
+        SCREEN_AFFAIRS_UNREST,	// the mines (17); gossip: prices (1),
+        SCREEN_AFFAIRS_DRAGON,	// rats (2), politics (3), traitors (8), a
+        SCREEN_AFFAIRS_MINES,	// new government (9)
+        SCREEN_GOSSIP_PRICES,
+        SCREEN_GOSSIP_RATS,
+        SCREEN_GOSSIP_POLITICS,
+        SCREEN_GOSSIP_TRAITORS,
+        SCREEN_GOSSIP_NEW_RULERS,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -312,6 +326,11 @@ public:
     // owned; NULL: 0 everywhere). Some options change it.
     void			SetReputations(std::vector<int16>* reputations)
                         { fReputations = reputations; }
+    // The game's events and the locations' state (+0x14 of their saved
+    // records), not owned; NULL: none. The news tell of them.
+    void			SetWorld(const std::vector<world_event>* events,
+                        const std::vector<uint8>* locationFlags)
+                        { fEvents = events; fLocationFlags = locationFlags; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits.
@@ -501,7 +520,17 @@ private:
     // the menu, file 0xE3A70, state 0x66)
     int				_InnNews();
     int				_Notices();
+    int				_Affairs();
     int				_Gossip();
+    int				_NextNews();
+    // The game's events (0E76:324C, 3180, 32FE, 3470, 360C, 3C28)
+    bool			_EventRunning(const world_event& e) const;
+    bool			_AnyEvent(int kind) const;
+    bool			_EventHere(int kind) const;
+    bool			_EventHere(int kind, int subject) const;
+    int				_EventLocation(int category, int kind) const;
+    uint8			_CityState() const;
+    void			_SetPlaceVariables(int place, int from);
     // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
     // 0E76:2180, overlay 0x22 at file 0x6B7D0)
     std::vector<int> _SaintsFor(int screen) const;
@@ -591,6 +620,10 @@ private:
     bool			fGateShoutFight;	// card 1 of the gate: the fight next
     int				fAfterDark;		// the wall's option waiting for the dark
     int				fNewsReturn;	// where the news menu goes back to
+    std::vector<std::pair<int, int> > fNewsQueue;	// the news' cards
+                                    // still to show, and their places
+    const std::vector<world_event>* fEvents;
+    const std::vector<uint8>* fLocationFlags;
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

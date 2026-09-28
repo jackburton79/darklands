@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Character.h"
+#include "EventFile.h"
 #include "GameTime.h"
 #include "Travel.h"
 
@@ -44,6 +45,8 @@ private:
     uint16			fSeed;			// the game's seed global (DS:9C4A)
     std::mt19937	fRandom;
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC
+    std::vector<world_event> fEvents;	// the game's events
+    std::vector<uint8> fLocationFlags;	// by location: its state (+0x14)
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from
     map_position	fPosition;		// else on the map, here

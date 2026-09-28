@@ -44,12 +44,17 @@ Game::NewGame(int startCity)
     // CHARACTR.TMP has no money: the characters' funds are pooled at the
     // start of the game (manual p. 15), where from is unknown
     fParty = CharacterFile(fData.PathFor("CHARACTR.TMP")).Party();
+    // the new game's template: its date, its events and the locations'
+    // state
+    fReputations.assign(fData.Locations().CountLocations(), 0);
     try {
-        fTime = SaveFile(fData.PathFor("SAVES/DEFAULT")).Date();
+        const SaveFile template_(fData.PathFor("SAVES/DEFAULT"));
+        fTime = template_.Date();
+        fEvents = template_.Events();
+        fLocationFlags = template_.LocationFlags();
     } catch (const std::exception&) {
         fTime = GameTime();		// no template: 1 January 1400
     }
-    fReputations.assign(fData.Locations().CountLocations(), 0);
     // DARKLAND.EXE takes it from the BIOS clock ticks (file 0x7C04F)
     fSeed = uint16(std::random_device()());
     fCity = startCity;
@@ -71,6 +76,8 @@ Game::LoadGame(const std::string& fileName)
     fSeed = save.Seed();
     fReputations = save.Reputations();
     fReputations.resize(fData.Locations().CountLocations(), 0);
+    fEvents = save.Events();
+    fLocationFlags = save.LocationFlags();
     // the cities are the first locations of DARKLAND.LOC; in a city the
     // game goes on in the main street (the saved screen is not decoded)
     if (save.Location() >= 0
@@ -101,6 +108,7 @@ Game::Run()
     });
     visit.SetSeed(fSeed);
     visit.SetReputations(&fReputations);
+    visit.SetWorld(&fEvents, &fLocationFlags);
     MapViewer map(fData);
     map.SetClock(&fTime);
     InfoView info(fData);

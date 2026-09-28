@@ -11,6 +11,7 @@
 #include "InfoView.h"
 #include "ExeData.h"
 #include "ListFile.h"
+#include "LocationFile.h"
 #include "ScreenSupport.h"
 #include "EnemyFile.h"
 #include "Stream.h"
@@ -117,8 +118,9 @@ enum option_action {
     ACTION_NEWS_RETURN,
     ACTION_INN_RAID,
     ACTION_NOTICES,
-    ACTION_NOTICE_POSTED,
+    ACTION_AFFAIRS,
     ACTION_GOSSIP,
+    ACTION_NEWS_NEXT,			// the news' next card, or the menu
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -194,6 +196,10 @@ static const int kNeedsInnerWall	= -33;
 // or the special jobs' first rumor: the city's property 0x21 a multiple
 // of 20 and no mark 0x65 (file 0xE3FED)
 static const int kNeedsJobRumor		= -34;
+// or the game's events: unrest here (0E76:3470(2, location)), its people
+// here (0E76:360C(2, 0, location))
+static const int kNeedsUnrestHere	= -35;
+static const int kNeedsRebelsHere	= -36;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -1022,37 +1028,55 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "Eyes and ears open, you..." (state 0x66, file 0xE3A70)
     { "CITYN00", 0, NULL, {
         DO(ACTION_NOTICES),					// the official notices (0x6D)
-        GO(SCREEN_AFFAIRS_NONE),			// elsewhere in the Empire (0x6E)
+        DO(ACTION_AFFAIRS),					// elsewhere in the Empire (0x6E)
         DO(ACTION_GOSSIP),					// the situation here (0xAE)
         GO(SCREEN_JOBS),					// special jobs (0x67)
-        HIDE,								// politics: an event of kind 2
-                                            // here (0E76:3470), none kept
+        { ACTION_GOSSIP, 0, kNeedsUnrestHere, 0 },	// politics: unrest
+                                            // here (0E76:3470(2, location))
         HIDE, HIDE, HIDE, HIDE,				// placeholders
         DO(ACTION_NEWS_RETURN)				// have learned what you can
     } },
     // "...A squad of city guardsmen leap into the common room!"
     { "URBAN00", 4, NULL, { DO(ACTION_INN_RAID) } },
     // the notices (state 0x6D, file 0xE97C2)
-    { "OFFIC00", 4, NULL, { DO(ACTION_NOTICE_POSTED) } },
-    { "OFFIC00", 5, NULL, { GO(SCREEN_NEWS) } },
-    { "OFFIC00", 0, NULL, { GO(SCREEN_NEWS) } },
-    { "OFFIC00", 6, NULL, { GO(SCREEN_NEWS) } },
+    { "OFFIC00", 4, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "OFFIC00", 5, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "OFFIC00", 0, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "OFFIC00", 6, NULL, { DO(ACTION_NEWS_NEXT) } },
     // "...nobody has any travellers' tales" (state 0x6E, file 0xE9FE4)
-    { "AFFAI00", 3, NULL, { GO(SCREEN_NEWS) } },
+    { "AFFAI00", 3, NULL, { DO(ACTION_NEWS_NEXT) } },
     // the gossip (state 0xAE, file 0x10F96E)
-    { "SITUA01", 0, NULL, { GO(SCREEN_NEWS) } },
-    { "SITUA01", 5, NULL, { GO(SCREEN_NEWS) } },
-    { "SITUA01", 6, NULL, { GO(SCREEN_NEWS) } },
-    { "SITUA01", 7, NULL, { GO(SCREEN_NEWS) } },
+    { "SITUA01", 0, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 5, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 6, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 7, NULL, { DO(ACTION_NEWS_NEXT) } },
     // "After a few casual conversations, you learn that..." (state
     // 0x67, file 0xE3F7A): the employers' leads are quests, not
     // implemented; 1 and 2 need an event of kind 2 here (0E76:360C)
     { "SPECI00", 0, NULL, {
         TODO_IF(kNeedsJobRumor),			// a well-placed personage
-        HIDE, HIDE, HIDE,
+        TODO_IF(kNeedsRebelsHere),			// an aristocrat, friend of
+        TODO_IF(kNeedsRebelsHere),			// the ruler; people with a
+                                            // grudge (0E76:360C(2, 0, here))
+        HIDE,
         HIDE, HIDE, HIDE, HIDE, HIDE,		// "info 4." ... "info 8."
         GO(SCREEN_NEWS)						// nothing more to hear
     } },
+    // the news of the world (the game's events and the locations'
+    // state; see _Notices(), _Affairs(), _Gossip())
+    { "OFFIC00", 1, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "OFFIC00", 2, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "OFFIC00", 3, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "AFFAI00", 1, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "AFFAI00", 2, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "AFFAI00", 4, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "AFFAI00", 5, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "AFFAI00", 17, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 1, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 2, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 3, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 8, NULL, { DO(ACTION_NEWS_NEXT) } },
+    { "SITUA01", 9, NULL, { DO(ACTION_NEWS_NEXT) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1448,6 +1472,19 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1546,6 +1583,8 @@ CityVisit::CityVisit(GameData& data)
     fGateShoutFight(false),
     fAfterDark(-1),
     fNewsReturn(SCREEN_INN),
+    fEvents(NULL),
+    fLocationFlags(NULL),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1960,9 +1999,11 @@ CityVisit::Choose(int option)
         case ACTION_NOTICES:
             _Show(_Notices());
             return true;
-        case ACTION_NOTICE_POSTED:
-            _Show(int16(_PeopleSeed()) % 2 == 0 ? SCREEN_NOTICE_CURFEW_LORD
-                : SCREEN_NOTICE_CURFEW);
+        case ACTION_AFFAIRS:
+            _Show(_Affairs());
+            return true;
+        case ACTION_NEWS_NEXT:
+            _Show(_NextNews());
             return true;
         case ACTION_GOSSIP:
             _Show(_Gossip());
@@ -2419,6 +2460,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsUnrestHere) {
+            hide = !_EventHere(2);
+        } else if (rule.needs == kNeedsRebelsHere) {
+            hide = !_EventHere(2, 0);
         } else if (rule.needs == kNeedsJobRumor) {
             hide = int16(_PeopleSeed()) % 20 != 0 || _Marked(0x65);
         } else if (rule.needs == kNeedsInnerWall) {
@@ -5618,44 +5663,258 @@ CityVisit::_InnNews()
 }
 
 
-// The notices (state 0x6D, file 0xE97C2): with nobody reading better
-// than 10 (0E76:14A4(12)), by day a citizen reads them (card 4), at
-// night nothing (card 5); then the curfew, card 6 when the city's
-// property 0x21 is even, else card 0. The notices of the location's
-// state (+0x14: 1, 2, cards 1, 2) and of an event of kind 2 here (card
-// 3) are not reproduced; no time passes.
+// The notices (state 0x6D, file 0xE97C2), shown one after the other:
+// with nobody reading better than 10 (0E76:14A4(12)), by day a citizen
+// reads them (card 4), at night nothing (card 5, and no more); then
+// card 1 or 2 when the location's state (+0x14) is 1 or 2 (prices, a
+// siege), card 3 with unrest here (0E76:3470(2, location)), and the
+// curfew, card 6 when the city's property 0x21 is even, else card 0;
+// no time passes
 int
 CityVisit::_Notices()
 {
-    if (_BestSkill(kSkillReadWrite) > 10 || fParty == NULL
-            || fParty->members.empty()) {
-        return int16(_PeopleSeed()) % 2 == 0 ? SCREEN_NOTICE_CURFEW_LORD
-            : SCREEN_NOTICE_CURFEW;
+    fNewsQueue.clear();
+    if (_BestSkill(kSkillReadWrite) <= 10 && fParty != NULL
+            && !fParty->members.empty()) {
+        if (fClock != NULL && !IsGameDay(*fClock))
+            return SCREEN_NOTICES_TOO_DARK;
+        fNewsQueue.push_back(std::make_pair(SCREEN_NOTICES_EXPLAINED, -1));
     }
-    if (fClock != NULL && !IsGameDay(*fClock))
-        return SCREEN_NOTICES_TOO_DARK;
-    return SCREEN_NOTICES_EXPLAINED;
+    if (_CityState() == 1)
+        fNewsQueue.push_back(std::make_pair(SCREEN_NOTICE_PRICES, -1));
+    else if (_CityState() == 2)
+        fNewsQueue.push_back(std::make_pair(SCREEN_NOTICE_SIEGE, -1));
+    if (_EventHere(2))
+        fNewsQueue.push_back(std::make_pair(SCREEN_NOTICE_ASSEMBLY, -1));
+    fNewsQueue.push_back(std::make_pair(int16(_PeopleSeed()) % 2 == 0
+        ? SCREEN_NOTICE_CURFEW_LORD : SCREEN_NOTICE_CURFEW, -1));
+    return _NextNews();
 }
 
 
-// The gossip (state 0xAE, file 0x10F96E): by the city's property 0x21 %
-// 20 (a signed remainder): over 14 card 5, over 9 card 6, over 4 card 7,
-// else card 0 (card 4, for 20, never comes); an hour. The location's
-// state (+0x14 bits 1, 2 and 0x80: cards 1, 2, 9), mark 0x42 (card 8)
-// and an event of kind 2 here (card 3) are not reproduced.
+// News from elsewhere (state 0x6E, file 0xE9FE4), one card after the
+// other: a dragon (an event of kind 4, card 5: $Direction from here to
+// its place, 0E76:3C28(28, -1, -1, 4, -1)), the mines (kind 12, card 17:
+// $NearestCity, the city nearest its place, 1462:271A); then about the
+// city: its ruler overthrown (the location's state has bit 0x80, card 1)
+// or a rebellion put down (mark 0x42, card 2); else unrest (kind 2)
+// elsewhere, card 4 ($LocName, $Direction), or here, card 3; else card 3
+// unless the dragon or the mines were told of; no time passes
+int
+CityVisit::_Affairs()
+{
+    fNewsQueue.clear();
+    if (_AnyEvent(4)) {
+        fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_DRAGON,
+            _EventLocation(0x1C, 4)));
+    }
+    if (_AnyEvent(12)) {
+        fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_MINES,
+            _EventLocation(0x1C, 12)));
+    }
+    if ((_CityState() & 0x80) != 0)
+        fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_OVERTHROWN, -1));
+    else if (_Marked(0x42))
+        fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_CRUSHED, -1));
+    else if (_AnyEvent(2)) {
+        const int place = _EventLocation(0x1C, 2);
+        if (place != fCity)
+            fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_UNREST, place));
+        else
+            fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_NONE, -1));
+    } else if (!_AnyEvent(4) && !_AnyEvent(12))
+        fNewsQueue.push_back(std::make_pair(SCREEN_AFFAIRS_NONE, -1));
+    return _NextNews();
+}
+
+
+// The gossip (state 0xAE, file 0x10F96E): the location's state first
+// (bit 1 prices, card 1; else bit 2 rats, card 2), then card 9 (bit
+// 0x80, the new rulers), 8 (mark 0x42, the traitors), 3 (unrest here),
+// else by the city's property 0x21 % 20 (a signed remainder): over 14
+// card 5, over 9 card 6, over 4 card 7, else card 0 (card 4, for 20,
+// never comes); an hour
 int
 CityVisit::_Gossip()
 {
     if (fClock != NULL)
         fClock->AddHours(1);
+    fNewsQueue.clear();
+    const uint8 state = _CityState();
+    if ((state & 0x01) != 0)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_PRICES, -1));
+    else if ((state & 0x02) != 0)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_RATS, -1));
     const int r = int16(_PeopleSeed()) % 20;
-    if (r > 14)
-        return SCREEN_GOSSIP_JOKES;
-    if (r > 9)
-        return SCREEN_GOSSIP_DULL;
-    if (r > 4)
-        return SCREEN_GOSSIP_NOTHING_EVER;
-    return SCREEN_GOSSIP_NOTHING;
+    if ((state & 0x80) != 0)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_NEW_RULERS, -1));
+    else if (_Marked(0x42))
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_TRAITORS, -1));
+    else if (_EventHere(2))
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_POLITICS, -1));
+    else if (r > 14)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_JOKES, -1));
+    else if (r > 9)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_DULL, -1));
+    else if (r > 4)
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_NOTHING_EVER, -1));
+    else
+        fNewsQueue.push_back(std::make_pair(SCREEN_GOSSIP_NOTHING, -1));
+    return _NextNews();
+}
+
+
+// The news' next card, with the variables of its place, or back to the
+// news (DS:E896)
+int
+CityVisit::_NextNews()
+{
+    if (fNewsQueue.empty())
+        return SCREEN_NEWS;
+    const std::pair<int, int> next = fNewsQueue.front();
+    fNewsQueue.erase(fNewsQueue.begin());
+    if (next.second >= 0)
+        _SetPlaceVariables(next.second, fCity);
+    return next.first;
+}
+
+
+// An event counts from its start (0E76:3180) until its end; the game
+// takes ended events away as time passes (inferred)
+bool
+CityVisit::_EventRunning(const world_event& e) const
+{
+    return fClock == NULL
+        || (EventStarted(e, *fClock) && !EventEnded(e, *fClock));
+}
+
+
+// An event of the world (category 8) of a kind (0E76:32FE)
+bool
+CityVisit::_AnyEvent(int kind) const
+{
+    if (fEvents == NULL)
+        return false;
+    for (const world_event& e : *fEvents) {
+        if (e.category == 8 && e.kind == kind && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// One here (0E76:3470)
+bool
+CityVisit::_EventHere(int kind) const
+{
+    if (fEvents == NULL)
+        return false;
+    for (const world_event& e : *fEvents) {
+        if (e.category == 8 && e.kind == kind && e.location == fCity
+                && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// One of category 28 (its people) or 8 here, of a subject (0E76:360C)
+bool
+CityVisit::_EventHere(int kind, int subject) const
+{
+    if (fEvents == NULL)
+        return false;
+    for (const world_event& e : *fEvents) {
+        if ((e.category == 0x1C || e.category == 8) && e.kind == kind
+                && e.subject == subject && e.location == fCity
+                && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// The place of the first event of a category (28 takes 8 too) and kind
+// (0E76:3C28, which does not look at the dates), or -1
+int
+CityVisit::_EventLocation(int category, int kind) const
+{
+    if (fEvents == NULL)
+        return -1;
+    for (const world_event& e : *fEvents) {
+        if ((e.category == category || (category == 0x1C && e.category == 8))
+                && e.kind == kind)
+            return e.location;
+    }
+    return -1;
+}
+
+
+// The city's state: its location record's byte +0x14 (property 0x20)
+uint8
+CityVisit::_CityState() const
+{
+    if (fLocationFlags == NULL || fCity < 0
+            || fCity >= int(fLocationFlags->size()))
+        return 0;
+    return (*fLocationFlags)[size_t(fCity)];
+}
+
+
+// Octile distance on the map (1462:271A: rows count a third)
+static int
+MapDistance(int x1, int y1, int x2, int y2)
+{
+    const int dx = std::abs(x2 - x1);
+    const int dy = std::abs(y2 - y1) / 3;
+    return dy <= dx ? dx + dy / 2 : dy + dx / 2;
+}
+
+
+// $LocName (a place), $Direction (from `from` to it, 1462:29FA: West or
+// East when |dx| / 2 >= |dy| / 3, North or South when the reverse, else
+// the diagonal) and $NearestCity (the city nearest to the place, the
+// first 92 locations but one on the place itself, 1462:271A)
+void
+CityVisit::_SetPlaceVariables(int place, int from)
+{
+    const LocationFile& locations = fData.Locations();
+    if (place < 0 || uint32(place) >= locations.CountLocations()
+            || from < 0 || uint32(from) >= locations.CountLocations())
+        return;
+    const location& there = locations.LocationAt(uint32(place));
+    const location& here = locations.LocationAt(uint32(from));
+    fVariables["LocName"] = there.name;
+    static const char* const kDirections[8] = { "North", "Northeast", "East",
+        "Southeast", "South", "Southwest", "West", "Northwest" };
+    const int dx = std::abs(int(there.x) - int(here.x));
+    const int dy = std::abs(int(there.y) - int(here.y)) / 3;
+    int direction;
+    if (dx / 2 >= dy)
+        direction = there.x > here.x ? 2 : 6;
+    else if (dy / 2 >= dx)
+        direction = there.y > here.y ? 4 : 0;
+    else if (there.x > here.x)
+        direction = there.y > here.y ? 3 : 1;
+    else
+        direction = there.y > here.y ? 5 : 7;
+    fVariables["Direction"] = kDirections[direction];
+    int nearest = -1;
+    int best = 9999;
+    const uint32 cities = std::min(locations.CountLocations(),
+        fData.Cities().CountCities());
+    for (uint32 i = 0; i < cities; i++) {
+        const location& c = locations.LocationAt(i);
+        if (c.x == there.x && c.y == there.y && c.type == 0)
+            continue;
+        const int d = MapDistance(there.x, there.y, c.x, c.y);
+        if (d < best) {
+            best = d;
+            nearest = int(i);
+        }
+    }
+    if (nearest >= 0)
+        fVariables["NearestCity"] = locations.LocationAt(uint32(nearest)).name;
 }
 
 
