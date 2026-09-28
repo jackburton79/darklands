@@ -67,6 +67,10 @@ enum option_action {
     ACTION_GRATE,
     ACTION_BACK_TO_WALL,		// the wall by day or at night, by the hour
     ACTION_WATCH_RETURN,		// on where paying the fine would lead
+    ACTION_GUARDS_FIGHT,		// the guards who recognize a wanted party
+    ACTION_GUARDS_TALK,
+    ACTION_GUARDS_BRIBE,
+    ACTION_CHALLENGE_RETURN,	// back where the guards met the party
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
 };
@@ -119,6 +123,9 @@ static const int kNeedsRope			= -25;
 static const int kNeedsNoRope		= -26;
 static const int kNeedsClimb		= -27;
 static const int kNeedsGrate		= -28;
+// or the guards who recognize the party: their bribe in the purse, the
+// party come from the side streets
+static const int kNeedsGuardsBribe	= -29;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -128,7 +135,7 @@ static const int kMarkHailFailed	= 0x0C;	// the gate at night
 static const int kMarkTalkFailed	= 0x0D;
 static const int kMarkWallAlert		= 0x0F;	// the wall by day: guarded
 static const int kMarkGrateFailed	= 0x10;
-static const int kMarkWanted		= 0x11;	// by the gate (inferred)
+static const int kMarkWanted		= 0x11;	// after fighting the guards
 static const int kMarkAlert			= 0x12;	// the gate's guards nervous
 static const int kMarkGuarded		= 0x17;	// the market is watched
 static const int kMarkBribeRefused	= 0x19;
@@ -730,6 +737,29 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYW01", 11, NULL, { DO(ACTION_BACK_TO_WALL) } },	// nobody up
     { "CITYW01", 4, NULL, { GO(SCREEN_SIDE_STREET) } },
     { "CITYW01", 5, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    // "I recognize them! They're wanted here -- arrest them all!" (state
+    // 1, file 0x914FE)
+    { "CHALL00", 0, NULL, {
+        DO(ACTION_GUARDS_FIGHT),			// draw weapons and fight back
+        TODO,								// run down a side street
+        DO(ACTION_GUARDS_TALK),				// talk your way out
+        DO_IF(ACTION_GUARDS_BRIBE, kNeedsGuardsBribe),	// $Money1
+        TODO, TODO,							// potion, saint
+        WAIT(SCREEN_CHALLENGE_ARRESTED, 3 * 60)	// surrender (file 0x91E44)
+    } },
+    // "You defeat the guards utterly.", "...you flee down the street."
+    { "CHALL00", 1, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    { "CHALL00", 3, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    // "...you troop off to the dungeon." (state 0xD)
+    { "CHALL00", 4, NULL, { GO(SCREEN_NOT_IMPLEMENTED) } },
+    // talked away: the decoy, the "test", the threat
+    { "CHALL00", 5, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    { "CHALL00", 6, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    { "CHALL00", 7, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    // "They're stalling." "...Boys, capture those felons!"
+    { "CHALL00", 8, NULL, { DO(ACTION_GUARDS_FIGHT) } },
+    { "CHALL00", 9, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    { "CHALL00", 10, NULL, { DO(ACTION_GUARDS_FIGHT) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1012,6 +1042,16 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },					// the guards' challenge
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1097,6 +1137,10 @@ CityVisit::CityVisit(GameData& data)
     fStoneOffered(false),
     fWatchReturn(SCREEN_NOT_IMPLEMENTED),
     fPendingBattle(false),
+    fGuardBattle(false),
+    fGuards(0),
+    fChallengeReturn(SCREEN_OUTSIDE),
+    fChallengeReputation(0),
     fPartyLost(false),
     fWallFailed(false)
 {
@@ -1332,6 +1376,18 @@ CityVisit::Choose(int option)
         }
         case ACTION_WATCH_RETURN:
             _Show(fWatchReturn);
+            return true;
+        case ACTION_GUARDS_FIGHT:
+            _FightGuards();
+            return true;
+        case ACTION_GUARDS_TALK:
+            _Show(_TalkToGuards());
+            return true;
+        case ACTION_GUARDS_BRIBE:
+            _Show(_BribeChallenge());
+            return true;
+        case ACTION_CHALLENGE_RETURN:
+            _Show(fChallengeReturn);
             return true;
         case ACTION_GATE_DAY:
             _Show(_GoToGate(true));
@@ -1624,6 +1680,9 @@ CityVisit::_Show(int screen, bool withScene)
     // when the day turns to night and back
     if (screen == SCREEN_DAY_WALL || screen == SCREEN_DAY_WALL_BRIBED)
         fVariables["Money1"] = MoneyText(_WallBribe());
+    if (screen == SCREEN_CHALLENGE || screen == SCREEN_CHALLENGE_BRIBED
+            || screen == SCREEN_CHALLENGE_REFUSED)
+        fVariables["Money1"] = MoneyText(_ChallengeBribe());
     if (screen == SCREEN_OUTSIDE || screen == SCREEN_OUTSIDE_CAPITAL
             || screen == SCREEN_OUTSIDE_FREE
             || (screen == SCREEN_DAY_WALL && previous != SCREEN_DAY_WALL_FALL
@@ -1738,6 +1797,10 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = hide || rope;
         } else if (rule.needs == kNeedsGrate) {
             hide = _Marked(kMarkGrateFailed);
+        } else if (rule.needs == kNeedsGuardsBribe) {
+            hide = fParty == NULL
+                || TotalPfennigs(fParty->cash) < _ChallengeBribe()
+                || fChallengeReturn != SCREEN_SIDE_STREET;
         } else if (rule.needs == kNeedsNightBribe) {
             hide = fParty == NULL
                 || TotalPfennigs(fParty->cash) < _NightBribe();
@@ -2622,12 +2685,12 @@ CityVisit::_SlipChance() const
 
 // Paying (file 0x928B8): if random(100) is at most the chance, the toll,
 // an hour, card 1 and the main street; else the guards recognize the
-// party (state 1, $CHALL00: not implemented)
+// party (state 1, $CHALL00)
 int
 CityVisit::_PayToll()
 {
     if (int(fRandom() % 100) > _TollChance() || _Marked(kMarkWanted))
-        return SCREEN_NOT_IMPLEMENTED;
+        return _Challenge();
     if (fParty != NULL)
         fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - _Toll());
     if (fClock != NULL)
@@ -2653,7 +2716,7 @@ CityVisit::_ChangeReputation(int low, int high)
 
 
 // Befriending the guards (file 0x9298A): the wanted or disliked are
-// recognized (state 1, not implemented); if random(100) is at most the
+// recognized (state 1); if random(100) is at most the
 // chance, card 2, a lesson in Speak Common for the leader (1462:0132
 // mode 1), the reputation up by 1, two hours and the main street; else
 // no more tries for 12 hours (mark 0x0A), card 3, an hour, the gate
@@ -2662,7 +2725,7 @@ int
 CityVisit::_CharmGuards()
 {
     if (_Reputation() <= -10 || _Marked(kMarkWanted))
-        return SCREEN_NOT_IMPLEMENTED;
+        return _Challenge();
     const std::function<int(int)> random
         = [this](int n) { return int(fRandom() % uint32(n)); };
     if (random(100) <= _CharmChance()) {
@@ -2686,7 +2749,7 @@ CityVisit::_CharmGuards()
 // the chance, card 4, a lesson in Streetwise for all (1462:0132(-2, 16,
 // 1, 10)), an hour, the main street; else no more tries for 12 hours
 // (mark 0x0B), a lesson of mode 0, and card 5 back before the walls, or
-// for the wanted an hour and state 1 (not implemented)
+// for the wanted an hour and state 1
 int
 CityVisit::_SlipIn()
 {
@@ -2705,7 +2768,7 @@ CityVisit::_SlipIn()
     if (_Marked(kMarkWanted)) {
         if (fClock != NULL)
             fClock->AddHours(1);
-        return SCREEN_NOT_IMPLEMENTED;
+        return _Challenge();
     }
     return SCREEN_SLIP_NOTICED;
 }
@@ -3080,7 +3143,8 @@ CityVisit::_FightWatch()
 
 // The battle with the watch (file 0xBF3A2): die(5) + 3 of enemy 3 (the
 // "Guard" types) at variant 1 and one of enemy 0 ("Sergeant") at
-// variant 2, as TAC.TXT prints them. On a city map: which one the game
+// variant 2, as TAC.TXT prints them; with the gate's guards, fGuards of
+// them and the sergeant (file 0x92370). On a city map: which one the game
 // picks (from the battlefield type) and where everybody starts are not
 // decoded, so the map is one of ICITY.000..003 and the watch starts
 // near the party.
@@ -3110,7 +3174,7 @@ CityVisit::_RunBattle(GameWindow& window)
     const EnemyFile& enemies = fData.Enemies();
     const uint32 guard = enemies.EnemyAt(3).type + 1;
     const uint32 sergeant = enemies.EnemyAt(0).type + 2;
-    const int guards = int(fRandom() % 5) + 4;
+    const int guards = fGuardBattle ? fGuards : int(fRandom() % 5) + 4;
     for (int i = 0; i <= guards; i++) {
         int x = 20;
         int y = 20;
@@ -3149,6 +3213,11 @@ void
 CityVisit::ResolveBattle(int outcome)
 {
     fPendingBattle = false;
+    if (fGuardBattle) {
+        fGuardBattle = false;
+        _Show(_ResolveGuardBattle(outcome));
+        return;
+    }
     switch (outcome) {
         case BATTLE_WON:
             _Show(SCREEN_WATCH_BEATEN);
@@ -3160,6 +3229,156 @@ CityVisit::ResolveBattle(int outcome)
             _Show(SCREEN_WATCH_RETREAT);
             break;
     }
+}
+
+
+// The guards recognize the party (state 1, file 0x914FE): from where it
+// stands (DS:A88D, the previous state), an hour passes; the reputation
+// then decides how long the party stays wanted after a fight
+int
+CityVisit::_Challenge()
+{
+    fChallengeReturn = fScreen == SCREEN_DAY_GATE_GUARDED ? SCREEN_DAY_GATE
+        : fScreen;
+    fChallengeReputation = _Reputation();
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_CHALLENGE;
+}
+
+
+// The guards' price (file 0x9156C): city size / 2 florins, + |reputation
+// / 20| for a negative reputation, at least one
+uint32
+CityVisit::_ChallengeBribe() const
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    int florins = size / 2;
+    if (_Reputation() < 0)
+        florins += std::abs(_Reputation() / 20);
+    return uint32(std::max(1, florins)) * 240;
+}
+
+
+// Talking's chance (file 0x91978): the leader's Speak Common + Charisma
+// + the reputation within 0..100 (1367:0028); 25 less while mark 0x13,
+// which nothing here makes, is on
+int
+CityVisit::_ChallengeTalkChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = leader.skills[kSkillSpeakCommon]
+        + leader.attributes[ATTRIBUTE_CHARISMA] + _Reputation();
+    return std::max(0, std::min(100, chance));
+}
+
+
+// The bribe's chance (file 0x91A6C): the reputation + the leader's
+// Charisma + the bribe in groschen, within 0..100
+int
+CityVisit::_ChallengeBribeChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = _Reputation() + leader.attributes[ATTRIBUTE_CHARISMA]
+        + int(_ChallengeBribe() / 12);
+    return std::max(0, std::min(100, chance));
+}
+
+
+// Talking (file 0x91838): if random(100) is at most the chance, a lesson
+// in Speak Common for the leader (1462:0132 mode 1), card 5, 6 or 7 at
+// random, an hour, back where the party was; card 7 names the leader's
+// weapon (09C0:1E9B, 0E76:1FB8: not decoded, taken as the weapon in hand;
+// without one card 5 or 6). Else card 8 and the fight (the leader's
+// lesson of mode 0 is not reproduced).
+int
+CityVisit::_TalkToGuards()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (fParty == NULL || fParty->members.empty()
+            || random(100) > _ChallengeTalkChance())
+        return SCREEN_CHALLENGE_TALK_FAILED;
+    character& leader = fParty->members[size_t(fParty->leader)];
+    TrainSkill(leader, kSkillSpeakCommon, 10, random);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    const int pick = random(3);
+    if (pick == 0)
+        return SCREEN_CHALLENGE_DECOYED;
+    if (pick == 1)
+        return SCREEN_CHALLENGE_BLUFFED;
+    const int weapon = leader.equipment[EQUIPMENT_WEAPON];
+    const std::vector<item_definition>& items = fData.Lists().Items();
+    for (size_t code = 0; weapon != kNoEquipment && code < items.size();
+            code++) {
+        if (!items[code].name.empty() && items[code].type == weapon) {
+            fVariables["NamedOneName"] = items[code].name;
+            return SCREEN_CHALLENGE_COWED;
+        }
+    }
+    return random(2) == 0 ? SCREEN_CHALLENGE_BLUFFED : SCREEN_CHALLENGE_DECOYED;
+}
+
+
+// Bribing (file 0x919E0): as the game has it, the guards take the offer
+// (card 9, an hour, back where the party was) only if random(100) is at
+// least the chance, and the purse stays as it was; else card 10 and the
+// fight
+int
+CityVisit::_BribeChallenge()
+{
+    if (int(fRandom() % 100) < _ChallengeBribeChance())
+        return SCREEN_CHALLENGE_REFUSED;
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_CHALLENGE_BRIBED;
+}
+
+
+// Fighting the guards (file 0x92370): clamp(09C0:2161(), 7, random(7) +
+// 2) of enemy 3 at variant 1 (09C0:2161 is not decoded: 2..7 here) and
+// the sergeant; the reputation falls by 15..24 with a chance of 100 -
+// |reputation| % (0E76:19D0(location, -15, -25))
+void
+CityVisit::_FightGuards()
+{
+    fGuards = std::min(7, int(fRandom() % 7) + 2);
+    _ChangeReputation(-24, -15);
+    fGuardBattle = true;
+    fPendingBattle = true;
+}
+
+
+// The guards' battle's result (file 0x9241E): won, card 1, the guards
+// nervous (mark 0x12) for 2000 / city size hours; retreated, card 3
+// and an hour (0E76:23E2 not decoded); lost, card 4 and three hours,
+// then the dungeon (state 0xD). The party's result 1, card 2 ("you cut
+// your way through", an hour, the side streets), has no BattleView
+// outcome. Then the party is wanted (mark 0x11) for 120 hours, 240 with
+// a reputation of -75 or less when the guards came.
+int
+CityVisit::_ResolveGuardBattle(int outcome)
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    int next = SCREEN_CHALLENGE_FLED;
+    int hours = 1;
+    if (outcome == BATTLE_WON) {
+        _Mark(kMarkAlert, uint32(2000 / std::max(1, size)));
+        next = SCREEN_CHALLENGE_WON;
+        hours = 0;
+    } else if (outcome == BATTLE_LOST) {
+        next = SCREEN_CHALLENGE_ARRESTED;
+        hours = 3;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(uint32(hours));
+    _Mark(kMarkWanted, fChallengeReputation <= -75 ? 240 : 120);
+    return next;
 }
 
 

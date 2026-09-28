@@ -453,12 +453,53 @@ coming from the map the party stands before the walls. **verified**
   - potion (0x9AFAE), saint (0x9B0C4): not decoded; *fall back*
     (0x9B1D6): before the walls, no time.
 - Reproduced in `CityVisit`: before the walls, the waits, the gates and
-  the walls but for their potion, saint and attack options. Not
+  the walls but for their potion, saint and attack options, and the
+  guards' challenge below. Not
   reproduced: the lessons of modes 0, 2, 5 (TrainSkill() has mode 1),
   the cards of every fallen and climber after a failed climb (one of
   each is shown), the grate's mark length (taken as 3 hours), the
-  statuses of 0E76:1972. The speed is the agility (the load is not kept); state 1
-  (the challenge) and the walls are not implemented.
+  statuses of 0E76:1972. The speed is the agility (the load is not kept).
+- **The guards' challenge** (state 1, $CHALL00, file 0x914FE; the
+  options' actions through a switch at file 0x91744, their chances in
+  the table at DS:EA14, segment 18D1 at file 0x914F0): an hour passes
+  on arrival; DS:A88D, the state the party came from, decides where it
+  goes back. **verified** (code)
+  - the bribe ($Money1, file 0x9156C) is city size / 2 florins, +
+    |reputation / 20| for a negative reputation, at least one; offered
+    only if the purse holds it and the party came from the side streets
+    (states 9, 10);
+  - *fight* (file 0x917B0, the battle at 0x92370): the battlefield type
+    by the previous state as for the watch, a seed (that state + the
+    location), clamp(09C0:2161(), 7, random(7) + 2) of enemy 3 at
+    variant 1 and one of enemy 0 at variant 2 (09C0:2161 is not
+    decoded), the reputation −15..−24 (0E76:19D0(location, −15, −25)).
+    The result (file 0x9241E): 0 card 1, mark 0x12 for 2000 / size
+    hours, no time, back (state 0xC after state 0x3A); 1 (0E76:23E2)
+    card 2, mark 0x12, an hour, the side streets (state 9 or 10 by
+    1367:072A; 0xC after 0x3A); 2 (0E76:23E2) card 3, an hour, back; 4
+    card 4, three hours, state 0xD (the dungeon). Then mark 0x11 (wanted)
+    for 120 hours, 240 when the reputation on arrival was −75 or less;
+  - *run* (file 0x917EE): an hour, state 0x7A (not decoded);
+  - *talk* (file 0x91838): if random(100) <= clamp(0, 100, the leader's
+    Speak Common + Charisma + the reputation, − 25 while mark 0x13)
+    (file 0x91978): a lesson in Speak Common for the leader (09C0:1F63,
+    mode 1), card 5, 6 or 7 by random(3) (card 7 names a weapon of the
+    leader through 09C0:1E9B and 0E76:1FB8, not decoded; when that is 0,
+    card 6 or 5), an hour, back; else card 8, a lesson of mode 0 and the
+    fight;
+  - *bribe* (file 0x919E0): c = clamp(0, 100, the reputation + the
+    leader's Charisma + the bribe in groschen) (file 0x91A6C, 1367:00F2
+    and a division by 12); **if random(100) < c** the guards refuse
+    (card 10, the fight), else card 9, an hour, back. Neither takes the
+    money. Both look like slips of the original, reproduced as they are;
+  - potion (0x91AC2), saint (0x91C62): not decoded; *surrender* (file
+    0x91E44): card 4, three hours, state 0xD.
+  Reproduced in `CityVisit` from the day gate's failures, with
+  BattleView: a won battle is result 0, a retreat (Esc) result 2, a
+  lost one result 4; result 1 has no BattleView counterpart. Card 7
+  names the weapon in the leader's hand (*inferred*), cards 5 or 6
+  without one. Not reproduced: running, potions, saints, the dungeon,
+  the lesson of mode 0, 09C0:2161 (the guards are 2..7).
 
 ## The alchemist
 

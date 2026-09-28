@@ -164,6 +164,16 @@ public:
         SCREEN_NIGHT_WALL_SLIP_ALONE,
         SCREEN_SEWER,
         SCREEN_SEWER_STUCK,
+        SCREEN_CHALLENGE,		// recognized as wanted: $CHALL00 card 0,
+        SCREEN_CHALLENGE_WON,	// the guards defeated (1), fled from (3),
+        SCREEN_CHALLENGE_FLED,	// the party arrested (4), talked away
+        SCREEN_CHALLENGE_ARRESTED,	// (5, 6, 7) or not (8), the guards
+        SCREEN_CHALLENGE_DECOYED,	// bribed (9) or not (10)
+        SCREEN_CHALLENGE_BLUFFED,
+        SCREEN_CHALLENGE_COWED,
+        SCREEN_CHALLENGE_TALK_FAILED,
+        SCREEN_CHALLENGE_BRIBED,
+        SCREEN_CHALLENGE_REFUSED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -214,8 +224,9 @@ public:
     bool			PendingCache() const		{ return fPendingCache; }
     std::map<int, std::vector<cache_item> >& Caches()	{ return fCaches; }
     ResidenceView&	Residence()				{ return fResidence; }
-    // After Choose(): whether the party fights the night watch (Run() then
-    // shows the battle, and ResolveBattle() its outcome)
+    // After Choose(): whether the party fights the night watch or the
+    // guards (Run() then shows the battle, and ResolveBattle() its
+    // outcome)
     bool			PendingBattle() const	{ return fPendingBattle; }
     void			ResolveBattle(int outcome);	// a battle_outcome
     // The inn's price of a meal and a night for the party, in pfennigs
@@ -301,6 +312,16 @@ private:
     int				_ForceGrate();
     void			_ChangeReputation(int low, int high);
     void			_RunBattle(GameWindow& window);
+    // The guards who recognize a wanted party (DARKLAND.EXE, file
+    // 0x914FE, state 1)
+    int				_Challenge();
+    uint32			_ChallengeBribe() const;
+    int				_ChallengeTalkChance() const;
+    int				_ChallengeBribeChance() const;
+    int				_TalkToGuards();
+    int				_BribeChallenge();
+    void			_FightGuards();
+    int				_ResolveGuardBattle(int outcome);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
@@ -355,6 +376,10 @@ private:
     std::map<std::pair<int, int>, uint32> fMarks;	// (kind, city): until
     int				fWatchReturn;	// where paying the fine leads
     bool			fPendingBattle;
+    bool			fGuardBattle;	// the battle is with the gate's guards
+    int				fGuards;		// how many, the sergeant aside
+    int				fChallengeReturn;	// where the party came from
+    int				fChallengeReputation;	// the reputation then
     bool			fPartyLost;
     bool			fWallFailed;	// this stay at the wall: climbing failed
     std::vector<cache_item> fLoot;
