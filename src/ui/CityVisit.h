@@ -251,6 +251,28 @@ public:
         SCREEN_EXECUTION_SAINT,	// the execution's: $EXECU01 2, 3
         SCREEN_STORM,			// (Gregory), 4
         SCREEN_EXECUTION_UNANSWERED,
+        SCREEN_GATE_SHOUT,		// leaving through the gate: $SELEC00 cards
+        SCREEN_GATE_SLIPPED,	// 1 (the guards alerted), 2 (slipped out),
+        SCREEN_GATE_SAINT,		// 7, 8 (the saints), 9 (fought through),
+        SCREEN_GATE_SAINT_UNANSWERED,	// 10 (beaten back), 11 (beaten
+        SCREEN_GATE_DASHED,		// unconscious), 12 (the dungeon)
+        SCREEN_GATE_FLED,
+        SCREEN_GATE_DUMPED,
+        SCREEN_GATE_ARRESTED,
+        SCREEN_INNER_WALL,		// the wall from inside: $SELEC01 card 0,
+        SCREEN_SEWER_OUT,		// the sewer (1, 2), the sally port (3,
+        SCREEN_SEWER_BLOCKED,	// 4), the rope (5), spotted (6), over the
+        SCREEN_SALLY_BRIBED,	// wall (7, 8, 9: nobody, one, some
+        SCREEN_SALLY_ALARM,		// fallen), the saints (10, 11), waiting
+        SCREEN_ROPE_DOWN,		// for the dark (12)
+        SCREEN_WALL_SPOTTED,
+        SCREEN_OVER_WALL,
+        SCREEN_OVER_WALL_ONE_FELL,
+        SCREEN_OVER_WALL_FALLS,
+        SCREEN_INNER_SAINT,
+        SCREEN_INNER_SAINT_UNANSWERED,
+        SCREEN_WAIT_FOR_DARK,
+        SCREEN_STUMBLING,		// the back alleys at night: $SIDES01 1
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -382,7 +404,7 @@ private:
     int				_BestClimber(int first) const;
     int				_WeakestClimber() const;
     int				_Strongest() const;
-    void			_Fall(int member, int amount = 10);
+    void			_Fall(int member, int amount = 10, int minWounds = 1);
     int				_BribeWall();
     int				_ClimbWithRope(bool byDay);
     int				_ClimbAlone(bool byDay);
@@ -391,7 +413,7 @@ private:
     void			_RunBattle(GameWindow& window);
     // The guards who recognize a wanted party (DARKLAND.EXE, file
     // 0x914FE, state 1)
-    int				_Challenge();
+    int				_Challenge(int from = -1);
     uint32			_ChallengeBribe() const;
     int				_ChallengeTalkChance() const;
     int				_ChallengeBribeChance() const;
@@ -446,6 +468,23 @@ private:
     int				_AskPriestForHelp();
     int				_AskGoodWord();
     int				_BackFromPriest();
+    // Leaving the city (DARKLAND.EXE: the gate, file 0xBC8C4, state 0x3A;
+    // the wall from inside, file 0xBD916, state 0x3B); -1: the party
+    // left the city
+    int				_ExitWalk();
+    int				_ExitHideChance() const;
+    int				_ExitHide();
+    void			_FightAtGate(bool nervous);
+    int				_ResolveGateBattle(int outcome);
+    bool			_HasHorses() const;
+    void			_LeaveHorses();
+    uint32			_InnerWallBribe() const;
+    int				_SewerChance(int* member) const;
+    int				_WallStealth(int* member) const;
+    int				_Sewer(bool horses);
+    int				_BribeSally();
+    int				_RopeDown(bool afterDark);
+    int				_ClimbOver(bool afterDark);
     // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
     // 0E76:2180, overlay 0x22 at file 0x6B7D0)
     std::vector<int> _SaintsFor(int screen) const;
@@ -513,7 +552,8 @@ private:
         BATTLE_WITH_GATE_GUARDS,
         BATTLE_WITH_JAIL_GUARDS,
         BATTLE_AT_EXECUTION,
-        BATTLE_WITH_PURSUERS
+        BATTLE_WITH_PURSUERS,
+        BATTLE_AT_GATE
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -530,6 +570,9 @@ private:
     // card's saints)
     bool			fChoosingSaint;
     int				fRescueSaint;	// the saint who answered at the block
+    int				fGateReturn;	// where "not leave just yet" goes
+    bool			fGateShoutFight;	// card 1 of the gate: the fight next
+    int				fAfterDark;		// the wall's option waiting for the dark
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

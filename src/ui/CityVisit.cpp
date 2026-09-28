@@ -100,6 +100,17 @@ enum option_action {
     ACTION_CHASE_HIDE,
     ACTION_SAINT,				// invoke one of the card's saints
     ACTION_SAINT_RESCUE,		// the rescues after a saint's answer
+    ACTION_EXIT_WALK,			// the gate from inside
+    ACTION_EXIT_HIDE,
+    ACTION_EXIT_FIGHT,
+    ACTION_GATE_RETURN,			// "not leave the city just yet"
+    ACTION_AFTER_SHOUT,			// the guards alerted: fight, or the gate
+    ACTION_INNER_SEWER,			// the wall from inside; target 1: with
+    ACTION_INNER_BRIBE,			// horses
+    ACTION_INNER_ROPE,
+    ACTION_INNER_CLIMB,
+    ACTION_INNER_AFTER_DARK,
+    ACTION_SALLY_CHALLENGE,
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -170,6 +181,8 @@ static const int kClubCode			= 15;
 static const int kSkillArtifice		= 14;	// picking locks
 // or a member standing who knows one of the card's saints (150B:168C)
 static const int kNeedsSaint		= -32;
+// or the wall from inside: by the option (horses, a rope, the marks)
+static const int kNeedsInnerWall	= -33;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -181,6 +194,8 @@ static const int kMarkWallAlert		= 0x0F;	// the wall by day: guarded
 static const int kMarkGrateFailed	= 0x10;
 static const int kMarkWanted		= 0x11;	// after fighting the guards
 static const int kMarkAlert			= 0x12;	// the gate's guards nervous
+static const int kMarkGateFought	= 0x13;	// a fight at the gate lately
+static const int kMarkSallyAlarm	= 0x22;	// the sally port's guard
 static const int kMarkGuarded		= 0x17;	// the market is watched
 static const int kMarkBribeRefused	= 0x19;
 static const int kMarkSneakFailed	= 0x1A;
@@ -361,13 +376,17 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_GROVE),
         GO(SCREEN_OTHER),
-        TODO								// the city walls
+        GO(SCREEN_INNER_WALL)				// the city walls (file 0x96D18)
     } },
     // "The gate is heavily guarded..."
     { "SELEC00", 0, NULL, {
-        LEAVE,								// simply walk out
-        TODO, TODO, TODO, TODO, TODO,		// hide, potion, saint, fight, wall
-        GO(SCREEN_MAIN_STREET)				// not leave just yet
+        DO(ACTION_EXIT_WALK),				// simply walk out
+        DO(ACTION_EXIT_HIDE),				// hide among the people
+        TODO,								// a potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_EXIT_FIGHT),				// attack the guards
+        GO(SCREEN_INNER_WALL),				// by way of the wall
+        DO(ACTION_GATE_RETURN)				// not leave just yet
     } },
     // "Storing your gear, you eat a hearty meal, then take eight hours
     // of well-deserved sleep." (the game lets nine hours pass)
@@ -477,7 +496,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO_IF(SCREEN_SLUM, CITY_SLUMS),
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET),
-        TODO,								// a piece of city wall
+        WAIT(SCREEN_INNER_WALL, 60),		// a piece of wall (file 0x9F588)
         GO(SCREEN_GATE)
     } },
     // "...the picture signs that proclaim $PlaceName's guilds and crafts"
@@ -950,6 +969,42 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "EXECU01", 2, NULL, { DO(ACTION_SAINT_RESCUE) } },
     { "EXECU01", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
     { "EXECU01", 4, NULL, { DO(ACTION_RESCUE) } },
+    // leaving through the gate (file 0xBC8C4)
+    { "SELEC00", 1, NULL, { DO(ACTION_AFTER_SHOUT) } },
+    { "SELEC00", 2, NULL, { LEAVE } },
+    { "SELEC00", 7, NULL, { LEAVE } },
+    { "SELEC00", 8, NULL, { GO(SCREEN_GATE) } },
+    { "SELEC00", 9, NULL, { LEAVE } },
+    { "SELEC00", 10, NULL, { GO(SCREEN_GATE) } },
+    { "SELEC00", 11, NULL, { GO(SCREEN_GATE) } },
+    { "SELEC00", 12, NULL, { DO(ACTION_TO_PRISON) } },
+    // "You are near the great outer wall of $PlaceName." (file 0xBD916)
+    { "SELEC01", 0, NULL, {
+        { ACTION_INNER_SEWER, 0, kNeedsInnerWall, 0 },
+        { ACTION_INNER_SEWER, 1, kNeedsInnerWall, 0 },	// abandon the horses
+        { ACTION_INNER_BRIBE, 0, kNeedsInnerWall, 0 },	// $Money1
+        { ACTION_INNER_ROPE, 0, kNeedsInnerWall, 0 },
+        { ACTION_INNER_ROPE, 1, kNeedsInnerWall, 0 },
+        { ACTION_INNER_CLIMB, 0, kNeedsInnerWall, 0 },
+        { ACTION_INNER_CLIMB, 1, kNeedsInnerWall, 0 },
+        WAIT(SCREEN_GATE, 60),				// look for a gate instead
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        GO(SCREEN_SIDE_STREET)				// return to the streets
+    } },
+    { "SELEC01", 1, NULL, { LEAVE } },
+    { "SELEC01", 2, NULL, { GO(SCREEN_INNER_WALL) } },
+    { "SELEC01", 3, NULL, { LEAVE } },
+    { "SELEC01", 4, NULL, { DO(ACTION_SALLY_CHALLENGE) } },
+    { "SELEC01", 5, NULL, { LEAVE } },
+    { "SELEC01", 6, NULL, { GO(SCREEN_INNER_WALL) } },
+    { "SELEC01", 7, NULL, { LEAVE } },
+    { "SELEC01", 8, NULL, { LEAVE } },
+    { "SELEC01", 9, NULL, { LEAVE } },
+    { "SELEC01", 10, NULL, { LEAVE } },
+    { "SELEC01", 11, NULL, { GO(SCREEN_INNER_WALL) } },
+    { "SELEC01", 12, NULL, { DO(ACTION_INNER_AFTER_DARK) } },
+    // "You stumble and trip frequently..."
+    { "SIDES01", 1, NULL, { GO(SCREEN_INNER_WALL) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -997,19 +1052,11 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_GROVE),					// a dark grove
         GO(SCREEN_OTHER),
-        TODO								// the city wall
+        WAIT(SCREEN_STUMBLING, 60)			// the city wall (file 0x975FE)
     } },
-    // "The gate is closed for the night..." The game replaces options
-    // that do not apply with lines like "1 not available"
-    { "SELEC00", 13, NULL, {
-        TODO,								// talk the guards into it
-        HIDE,								// "1 not available"
-        HIDE,								// "2 alc not available"
-        TODO,								// call upon a saint
-        HIDE,								// "4 combat not available"
-        TODO,								// see how well the walls are guarded
-        GO(SCREEN_MAIN_STREET)				// not leave the city just yet
-    } },
+    // the gate at night: the same card 0 (the handler, file 0xBC8C4,
+    // never shows cards 13..16, "The gate is closed for the night...")
+    { NULL, 0, NULL, {} },
     { "URBAN01", 2, NULL, { WAIT(SCREEN_INN, 9 * 60) } },	// sleep
     // "Amid the dark shadows of the city square..."
     { "CITYS01", 0, NULL, {
@@ -1082,7 +1129,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         TODO_IF(CITY_SLUMS),
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET),
-        TODO,								// a piece of city wall
+        WAIT(SCREEN_INNER_WALL, 60),		// a piece of wall (file 0x9F588)
         GO(SCREEN_GATE)
     } },
     // (the game shows the crafts' day card at night too: $CIVCR00 card 1
@@ -1319,6 +1366,28 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1413,6 +1482,9 @@ CityVisit::CityVisit(GameData& data)
     fMagistrateComing(false),
     fChoosingSaint(false),
     fRescueSaint(-1),
+    fGateReturn(SCREEN_MAIN_STREET),
+    fGateShoutFight(false),
+    fAfterDark(-1),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1762,6 +1834,50 @@ CityVisit::Choose(int option)
         case ACTION_SAINT_RESCUE:
             _Show(_Rescue(fRescueSaint));
             return true;
+        case ACTION_EXIT_WALK: {
+            const int next = _ExitWalk();
+            if (next < 0)
+                return false;
+            _Show(next);
+            return true;
+        }
+        case ACTION_EXIT_HIDE:
+            _Show(_ExitHide());
+            return true;
+        case ACTION_EXIT_FIGHT:
+            _FightAtGate(false);
+            return true;
+        case ACTION_AFTER_SHOUT:
+            if (fGateShoutFight)
+                _FightAtGate(true);
+            else
+                _Show(SCREEN_GATE);
+            return true;
+        case ACTION_GATE_RETURN:
+            // file 0xBD53C: back to the previous state
+            _Show(fGateReturn);
+            return true;
+        case ACTION_INNER_SEWER:
+            _Show(_Sewer(rule.target == 1));
+            return true;
+        case ACTION_INNER_BRIBE:
+            _Show(_BribeSally());
+            return true;
+        case ACTION_INNER_ROPE:
+            _Show(_RopeDown(rule.target == 1));
+            return true;
+        case ACTION_INNER_CLIMB:
+            _Show(_ClimbOver(rule.target == 1));
+            return true;
+        case ACTION_INNER_AFTER_DARK: {
+            const int option = fAfterDark;
+            fAfterDark = -1;
+            _Show(option == 4 ? _RopeDown(false) : _ClimbOver(false));
+            return true;
+        }
+        case ACTION_SALLY_CHALLENGE:
+            _Show(_Challenge(SCREEN_INNER_WALL));
+            return true;
         case ACTION_CALL_PRIEST:
             // file 0x991CA: three hours; the cell and the tunnel are kept
             if (fClock != NULL)
@@ -2082,6 +2198,14 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _CellScreen();
     if (screen == SCREEN_MAGISTRATE && fTortures > 0)
         screen = SCREEN_MAGISTRATE_AGAIN;
+    // the gate from inside: where "not leave just yet" goes back to (the
+    // previous state, DS:A88D); the wall's bribe
+    if (screen == SCREEN_GATE && previous != SCREEN_GATE
+            && previous != SCREEN_NOT_IMPLEMENTED
+            && (previous < SCREEN_GATE_SHOUT || previous > SCREEN_STUMBLING))
+        fGateReturn = previous;
+    if (screen == SCREEN_INNER_WALL || screen == SCREEN_SALLY_BRIBED)
+        fVariables["Money1"] = MoneyText(_InnerWallBribe());
     if (screen == SCREEN_CHALLENGE || screen == SCREEN_CHALLENGE_BRIBED
             || screen == SCREEN_CHALLENGE_REFUSED)
         fVariables["Money1"] = MoneyText(_ChallengeBribe());
@@ -2203,6 +2327,45 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsInnerWall) {
+            // file 0xBD992: the grate tried (mark 0x10), the sally port's
+            // alarm (0x22), the walls guarded (0x0F), a rope (item 59),
+            // horses: the options without them or those abandoning them
+            // (0E76:0DD8(-2, 0x2000)); the purse short of the bribe takes
+            // away the second sewer option, as the game has it
+            bool rope = false;
+            if (fParty != NULL) {
+                for (const character& member : fParty->members) {
+                    for (const item& carried : member.items)
+                        rope = rope || (carried.code & 0x0FFF) == kRopeCode;
+                }
+            }
+            const bool horses = _HasHorses();
+            const bool guarded = _Marked(kMarkWallAlert);
+            switch (i) {
+                case 0:
+                    hide = horses || _Marked(kMarkGrateFailed);
+                    break;
+                case 1:
+                    hide = !horses || _Marked(kMarkGrateFailed) || fParty == NULL
+                        || TotalPfennigs(fParty->cash) < _InnerWallBribe();
+                    break;
+                case 2:
+                    hide = _Marked(kMarkSallyAlarm) || guarded;
+                    break;
+                case 3:
+                    hide = horses || !rope || guarded;
+                    break;
+                case 4:
+                    hide = !horses || !rope || guarded;
+                    break;
+                case 5:
+                    hide = horses || guarded;
+                    break;
+                default:
+                    hide = !horses;
+                    break;
+            }
         } else if (rule.needs == kNeedsLockpicks) {
             bool lockpicks = false;
             if (fParty != NULL) {
@@ -3389,14 +3552,15 @@ CityVisit::_Strongest() const
 }
 
 
-// A fall (1462:026A(member, 0, 1, amount), file 0x80C0A; amount 10 for
-// a fall, 20 for the dungeon's beatings): Strength loses random(amount ·
-// Strength / 40 + 1) - 1, at least 0; Endurance random(amount ·
-// Endurance / 20 + 1) - 1, at least that and at least 1; neither more
+// A fall (1462:026A(member, 0, minWounds, amount), file 0x80C0A; amount
+// 10 for a fall, 20 for the dungeon's beatings, 5 with no minimum for
+// the wall from inside): Strength loses random(amount · Strength / 40 +
+// 1) - 1, at least 0; Endurance random(amount · Endurance / 20 + 1) - 1,
+// at least that and at least minWounds; neither more
 // than the attribute's maximum (0E76:0B64); AddToAttribute() keeps them
 // at 1 at least
 void
-CityVisit::_Fall(int member, int amount)
+CityVisit::_Fall(int member, int amount, int minWounds)
 {
     character& c = fParty->members[size_t(member)];
     const int strength = c.attributes[ATTRIBUTE_STRENGTH];
@@ -3405,7 +3569,7 @@ CityVisit::_Fall(int member, int amount)
     AddToAttribute(c, ATTRIBUTE_STRENGTH, -lost);
     const int endurance = c.attributes[ATTRIBUTE_ENDURANCE];
     int wounds = int(fRandom() % uint32(amount * endurance / 20 + 1)) - 1;
-    wounds = std::min(std::max(std::max(wounds, lost), 1),
+    wounds = std::min(std::max(std::max(wounds, lost), minWounds),
         int(c.maxAttributes[ATTRIBUTE_ENDURANCE]));
     AddToAttribute(c, ATTRIBUTE_ENDURANCE, -wounds);
 }
@@ -3514,7 +3678,7 @@ CityVisit::_ForceGrate()
             fClock->AddHours(uint32(fData.Cities().CityAt(uint32(fCity)).size / 3));
         return SCREEN_SEWER;
     }
-    _Mark(kMarkGrateFailed, 3);
+    _Mark(kMarkGrateFailed, 500);
     if (fClock != NULL)
         fClock->AddHours(1);
     return SCREEN_SEWER_STUCK;
@@ -3655,6 +3819,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveChaseBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_AT_GATE) {
+        _Show(_ResolveGateBattle(outcome));
+        return;
+    }
     switch (outcome) {
         case BATTLE_WON:
             _Show(SCREEN_WATCH_BEATEN);
@@ -3673,10 +3841,12 @@ CityVisit::ResolveBattle(int outcome)
 // stands (DS:A88D, the previous state), an hour passes; the reputation
 // then decides how long the party stays wanted after a fight
 int
-CityVisit::_Challenge()
+CityVisit::_Challenge(int from)
 {
-    fChallengeReturn = fScreen == SCREEN_DAY_GATE_GUARDED ? SCREEN_DAY_GATE
-        : fScreen;
+    if (from < 0)
+        from = fScreen;
+    fChallengeReturn = from == SCREEN_DAY_GATE_GUARDED ? SCREEN_DAY_GATE
+        : from;
     fChallengeReputation = _Reputation();
     if (fClock != NULL)
         fClock->AddHours(1);
@@ -3698,16 +3868,18 @@ CityVisit::_ChallengeBribe() const
 
 
 // Talking's chance (file 0x91978): the leader's Speak Common + Charisma
-// + the reputation within 0..100 (1367:0028); 25 less while mark 0x13,
-// which nothing here makes, is on
+// + the reputation within 0..100 (1367:0028); 25 less while mark 0x13
+// (a fight at the gate lately) is on
 int
 CityVisit::_ChallengeTalkChance() const
 {
     if (fParty == NULL || fParty->members.empty())
         return 0;
     const character& leader = fParty->members[size_t(fParty->leader)];
-    const int chance = leader.skills[kSkillSpeakCommon]
+    int chance = leader.skills[kSkillSpeakCommon]
         + leader.attributes[ATTRIBUTE_CHARISMA] + _Reputation();
+    if (_Marked(kMarkGateFought))
+        chance -= 25;
     return std::max(0, std::min(100, chance));
 }
 
@@ -4714,6 +4886,10 @@ CityVisit::_SaintsFor(int screen) const
         saints = { 34, 84 };
     if (screen == SCREEN_EXECUTION)
         saints = { 5, 63, 78, 80 };
+    // leaving: the gate (file 0xBC94B) and the wall (0xBDACB):
+    // Christina, Lutgardis, Milburga
+    if (screen == SCREEN_GATE || screen == SCREEN_INNER_WALL)
+        saints = { 21, 89, 97 };
     return saints;
 }
 
@@ -4912,6 +5088,17 @@ CityVisit::_SaintAnswered(int screen, int index)
             }
             fRescueSaint = _SaintsFor(screen)[size_t(index)];
             return SCREEN_EXECUTION_SAINT;
+        case SCREEN_GATE:
+            // file 0xBD184: card 7, an hour, +-2..8, out of the city
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _ChangeReputation(liked ? 2 : -8, liked ? 8 : -2);
+            return SCREEN_GATE_SAINT;
+        case SCREEN_INNER_WALL:
+            // file 0xBE84F: card 10, an hour, out of the city
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_INNER_SAINT;
         default:
             return screen;
     }
@@ -4954,9 +5141,360 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_COURT_UNANSWERED;			// card 3
         case SCREEN_EXECUTION:
             return SCREEN_EXECUTION_UNANSWERED;		// card 4, the rescues
+        case SCREEN_GATE:
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_GATE_SAINT_UNANSWERED;	// card 8, an hour
+        case SCREEN_INNER_WALL:
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         default:
             return screen;
     }
+}
+
+
+// Walking out of the gate (file 0xBCD30): an hour and out of the city;
+// after a fight at the gate lately (mark 0x13), four times in ten card 1
+// and the fight. 09C0:20F3 (1462:00BA), not decoded, would lead there
+// too (taken as false).
+int
+CityVisit::_ExitWalk()
+{
+    if (_Marked(kMarkGateFought) && fRandom() % 100 < 40) {
+        fGateShoutFight = true;
+        return SCREEN_GATE_SHOUT;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return -1;
+}
+
+
+// Hiding among the people's chance (file 0xBCEBE): the party's average
+// Agility + Streetwise (0E76:05EE(m, 2), 01A0(m, 16)), 25 less after a
+// fight at the gate lately, within 0..100
+int
+CityVisit::_ExitHideChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    int sum = 0;
+    for (const character& member : fParty->members) {
+        sum += member.attributes[ATTRIBUTE_AGILITY]
+            + member.skills[kSkillStreetwise];
+    }
+    int chance = sum / int(fParty->members.size());
+    if (_Marked(kMarkGateFought))
+        chance -= 25;
+    return std::max(0, std::min(100, chance));
+}
+
+
+// Hiding among the people (file 0xBCDDE): if random(100) is at most the
+// chance, card 2, a lesson in Streetwise for all (09C0:1F63(-2, 16, 1,
+// 5)), an hour, out of the city; else a lesson of mode 0, an hour, card
+// 1, the reputation -1..-4, the gate again
+int
+CityVisit::_ExitHide()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (random(100) <= _ExitHideChance()) {
+        if (fParty != NULL)
+            TrainParty(*fParty, kSkillStreetwise, 1, 5, random);
+        return SCREEN_GATE_SLIPPED;
+    }
+    _ChangeReputation(-4, -1);
+    fGateShoutFight = false;
+    return SCREEN_GATE_SHOUT;
+}
+
+
+// The fight at the gate (file 0xBCAB4 after card 1, 0xBD27A attacking):
+// battlefield 0x2B, random(4) + |s| / 4 + 3 of enemy 3 at variant |s| /
+// 4 + 1 and the sergeant at variant random(3) + 1 (s: see
+// _FightJailGuards(), 0 here); after card 1 while the guards are nervous
+// (mark 0x12) 7 of them at variant 5 and the sergeant at 5. The
+// reputation falls by 40, or at -40 or less by 3, or 3..8 with a chance
+// of 100 - |reputation| % (0E76:18A8(reputation, 3, 9)).
+void
+CityVisit::_FightAtGate(bool nervous)
+{
+    fFoes.clear();
+    if (nervous && _Marked(kMarkAlert)) {
+        fFoes.push_back(foes{ 3, 5, 7 });
+        fFoes.push_back(foes{ 0, 5, 1 });
+    } else {
+        fFoes.push_back(foes{ 3, 1, int(fRandom() % 4) + 3 });
+        fFoes.push_back(foes{ 0, int(fRandom() % 3) + 1, 1 });
+    }
+    if (fReputations != NULL && fCity >= 0
+            && fCity < int(fReputations->size())) {
+        int16& reputation = (*fReputations)[fCity];
+        int loss = 40;
+        if (reputation <= -40) {
+            loss = int(fRandom() % 100) <= std::abs(100 - int(reputation))
+                ? 3 + int(fRandom() % 6) : 3;
+        }
+        reputation = int16(std::max(-99, reputation - loss));
+    }
+    fBattleKind = BATTLE_AT_GATE;
+    fPendingBattle = true;
+}
+
+
+// Its result (file 0xBCBA9): a fight at the gate is remembered for 24
+// hours (mark 0x13); won, the guards nervous (mark 0x12) for 120 hours,
+// card 9, an hour, out of the city; fled, card 10, an hour, the gate;
+// lost, card 11 (the bodies dumped in an alley), the gate (the game's
+// result 4, card 12 and the dungeon, is its surrender: no BattleView
+// outcome). Then wanted (mark 0x11) for 120 hours, 240 at -75 or less.
+int
+CityVisit::_ResolveGateBattle(int outcome)
+{
+    _Mark(kMarkGateFought, 24);
+    int next = SCREEN_GATE_DUMPED;
+    if (outcome == BATTLE_WON) {
+        _Mark(kMarkAlert, 120);
+        next = SCREEN_GATE_DASHED;
+    } else if (outcome != BATTLE_LOST)
+        next = SCREEN_GATE_FLED;
+    if (fClock != NULL && next != SCREEN_GATE_DUMPED)
+        fClock->AddHours(1);
+    _Mark(kMarkWanted, _Reputation() <= -75 ? 240 : 120);
+    return next;
+}
+
+
+// Horses among the party's items (the item flag 0x2000, 0E76:0DD8)
+bool
+CityVisit::_HasHorses() const
+{
+    if (fParty == NULL)
+        return false;
+    const std::vector<item_definition>& items = fData.Lists().Items();
+    for (const character& member : fParty->members) {
+        for (const item& carried : member.items) {
+            const size_t code = carried.code & 0x0FFF;
+            if (code < items.size() && (items[code].flags & ITEM_HORSE) != 0)
+                return true;
+        }
+    }
+    return false;
+}
+
+
+// The horses left behind (09C0:202B(-2, 0x2000, 0))
+void
+CityVisit::_LeaveHorses()
+{
+    if (fParty == NULL)
+        return;
+    const std::vector<item_definition>& items = fData.Lists().Items();
+    for (character& member : fParty->members) {
+        std::vector<item> kept;
+        for (const item& carried : member.items) {
+            const size_t code = carried.code & 0x0FFF;
+            if (code >= items.size() || (items[code].flags & ITEM_HORSE) == 0)
+                kept.push_back(carried);
+        }
+        member.items = kept;
+    }
+}
+
+
+// The sally port's guard (file 0xBD9E3): (city size / 3 + 1) · the
+// party's size · 2 pfennigs, or (100 - reputation) / 33 for a negative
+// reputation; twice that after a fight at the gate lately
+uint32
+CityVisit::_InnerWallBribe() const
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int count = fParty != NULL ? int(fParty->members.size()) : 1;
+    int bribe = (size / 3 + 1) * count * 2;
+    if (_Reputation() < 0)
+        bribe = (100 - _Reputation()) / 33;
+    if (_Marked(kMarkGateFought))
+        bribe *= 2;
+    return uint32(bribe);
+}
+
+
+// The sewer's chance (file 0xBDD9E): the member with the best Agility +
+// Strength, that sum · 8 / 10 within 0..99
+int
+CityVisit::_SewerChance(int* member) const
+{
+    int best = 0;
+    int chosen = 0;
+    for (int i = 0; fParty != NULL && i < int(fParty->members.size()); i++) {
+        const character& c = fParty->members[size_t(i)];
+        const int sum = c.attributes[ATTRIBUTE_AGILITY]
+            + c.attributes[ATTRIBUTE_STRENGTH];
+        if (sum > best) {
+            best = sum;
+            chosen = i;
+        }
+    }
+    if (member != NULL)
+        *member = chosen;
+    return std::max(0, std::min(99, best * 8 / 10));
+}
+
+
+// The rope's and the climb's chance (file 0xBE1A8): the lowest Stealth
+// of the party (0E76:1396(15)), halved after a fight at the gate lately
+int
+CityVisit::_WallStealth(int* member) const
+{
+    int lowest = 199;
+    int chosen = 0;
+    for (int i = 0; fParty != NULL && i < int(fParty->members.size()); i++) {
+        const int stealth = fParty->members[size_t(i)].skills[kSkillStealth];
+        if (stealth < lowest) {
+            lowest = stealth;
+            chosen = i;
+        }
+    }
+    if (member != NULL)
+        *member = chosen;
+    if (_Marked(kMarkGateFought))
+        lowest /= 2;
+    return lowest;
+}
+
+
+// The sewer (file 0xBDC88, 0xBDE1A with the horses): if random(100) is
+// under the chance, card 1 (the grate broken by $ChosenOneName), the
+// horses left, out of the city; else mark 0x10 for 500 hours
+// (0E76:2C4E), a positive reputation -2..-4, city size / 3 hours, card 2
+int
+CityVisit::_Sewer(bool horses)
+{
+    (void)horses;						// both leave the horses
+    int member = 0;
+    const int chance = _SewerChance(&member);
+    if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(member);
+    if (int(fRandom() % 100) < chance) {
+        _LeaveHorses();
+        return SCREEN_SEWER_OUT;
+    }
+    _Mark(kMarkGrateFailed, 500);
+    if (_Reputation() > 0)
+        _ChangeReputation(-4, -2);
+    if (fClock != NULL)
+        fClock->AddHours(uint32(fData.Cities().CityAt(uint32(fCity)).size / 3));
+    return SCREEN_SEWER_BLOCKED;
+}
+
+
+// The sally port (file 0xBDF9A): over -10 and not wanted, the bribe
+// paid, card 3, an hour, the horses left, out of the city; else card 4,
+// mark 0x22 for 48 hours (0E76:2C4E), no time, and the guards' challenge
+int
+CityVisit::_BribeSally()
+{
+    if (_Reputation() > -10 && !_Marked(kMarkWanted)) {
+        if (fParty != NULL) {
+            const uint32 purse = TotalPfennigs(fParty->cash);
+            const uint32 bribe = _InnerWallBribe();
+            fParty->cash = MoneyFromPfennigs(purse > bribe ? purse - bribe : 0);
+        }
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _LeaveHorses();
+        return SCREEN_SALLY_BRIBED;
+    }
+    _Mark(kMarkSallyAlarm, 48);
+    return SCREEN_SALLY_ALARM;
+}
+
+
+// Down a rope (file 0xBE0B8, 0xBE1EC with the horses: by day card 12 and
+// a wait until 19 o'clock first): if random(100) is at most the chance,
+// a rope used (18E7:04D4(-2, 59)), a lesson in Stealth for all (mode 7),
+// card 5, the horses left, three hours, out of the city; else card 6,
+// an hour, the walls guarded for 24 hours (mark 0x0F)
+int
+CityVisit::_RopeDown(bool afterDark)
+{
+    if (afterDark && fClock != NULL && IsGameDay(*fClock)) {
+        const int hour = fClock->Hour();
+        fClock->AddHours(uint32(hour > 19 ? 19 - hour + 24 : 19 - hour));
+        fAfterDark = 4;
+        return SCREEN_WAIT_FOR_DARK;
+    }
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (random(100) > _WallStealth(NULL)) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _Mark(kMarkWallAlert, 24);
+        return SCREEN_WALL_SPOTTED;
+    }
+    bool used = false;
+    for (character& member : fParty->members) {
+        for (size_t i = 0; !used && i < member.items.size(); i++) {
+            if ((member.items[i].code & 0x0FFF) != kRopeCode)
+                continue;
+            if (member.items[i].quantity > 1)
+                member.items[i].quantity--;
+            else
+                member.items.erase(member.items.begin() + long(i));
+            used = true;
+        }
+    }
+    TrainParty(*fParty, kSkillStealth, 7, 10, random);
+    _LeaveHorses();
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    return SCREEN_ROPE_DOWN;
+}
+
+
+// Over the wall (file 0xBE35A, 0xBE562 with the horses: the roll first,
+// then by day card 12 and the wait): if the roll, random(100), is at
+// most the chance, a lesson in Stealth for all (mode 1), every member
+// whose speed · 3 (0E76:06DE; the agility here) is under the roll falls
+// (1462:026A(m, 0, 0, 5)), card 7 (nobody), 8 (one) or 9, the horses
+// left, three hours, out of the city; else card 6, an hour, a lesson of
+// mode 0, the walls guarded for 24 hours
+int
+CityVisit::_ClimbOver(bool afterDark)
+{
+    if (afterDark && fClock != NULL && IsGameDay(*fClock)) {
+        const int hour = fClock->Hour();
+        fClock->AddHours(uint32(hour > 19 ? 19 - hour + 24 : 19 - hour));
+        fAfterDark = 6;
+        return SCREEN_WAIT_FOR_DARK;
+    }
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    const int roll = random(100);
+    if (roll > _WallStealth(NULL) || fParty == NULL) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _Mark(kMarkWallAlert, 24);
+        return SCREEN_WALL_SPOTTED;
+    }
+    TrainParty(*fParty, kSkillStealth, 1, 10, random);
+    int fallen = 0;
+    for (int i = 0; i < int(fParty->members.size()); i++) {
+        if (3 * fParty->members[size_t(i)].attributes[ATTRIBUTE_AGILITY] < roll) {
+            _Fall(i, 5, 0);
+            fallen++;
+        }
+    }
+    _LeaveHorses();
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    return fallen == 0 ? SCREEN_OVER_WALL
+        : fallen == 1 ? SCREEN_OVER_WALL_ONE_FELL : SCREEN_OVER_WALL_FALLS;
 }
 
 

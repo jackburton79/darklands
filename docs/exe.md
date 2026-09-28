@@ -450,8 +450,10 @@ coming from the map the party stands before the walls. **verified**
     ($ChosenOneName, 0E76:05EE(m, 1)) loses 3 Endurance; if random(100)
     < 16 · his Strength / 10 (file 0x9AF58): card 4, a positive local
     reputation falls by 2..4 (0E76:19D0(−2, −4)), size / 3 hours, the
-    side streets; else 0E76:2D5C(member, location, 0, 0x10, 3, 99, ...)
-    (a mark 0x10; its length is not decoded), card 5, an hour, the wall;
+    side streets; else 0E76:2D5C(member, location, 0, 0x10, 3, 99, 0,
+    500, 0, 0): mark 0x10 for 500 hours (the eighth argument is the
+    length, as 24 for mark 0x0F and 36 for 0x12 elsewhere), card 5, an
+    hour, the wall;
   - potion (0x9AFAE): not decoded; saint (0x9B0C4): see "Saints";
     *fall back*
     (0x9B1D6): before the walls, no time.
@@ -460,8 +462,7 @@ coming from the map the party stands before the walls. **verified**
   guards' challenge below. Not
   reproduced: the lessons of modes 0, 2, 5 (TrainSkill() has mode 1),
   the cards of every fallen and climber after a failed climb (one of
-  each is shown), the grate's mark length (taken as 3 hours), the
-  statuses of 0E76:1972. The speed is the agility (the load is not kept).
+  each is shown), the statuses of 0E76:1972. The speed is the agility (the load is not kept).
 - **The guards' challenge** (state 1, $CHALL00, file 0x914FE; the
   options' actions through a switch at file 0x91744, their chances in
   the table at DS:EA14, segment 18D1 at file 0x914F0): an hour passes
@@ -645,6 +646,80 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     the dungeon;
   - *leave* (file 0xF6C64): the dungeon.
   Reproduced in `CityVisit` but for bit 0x40 (not kept: 0).
+
+## Leaving the city
+
+- **The gate from inside** (state 0x3A, $SELEC00, 191A:0004 of overlay
+  0x3A, segment 191A at file 0xBC8C0; actions through a switch at file
+  0xBCA48): the main streets (and others) come here day and night, and
+  the handler always shows card 0: cards 13..16 ("The gate is closed
+  for the night...", no card call shows them) are never used.
+  **verified** (code) State 0xC is out of the city (the map).
+  - *walk out* (file 0xBCD30): an hour, out; after a fight at the gate
+    (mark 0x13) when random(100) < 40, or when 09C0:20F3 (not decoded,
+    taken as false), card 1 and the fight;
+  - *hide among the people* (file 0xBCDDE): c = the average Agility +
+    Streetwise of the members standing, − 25 while mark 0x13, within
+    0..100 (file 0xBCEBE); if random(100) <= c card 2, a lesson in
+    Streetwise for all (09C0:1F63(−2, 16, 1, 5)), an hour, out; else a
+    lesson of mode 0 (09C0:20F3: state 1), an hour, card 1, the
+    reputation −1..−4, the gate;
+  - *the fight* (file 0xBCAB4 after card 1, 0xBD27A for "attack"):
+    battlefield 0x2B, the seed location + 0x70; random(4) + |s| / 4 + 3
+    of enemy 3 at variant |s| / 4 + 1 and the sergeant at random(3) + 1
+    (s: 09C0:1C1B); after card 1 while mark 0x12, 7 at variant 5 and
+    the sergeant at 5. The reputation − 40, or at −40 or less −
+    0E76:18A8(reputation, 3, 9) (0E76:19B4 sets it). Mark 0x12 for 36
+    hours if the result is under 2, mark 0x13 for 24 (0E76:2D5C). The
+    result: 0, 1 mark 0x12 for 120 hours (0E76:2B36), card 9, an hour,
+    out; 2 card 10, an hour, the gate; 3 card 11, the gate; 4 card 12,
+    three hours, the dungeon. Then mark 0x11 for 120 hours, 240 at −75
+    or less;
+  - potion (file 0xBCF36): not decoded; saint (0xBD13E; Christina,
+    Lutgardis, Milburga, file 0xBC94B): card 7, an hour, ±2..8, out; no
+    answer card 8, an hour, the gate; *the wall* (0xBD4FC): state 0x3B,
+    no time; *not yet* (0xBD53C): the previous state (DS:A88D).
+- **The wall from inside** (state 0x3B, $SELEC01, 1A1F:0006, segment
+  1A1F at file 0xBD910; actions at file 0xBDBF7): reached from the gate,
+  the side streets (by day no time, file 0x96D18; at night card 1 of
+  $SIDES01 and an hour, 0x975FE) and the crafts district (an hour,
+  0x9F588). The options (file 0xBD992): those with the horses are
+  offered when the party has one (an item with flag 0x2000, 0E76:0DD8),
+  the others when it has none; mark 0x10 takes away the sewers, 0x22
+  the sally port, 0x0F the sally port, the ropes and the first climb;
+  no rope (item 59), the ropes; a purse under the bribe takes away the
+  second sewer option (as the code has it). The bribe ($Money1): (size
+  / 3 + 1) · the party's size · 2 pfennigs, or (100 − reputation) / 33
+  for a negative reputation, twice that while mark 0x13. **verified**
+  (code)
+  - *the sewer* (file 0xBDC88, 0xBDE1A): the member with the best
+    Agility + Strength ($ChosenOneName), c = that · 8 / 10 within 0..99
+    (file 0xBDD9E); random(100) < c: card 1, the horses left (09C0:202B
+    (−2, 0x2000, 0)), out; else mark 0x10 for 500 hours (0E76:2C4E), a
+    positive reputation −2..−4, size / 3 hours, card 2;
+  - *the sally port* (file 0xBDF9A): reputation over −10 and not wanted
+    (mark 0x11): the bribe paid, card 3, an hour, the horses left, out;
+    else card 4, mark 0x22 for 48 hours, state 1 (the challenge);
+  - *the rope* (file 0xBE0B8; 0xBE1EC with the horses: by day card 12
+    and a wait until 19 o'clock): c = the lowest Stealth of the party
+    (0E76:1396(15)), halved while mark 0x13 (file 0xBE1A8); random(100)
+    <= c: a rope used (18E7:04D4(−2, 59)), a lesson in Stealth for all
+    (mode 7), card 5, the horses left, three hours, out; else card 6,
+    an hour, mark 0x0F for 24 hours;
+  - *over the wall* (file 0xBE35A; 0xBE562 with the horses, the wait as
+    above): the same c; the roll r = random(100) <= c: a lesson in
+    Stealth for all, every member whose speed · 3 (0E76:06DE) is under
+    r falls (1462:026A(m, 0, 0, 5)), card 7 (none), 8 (one) or 9, the
+    horses left, three hours, out; else card 6, an hour, a lesson of
+    mode 0, mark 0x0F for 24 hours. The options without the horses do
+    not wait for the dark, although their text says so;
+  - *a gate instead* (file 0xBE7B6): an hour, state 0x3A; saint
+    (0xBE800; Christina, Lutgardis, Milburga): card 10, an hour, out; no
+    answer card 11, an hour; *the streets* (0xBE928): the side streets.
+- Reproduced in `CityVisit`. A lost battle at the gate is result 3 (the
+  surrender, result 4, has no BattleView outcome); the speed is the
+  agility; 09C0:20F3 and the potions are not reproduced; card 13 of
+  $SELEC01 (St. Reinold) is never shown by this code.
 
 ## Saints
 
