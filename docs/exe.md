@@ -1152,8 +1152,11 @@ the night watch: the thieves in the slum and the shell game. The grove
 (states 0x21, 0x22, $CITYG05/06) has none: an hour (card 1), a bell
 (card 2, three hours) or until nightfall (card 3, then card 4 with
 $Number1 the hours when 8 or more) by day; at night an hour, a bell, or
-until 5 in the morning (card 3, 0E76:19D0(location, −1, −1), card 5).
-**verified** (code)
+until 5 in the morning (card 3, 0E76:19D0(location, −1, −1), card 5
+with $Number1 the hours, then the grove by day). **verified** (code)
+Reproduced in `CityVisit`; the game's day there is 5..18 (1367:072A),
+the city's night cards follow `GameTime::IsNight()` (21..6), so the
+grove after a wait may show the other card than the game.
 
 - **The slum** (state 0x23, segment 19A2 of overlay 0x34 at file
   0xAAEC0; the options through a switch at file 0xAB07A): *rest* (file
@@ -1214,7 +1217,8 @@ until 5 in the morning (card 3, 0E76:19D0(location, −1, −1), card 5).
   once (DS:8E1C, never reset); else card 1..3 (the pea elsewhere, by
   random(100) % 2). Walking away returns at once to the square or the
   market (DS:A88D).
-- Reproduced in `CityVisit`: all of the above in the city, except the
+- Reproduced in `CityVisit`: all of the above in the city (the grove
+  too), except the
   alchemy, the thieves' battlefield, s (0), 0E76:251A and the alchemy
   accident. The saint left unanswered is taken as card 9 and the fight
   (*inferred*, as the guards'). **verified** (code)

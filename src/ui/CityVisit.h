@@ -353,6 +353,14 @@ public:
         SCREEN_SHELL_MIDDLE,	// shell (6); won (7)
         SCREEN_SHELL_LEFT,
         SCREEN_SHELL_WON,
+        SCREEN_GROVE_HOUR,		// $CITYG05: an hour (1), a bell (2),
+        SCREEN_GROVE_BELL,		// a nap until nightfall (3), awake
+        SCREEN_GROVE_NAP,		// $Number1 hours later (4)
+        SCREEN_GROVE_AWAKE,
+        SCREEN_GROVE_MOONLIGHT,	// $CITYG06: an hour (1), a bell (2), a
+        SCREEN_GROVE_DOZE,		// night under the bushes (3), the
+        SCREEN_GROVE_CAMP,		// morning (5)
+        SCREEN_GROVE_MORNING,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -667,6 +675,7 @@ private:
     void			_Robbed();
     bool			_FeastNear() const;
     int				_PlayShells(int shell);
+    int				_Grove(int option);
 
     GameData&		fData;
     CardView		fView;
@@ -750,6 +759,7 @@ private:
     int				fThievesReturn;	// where the thieves' cards end
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
+    int				fGroveHours;	// the nap until nightfall
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

@@ -146,6 +146,7 @@ enum option_action {
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
+    ACTION_GROVE,				// target: the option (3: after the nap)
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -267,8 +268,6 @@ IsGameDay(const GameTime& clock)
 }
 
 // Special waiting times
-static const int kUntilNight		= -1;	// "wait until nightfall"
-static const int kUntilMorning		= -2;	// "camp here until morning"
 static const int kAnHourMoreAtNight	= -3;	// an hour, two outside the
                                             // game's day
 static const int kHalfSize			= -4;	// city size / 2 hours
@@ -614,9 +613,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "You pause in a small grove of trees..."
     { "CITYG05", 0, "XGROVE1.PIC", {
-        WAIT(SCREEN_GROVE, 60),				// an hour
-        WAIT(SCREEN_GROVE, 3 * 60),			// a bell
-        WAIT(SCREEN_GROVE, kUntilNight),
+        { ACTION_GROVE, 0, kAlways, 0 },	// an hour
+        { ACTION_GROVE, 1, kAlways, 0 },	// a bell
+        { ACTION_GROVE, 2, kAlways, 0 },	// until nightfall
         TODO, TODO, TODO, TODO, TODO,		// placeholders
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
@@ -1217,6 +1216,15 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "SHELL00", 5, NULL, SHELLS },
     { "SHELL00", 6, NULL, SHELLS },
     { "SHELL00", 7, NULL, SHELL_OPTIONS },
+    // the grove's waits (file 0xAA50A, 0xAAAEA at night)
+    { "CITYG05", 1, NULL, { GO(SCREEN_GROVE) } },
+    { "CITYG05", 2, NULL, { GO(SCREEN_GROVE) } },
+    { "CITYG05", 3, NULL, { { ACTION_GROVE, 3, kAlways, 0 } } },
+    { "CITYG05", 4, NULL, { GO(SCREEN_GROVE) } },
+    { "CITYG06", 1, NULL, { GO(SCREEN_GROVE) } },
+    { "CITYG06", 2, NULL, { GO(SCREEN_GROVE) } },
+    { "CITYG06", 3, NULL, { GO(SCREEN_GROVE_MORNING) } },
+    { "CITYG06", 5, NULL, { GO(SCREEN_GROVE) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1362,9 +1370,9 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "The moonlight filters down through a quiet stand of trees."
     { "CITYG06", 0, "XGROVE27.PIC", {
-        WAIT(SCREEN_GROVE, 60),				// an hour
-        WAIT(SCREEN_GROVE, 3 * 60),			// a bell
-        WAIT(SCREEN_GROVE, kUntilMorning),	// camp until morning
+        { ACTION_GROVE, 0, kAlways, 0 },	// an hour
+        { ACTION_GROVE, 1, kAlways, 0 },	// a bell
+        { ACTION_GROVE, 2, kAlways, 0 },	// camp until morning
         TODO, TODO, TODO, TODO, TODO,		// placeholders
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
@@ -1679,6 +1687,14 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1715,10 +1731,7 @@ MinutesFor(const option_rule& rule, const GameTime& clock)
         return uint32(rule.minutes);
     if (rule.minutes == kAnHourMoreAtNight)
         return IsGameDay(clock) ? 60 : 120;
-    const int now = clock.Hour() * 60 + clock.Minute();
-    const int target = (rule.minutes == kUntilNight
-        ? GameTime::kNightStart : GameTime::kNightEnd) * 60;
-    return uint32((target - now + 24 * 60) % (24 * 60));
+    return 0;
 }
 
 
@@ -1791,6 +1804,7 @@ CityVisit::CityVisit(GameData& data)
     fThievesReturn(SCREEN_SLUM),
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
+    fGroveHours(0),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -2309,6 +2323,9 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_SHELL_PICK:
             _Show(_PlayShells(rule.target));
+            return true;
+        case ACTION_GROVE:
+            _Show(_Grove(rule.target));
             return true;
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
@@ -3447,6 +3464,45 @@ CityVisit::_FeastNear() const
     for (int m = 0; m < int(fClock->Month()) && m < 12; m++)
         start += kMonthDays[m];
     return std::abs(int(_City().feastDay) - start) <= 14;
+}
+
+
+// The grove (states 0x21, 0x22). By day (file 0xAA50A): an hour, card
+// 1; a bell, card 2; until nightfall, 1367:086A(18) + 1 hours, card 3,
+// then card 4 with $Number1 the hours when they are 8 or more. At night
+// (file 0xAAAEA): an hour, card 1; a bell, card 2; until morning, card 3,
+// 1367:086A(5) hours, the reputation down by 1 (0E76:19D0(location, -1,
+// -1)), card 5 with $Number1 the hours. Option 3: after the nap.
+int
+CityVisit::_Grove(int option)
+{
+    static const int kHoursUntil[2] = { 18, 5 };
+    if (option == 3) {
+        if (fGroveHours < 8)
+            return SCREEN_GROVE;
+        fVariables["Number1"] = std::to_string(fGroveHours);
+        return SCREEN_GROVE_AWAKE;
+    }
+    if (option < 2) {
+        if (fClock != NULL)
+            fClock->AddHours(option == 0 ? 1 : 3);
+        if (fNight)
+            return option == 0 ? SCREEN_GROVE_MOONLIGHT : SCREEN_GROVE_DOZE;
+        return option == 0 ? SCREEN_GROVE_HOUR : SCREEN_GROVE_BELL;
+    }
+    int hours = 0;
+    if (fClock != NULL) {
+        hours = (kHoursUntil[fNight ? 1 : 0] - int(fClock->Hour()) + 24) % 24;
+        if (!fNight)
+            hours++;
+        fClock->AddHours(uint32(hours));
+    }
+    fGroveHours = hours;
+    if (!fNight)
+        return SCREEN_GROVE_NAP;
+    _ChangeReputation(-1, -1);
+    fVariables["Number1"] = std::to_string(hours);
+    return SCREEN_GROVE_CAMP;
 }
 
 
