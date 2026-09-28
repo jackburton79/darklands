@@ -472,7 +472,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_ARMS_CRAFTS),
         GO(SCREEN_CRAFTS),
         GO_IF(SCREEN_INN, CITY_INN),
-        TODO,								// a physician
+        GO_IF(SCREEN_PHYSICIAN, kNeedsPhysician),	// file 0x9F3F2
         GO(SCREEN_GROVE),
         GO_IF(SCREEN_SLUM, CITY_SLUMS),
         GO(SCREEN_MAIN_STREET),
@@ -1077,7 +1077,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_ARMS_CRAFTS),
         GO(SCREEN_CRAFTS),
         GO_IF(SCREEN_INN, CITY_INN),
-        TODO,								// a physician
+        GO_IF(SCREEN_PHYSICIAN, kNeedsPhysician),	// file 0x9F3F2
         GO(SCREEN_GROVE),
         TODO_IF(CITY_SLUMS),
         GO(SCREEN_MAIN_STREET),
