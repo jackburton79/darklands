@@ -219,6 +219,13 @@ public:
         SCREEN_AMBUSH,
         SCREEN_OVERTAKEN,
         SCREEN_OUTRUN,
+        SCREEN_PRIEST,			// the priest in the dungeon: $DUNGE01
+        SCREEN_PRIEST_CONFESSION,	// card 0, the confession (1), freed by
+        SCREEN_PRIEST_RELEASED,	// the Church (2), a tool smuggled in (3),
+        SCREEN_PRIEST_SMUGGLED,	// outraged (4), a good word (5), the
+        SCREEN_PRIEST_OUTRAGED,	// magistrate (6)
+        SCREEN_PRIEST_GOOD_WORD,
+        SCREEN_PRIEST_MAGISTRATE,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -377,6 +384,7 @@ private:
     void			_Beating();
     void			_Flogging();
     void			_GiveEach(int code);
+    void			_GiveTo(character& member, int code);
     int				_Picker() const;
     int				_PickChance() const;
     int				_Climber(int* score) const;
@@ -407,6 +415,12 @@ private:
     int				_Hide();
     void			_FightPursuers();
     int				_ResolveChaseBattle(int outcome);
+    // The priest in the dungeon (DARKLAND.EXE, file 0xF675C, state 0x83)
+    int				_PriestChance() const;
+    int				_ConfessToPriest();
+    int				_AskPriestForHelp();
+    int				_AskGoodWord();
+    int				_BackFromPriest();
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;

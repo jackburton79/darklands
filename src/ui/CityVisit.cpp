@@ -97,6 +97,12 @@ enum option_action {
     ACTION_CHASE_FIGHT,
     ACTION_CHASE_AMBUSH,
     ACTION_CHASE_HIDE,
+    ACTION_CALL_PRIEST,			// the priest in the dungeon
+    ACTION_PRIEST_CONFESSION,
+    ACTION_PRIEST_HELP,
+    ACTION_PRIEST_GOOD_WORD,
+    ACTION_AFTER_GOOD_WORD,		// the magistrate, or the cell
+    ACTION_FROM_PRIEST,
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
 };
@@ -271,7 +277,7 @@ struct screen_rules {
         DO(ACTION_CLIMB_WINDOW), \
         DO(ACTION_DIG),						/* with a spoon */ \
         DO_IF(ACTION_SEDUCE, kNeedsWoman),	/* the turnkey */ \
-        TODO,								/* ask for a priest */ \
+        DO(ACTION_CALL_PRIEST), \
         DO(ACTION_PRAY), \
         TODO,								/* invoke a saint */ \
         DO(ACTION_WAIT_MAGISTRATE), \
@@ -878,6 +884,20 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CHASE00", 12, NULL, { DO(ACTION_CHASE_FIGHT) } },
     { "CHASE00", 14, NULL, { DO(ACTION_CHASE_FIGHT) } },
     { "CHASE00", 15, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "Solemnly the priest enters your cell..." (state 0x83, file
+    // 0xF675C)
+    { "DUNGE01", 0, NULL, {
+        DO(ACTION_PRIEST_CONFESSION),		// confess your sins
+        DO(ACTION_PRIEST_HELP),				// help you escape
+        DO(ACTION_PRIEST_GOOD_WORD),		// with the magistrate
+        DO(ACTION_FROM_PRIEST)				// leave you alone
+    } },
+    { "DUNGE01", 1, NULL, { DO(ACTION_FROM_PRIEST) } },
+    { "DUNGE01", 2, NULL, { GO(SCREEN_CHURCH) } },	// "escorts you to the city church"
+    { "DUNGE01", 3, NULL, { DO(ACTION_FROM_PRIEST) } },
+    { "DUNGE01", 4, NULL, { DO(ACTION_FROM_PRIEST) } },
+    { "DUNGE01", 5, NULL, { DO(ACTION_AFTER_GOOD_WORD) } },
+    { "DUNGE01", 6, NULL, { DO(ACTION_TO_COURT) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1161,6 +1181,13 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// the guards' challenge
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -1635,6 +1662,28 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_CHASE_HIDE:
             _Show(_Hide());
+            return true;
+        case ACTION_CALL_PRIEST:
+            // file 0x991CA: three hours; the cell and the tunnel are kept
+            if (fClock != NULL)
+                fClock->AddHours(3);
+            _Show(SCREEN_PRIEST);
+            return true;
+        case ACTION_PRIEST_CONFESSION:
+            _Show(_ConfessToPriest());
+            return true;
+        case ACTION_PRIEST_HELP:
+            _Show(_AskPriestForHelp());
+            return true;
+        case ACTION_PRIEST_GOOD_WORD:
+            _Show(_AskGoodWord());
+            return true;
+        case ACTION_AFTER_GOOD_WORD:
+            _Show(fMagistrateComing ? SCREEN_PRIEST_MAGISTRATE
+                : _BackFromPriest());
+            return true;
+        case ACTION_FROM_PRIEST:
+            _Show(_BackFromPriest());
             return true;
         case ACTION_GATE_DAY:
             _Show(_GoToGate(true));
@@ -3766,13 +3815,23 @@ CityVisit::_GiveEach(int code)
 {
     if (fParty == NULL)
         return;
+    for (character& member : fParty->members)
+        _GiveTo(member, code);
+}
+
+
+// One item for a member (18E7:0128(member, code)); a weapon is taken in
+// hand when the hand is empty (inferred)
+void
+CityVisit::_GiveTo(character& member, int code)
+{
     const item_definition& definition = fData.Lists().Items()[size_t(code)];
-    for (character& member : fParty->members) {
-        member.items.push_back(item{ uint16(code), uint8(definition.type),
-            definition.quality, 1, definition.weight });
-        if (member.equipment[EQUIPMENT_WEAPON] == kNoEquipment)
-            member.equipment[EQUIPMENT_WEAPON] = uint8(definition.type);
-    }
+    member.items.push_back(item{ uint16(code), uint8(definition.type),
+        definition.quality, 1, definition.weight });
+    if ((definition.flags & (ITEM_EDGED | ITEM_IMPACT | ITEM_POLEARM
+            | ITEM_FLAIL)) != 0
+            && member.equipment[EQUIPMENT_WEAPON] == kNoEquipment)
+        member.equipment[EQUIPMENT_WEAPON] = uint8(definition.type);
 }
 
 
@@ -4166,13 +4225,7 @@ CityVisit::_Rescue()
                 if (member.skills[s] > member.skills[skill])
                     skill = s;
             }
-            const item_definition& definition
-                = fData.Lists().Items()[size_t(kWeapons[skill])];
-            member.items.push_back(item{ uint16(kWeapons[skill]),
-                uint8(definition.type), definition.quality, 1,
-                definition.weight });
-            if (member.equipment[EQUIPMENT_WEAPON] == kNoEquipment)
-                member.equipment[EQUIPMENT_WEAPON] = uint8(definition.type);
+            _GiveTo(member, kWeapons[skill]);
         }
         return SCREEN_MOB;
     }
@@ -4401,6 +4454,99 @@ CityVisit::_ResolveChaseBattle(int outcome)
         fClock->AddHours(uint32(hours));
     _Mark(kMarkWanted, fChallengeReputation <= -75 ? 240 : 120);
     return next;
+}
+
+
+// Asking the priest's help (file 0xF6A86): the leader's Virtue +
+// Religion + Charisma + Speak Latin, / 10, + 20 while bit 0x40 of the
+// location's byte +0x14 is set (location property 0x20; not kept here);
+// 0 if not over 0, else within 1..99
+int
+CityVisit::_PriestChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = (leader.skills[kSkillVirtue] + leader.skills[kSkillReligion]
+        + leader.attributes[ATTRIBUTE_CHARISMA]
+        + leader.skills[kSkillSpeakLatin]) / 10;
+    return chance <= 0 ? 0 : std::max(1, std::min(99, chance));
+}
+
+
+// The confession (file 0xF68B4): a lesson in Virtue for the leader (mode
+// 1), his divine favor + random(10) + the reputation / 20, three hours,
+// card 1
+int
+CityVisit::_ConfessToPriest()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return _BackFromPriest();
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    character& leader = fParty->members[size_t(fParty->leader)];
+    TrainSkill(leader, kSkillVirtue, 10, random);
+    AddToAttribute(leader, ATTRIBUTE_DIVINE_FAVOR,
+        random(10) + _Reputation() / 20);
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    return SCREEN_PRIEST_CONFESSION;
+}
+
+
+// Help to escape (file 0xF6970): if random(100) is at most the chance, a
+// day passes; over 25 the Church claims the party (card 2, the church),
+// else the leader gets lockpicks or, one time in two, an Eater Water
+// ($NamedOneName; card 3), back to the cell. Else an hour, card 4 and
+// the cell the party returns to is the oubliette from the best cell,
+// the dark one from the others (as the game has it).
+int
+CityVisit::_AskPriestForHelp()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return _BackFromPriest();
+    const int chance = _PriestChance();
+    if (int(fRandom() % 100) > chance) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        fCell = fCell < 1 ? 2 : 1;
+        return SCREEN_PRIEST_OUTRAGED;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(24);
+    if (chance > 25)
+        return SCREEN_PRIEST_RELEASED;
+    static const int kEaterWaterCode = 99;
+    const int code = fRandom() % 2 == 1 ? kLockpickCode : kEaterWaterCode;
+    _GiveTo(fParty->members[size_t(fParty->leader)], code);
+    fVariables["NamedOneName"] = fData.Lists().Items()[size_t(code)].name;
+    return SCREEN_PRIEST_SMUGGLED;
+}
+
+
+// A good word with the magistrate (file 0xF6B2C): card 5, 12 hours, then
+// after 12 o'clock the magistrate one time in ten (card 6). The game
+// works out a score (Religion, Speak Latin, Virtue, the reputation) and
+// never uses it.
+int
+CityVisit::_AskGoodWord()
+{
+    fMagistrateComing = false;
+    if (fClock != NULL) {
+        fClock->AddHours(12);
+        fMagistrateComing = fClock->Hour() > 12 && fRandom() % 10 == 1;
+    }
+    return SCREEN_PRIEST_GOOD_WORD;
+}
+
+
+// Back in the dungeon (state 0xD) from state 0x83: the search again
+// (the handler's entry, file 0x98953), the cell and the tunnel kept
+int
+CityVisit::_BackFromPriest()
+{
+    _Search();
+    return SCREEN_CELL;
 }
 
 

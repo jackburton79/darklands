@@ -555,8 +555,8 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     card 14, a lesson in Speak Common, her Virtue − 0E76:18A8(Virtue, 2,
     6) (2, or 2 + random(4) if random(100) <= |100 − Virtue|), the side
     streets; else two hours, card 15, a lesson of mode 0;
-  - *ask for a priest* (file 0x991CA): three hours, state 0x83 (not
-    reproduced);
+  - *ask for a priest* (file 0x991CA): three hours, state 0x83 (the
+    cell and the tunnel kept in DS:E3D0, E3D2; the priest, below);
   - *pray* (file 0x99220): every member's divine favor + random(10) + 2
     (+ 12 in cell 3), card 17, 12 hours, then after 12 o'clock one time
     in ten the magistrate;
@@ -609,9 +609,33 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     hours (480 at −75 or less; 0E76:2930).
   - saint (file 0xFC6B2): not reproduced.
 - Reproduced in `CityVisit`, from the arrests (the gate's challenge,
-  the night watch, the chase). Not reproduced: the priest, saints,
-  potions, the lessons of mode 0, s (taken as 0), the rescues on
-  DS:9082, card 18.
+  the night watch, the chase). Not reproduced: saints, potions, the
+  lessons of mode 0, s (taken as 0), the rescues on DS:9082, card 18.
+- **The priest** (state 0x83, $DUNGE01, 1901:000C of overlay 0x4C,
+  segment 1901 at file 0xF6750; the handler at file 0xF675C, actions
+  through a switch at file 0xF686A). Back to state 0xD, the dungeon's
+  entry searches the party again (its call to 18E7:0854 does not
+  depend on the state it comes from); the cell and the tunnel are
+  restored. **verified** (code)
+  - *confess* (file 0xF68B4): a lesson in Virtue for the leader
+    (09C0:1F63(−1, 9, 1, 10)), his divine favor + random(10) + the
+    reputation / 20 (0E76:0A72(leader, 6, ...)), three hours, card 1;
+  - *help to escape* (file 0xF6970): c = the leader's (Virtue +
+    Religion + Charisma + Speak Latin) / 10 + 5 · 1901:05CE() ·
+    1901:05CE() (a function returning 0) + 20 while bit 0x40 of
+    location property 0x20 (the location's byte +0x14) is set; 0 if not
+    over 0, else within 1..99 (file 0xF6A86). If random(100) <= c, 24
+    hours, then over 25 card 2 and the church (state 0x34 or 0x35),
+    else the leader gets lockpicks (item 64) or, when random(2) is not
+    1, an Eater Water (item 99), $NamedOneName, card 3, the dungeon;
+    else an hour, card 4 and the saved cell becomes 2 from 0, 1 from the
+    others (the reverse of the dungeon's own rule);
+  - *a good word* (file 0xF6B2C): a score is computed ((Religion + Speak
+    Latin + Virtue) / 10 + reputation) and never used; card 5, 12 hours,
+    after 12 o'clock one time in ten card 6 and the magistrate, else
+    the dungeon;
+  - *leave* (file 0xF6C64): the dungeon.
+  Reproduced in `CityVisit` but for bit 0x40 (not kept: 0).
 
 ## The chase
 
