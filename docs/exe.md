@@ -479,7 +479,7 @@ coming from the map the party stands before the walls. **verified**
     1367:072A; 0xC after 0x3A); 2 (0E76:23E2) card 3, an hour, back; 4
     card 4, three hours, state 0xD (the dungeon). Then mark 0x11 (wanted)
     for 120 hours, 240 when the reputation on arrival was −75 or less;
-  - *run* (file 0x917EE): an hour, state 0x7A (not decoded);
+  - *run* (file 0x917EE): an hour, state 0x7A (the chase, below);
   - *talk* (file 0x91838): if random(100) <= clamp(0, 100, the leader's
     Speak Common + Charisma + the reputation, − 25 while mark 0x13)
     (file 0x91978): a lesson in Speak Common for the leader (09C0:1F63,
@@ -498,8 +498,7 @@ coming from the map the party stands before the walls. **verified**
   BattleView: a won battle is result 0, a retreat (Esc) result 2, a
   lost one result 4; result 1 has no BattleView counterpart. Card 7
   names the weapon in the leader's hand (*inferred*), cards 5 or 6
-  without one. Not reproduced: running, potions, saints, the lesson of
-  mode 0.
+  without one. Not reproduced: potions, saints, the lesson of mode 0.
 
 ## The dungeon, the magistrate and the execution
 
@@ -610,9 +609,55 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     hours (480 at −75 or less; 0E76:2930).
   - saint (file 0xFC6B2): not reproduced.
 - Reproduced in `CityVisit`, from the arrests (the gate's challenge,
-  the night watch). Not reproduced: the priest, saints, potions, the
-  chase (state 0x7A: the party gets away to the side streets), the
-  lessons of mode 0, s (taken as 0), the rescues on DS:9082, card 18.
+  the night watch, the chase). Not reproduced: the priest, saints,
+  potions, the lessons of mode 0, s (taken as 0), the rescues on
+  DS:9082, card 18.
+
+## The chase
+
+State 0x7A ($CHASE00, 1995:0002 of overlay 0x4A, segment 1995 at file
+0xF2110; the handler at file 0xF2112, actions through a switch at file
+0xF2270, their values in the table at DS:EA14). It follows running from
+the gate's guards, the escapes through the window, the guardroom and
+the execution's fight. No time passes on entry. **verified** (code)
+
+Three of its options compare random(100) with their value the other
+way round from the rest of the game: **the party fails if random(100)
+is under the value**, so the better the party, the likelier the
+failure. Reproduced as the code has it.
+
+- *keep running* (file 0xF22D0): the value is three times the slowest
+  member's speed (0E76:0656, file 0xF238A); success: random(4) hours,
+  card 15, a lesson in Streetwise for all (09C0:1F63(−2, 16, 1, 5)), the
+  side streets (state 9 or 10); failure: card 14, an hour, the fight;
+- *fight* (file 0xF23B2): the fight;
+- *ambush* (file 0xF23F0): the value is the leader's Streetwise +
+  Stealth within 0..100 (file 0xF249C); success: lessons in Stealth and
+  Streetwise for the leader (mode 1, 7), card 12; failure: lessons of
+  mode 0 and card 11 (the hiding's "sneeze", with the leader, as the
+  code has it; card 13, the flopped ambush, is never shown); the fight
+  either way;
+- *hide* (file 0xF24E4): the value is the lowest Stealth of the party
+  (from 99), + 20 outside the game's day, + 3 · the city's size, within
+  0..100 (file 0xF25C4); success: a lesson in Stealth for all (mode 1,
+  10), by day a wait until 19 o'clock and card 9, at night until 5 and
+  card 10 (1367:0716), the side streets; failure: card 11 (the leader
+  sneezes), a lesson of mode 0, the fight;
+- potion (file 0xF2632): not decoded; *surrender* (file 0xF27AA): card
+  4, three hours, the dungeon (state 0xD);
+- *the fight* (file 0xF2A40): battlefield type 0x1A, the seed (previous
+  state + location), random(5) + 3 of enemy 3 at variant 2 and random(4)
+  + 3 of enemy 0 at variant 2; the reputation −1..−5 (0E76:19D0). The
+  result: 0 card 1, 0E76:2D5C(−2, location, 0x1E, 0x12, 1, 99, 0, 2000
+  / size, ...), no time; 1 card 2, the same, an hour; 2 card 3, an hour
+  (both after 0E76:23E2); all three the side streets; 3, 4 card 4, three
+  hours, the dungeon. Then mark 0x11 (0E76:2930) for 120 hours, 240 when
+  the reputation on entry was −75 or less.
+
+Reproduced in `CityVisit`: a won battle is result 0 (with mark 0x12 for
+2000 / size hours, *inferred* from 0E76:2D5C's arguments), a retreat
+result 2, a lost one result 4. Not reproduced: the potion, the lessons
+of mode 0.
   A weapon given in the dungeon is taken in hand when the hand is empty
   (*inferred*).
 

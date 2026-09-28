@@ -209,6 +209,16 @@ public:
         SCREEN_MOB,
         SCREEN_EXECUTION_ESCAPED,
         SCREEN_EXECUTION_RECAPTURED,
+        SCREEN_CHASE,			// the chase: $CHASE00 card 0, the guards
+        SCREEN_CHASE_WON,		// beaten (1), fled from (3), the party
+        SCREEN_CHASE_FLED,		// caught (4), hidden until night (9) or
+        SCREEN_CHASE_CAUGHT,	// dawn (10), found (11), the ambush (12),
+        SCREEN_HIDDEN_TILL_NIGHT,	// overtaken (14), outrun (15)
+        SCREEN_HIDDEN_TILL_DAWN,
+        SCREEN_HIDING_FOUND,
+        SCREEN_AMBUSH,
+        SCREEN_OVERTAKEN,
+        SCREEN_OUTRUN,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -387,6 +397,16 @@ private:
     void			_FightAtExecution();
     int				_ResolveJailBattle(int outcome);
     int				_ResolveExecutionBattle(int outcome);
+    // The chase (DARKLAND.EXE, file 0xF2112, state 0x7A)
+    int				_EnterChase();
+    int				_ChaseRunChance() const;
+    int				_AmbushChance() const;
+    int				_HideChance() const;
+    int				_OutrunGuards();
+    int				_Ambush();
+    int				_Hide();
+    void			_FightPursuers();
+    int				_ResolveChaseBattle(int outcome);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
@@ -445,7 +465,8 @@ private:
         BATTLE_WITH_WATCH,
         BATTLE_WITH_GATE_GUARDS,
         BATTLE_WITH_JAIL_GUARDS,
-        BATTLE_AT_EXECUTION
+        BATTLE_AT_EXECUTION,
+        BATTLE_WITH_PURSUERS
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -459,7 +480,8 @@ private:
     int				fTortures;
     bool			fMagistrateComing;
     int				fChallengeReturn;	// where the party came from
-    int				fChallengeReputation;	// the reputation then
+    int				fChallengeReputation;	// the reputation then (the
+                                            // guards', the chase's)
     bool			fPartyLost;
     bool			fWallFailed;	// this stay at the wall: climbing failed
     std::vector<cache_item> fLoot;

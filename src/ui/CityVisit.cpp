@@ -91,6 +91,12 @@ enum option_action {
     ACTION_RESCUE,				// the rescues' roll
     ACTION_EXECUTION_FIGHT,
     ACTION_MOB_FIGHT,
+    ACTION_TO_CHASE,			// the chase
+    ACTION_CHALLENGE_RUN,
+    ACTION_CHASE_RUN,
+    ACTION_CHASE_FIGHT,
+    ACTION_CHASE_AMBUSH,
+    ACTION_CHASE_HIDE,
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
 };
@@ -785,7 +791,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // 1, file 0x914FE)
     { "CHALL00", 0, NULL, {
         DO(ACTION_GUARDS_FIGHT),			// draw weapons and fight back
-        TODO,								// run down a side street
+        DO(ACTION_CHALLENGE_RUN),			// run down a side street
         DO(ACTION_GUARDS_TALK),				// talk your way out
         DO_IF(ACTION_GUARDS_BRIBE, kNeedsGuardsBribe),	// $Money1
         TODO, TODO,							// potion, saint
@@ -815,11 +821,10 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "DUNGE00", 5, NULL, { DO(ACTION_BACK_TO_CELL) } },
     // "...Ahead is the guardroom." (file 0x999C2)
     { "DUNGE00", 6, NULL, { DO(ACTION_JAIL_FIGHT) } },
-    // "...more guards rush after you." (state 0x7A, the chase: not
-    // implemented, the party gets away)
-    { "DUNGE00", 8, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "...more guards rush after you." (state 0x7A, the chase)
+    { "DUNGE00", 8, NULL, { DO(ACTION_TO_CHASE) } },
     { "DUNGE00", 9, NULL, { DO(ACTION_BACK_TO_CELL) } },
-    { "DUNGE00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },	// the chase
+    { "DUNGE00", 10, NULL, { DO(ACTION_TO_CHASE) } },
     { "DUNGE00", 11, NULL, { DO(ACTION_BACK_TO_CELL) } },
     { "DUNGE00", 12, NULL, { GO(SCREEN_SIDE_STREET) } },	// "back alley"
     { "DUNGE00", 13, NULL, { DO(ACTION_BACK_TO_CELL) } },
@@ -851,8 +856,28 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "EXECU01", 8, NULL, { GO(SCREEN_CHURCH) } },	// "taken to the city church"
     { "EXECU01", 9, NULL, { GO(SCREEN_SQUARE) } },
     { "EXECU01", 10, NULL, { DO(ACTION_MOB_FIGHT) } },
-    { "EXECU01", 12, NULL, { GO(SCREEN_SIDE_STREET) } },	// the chase
+    { "EXECU01", 12, NULL, { DO(ACTION_TO_CHASE) } },
     { "EXECU01", 13, NULL, { GO(SCREEN_EXECUTION) } },	// the block again
+    // "Hearts pumping, you run down the street..." (state 0x7A, file
+    // 0xF2112)
+    { "CHASE00", 0, NULL, {
+        DO(ACTION_CHASE_RUN),				// outdistance the guards
+        DO(ACTION_CHASE_FIGHT),
+        DO(ACTION_CHASE_AMBUSH),
+        DO(ACTION_CHASE_HIDE),				// duck around a corner
+        TODO,								// a potion
+        WAIT(SCREEN_CHASE_CAUGHT, 3 * 60)	// surrender (file 0xF27AA)
+    } },
+    { "CHASE00", 1, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CHASE00", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CHASE00", 4, NULL, { DO(ACTION_TO_PRISON) } },
+    { "CHASE00", 9, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CHASE00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // "...poor old $ChosenOneName sneezes.", the ambush, overtaken
+    { "CHASE00", 11, NULL, { DO(ACTION_CHASE_FIGHT) } },
+    { "CHASE00", 12, NULL, { DO(ACTION_CHASE_FIGHT) } },
+    { "CHASE00", 14, NULL, { DO(ACTION_CHASE_FIGHT) } },
+    { "CHASE00", 15, NULL, { GO(SCREEN_SIDE_STREET) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1136,6 +1161,16 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },					// the guards' challenge
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -1579,6 +1614,27 @@ CityVisit::Choose(int option)
         case ACTION_EXECUTION_FIGHT:
         case ACTION_MOB_FIGHT:
             _FightAtExecution();
+            return true;
+        case ACTION_CHALLENGE_RUN:
+            // file 0x917EE: an hour, then the chase
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _Show(_EnterChase());
+            return true;
+        case ACTION_TO_CHASE:
+            _Show(_EnterChase());
+            return true;
+        case ACTION_CHASE_RUN:
+            _Show(_OutrunGuards());
+            return true;
+        case ACTION_CHASE_FIGHT:
+            _FightPursuers();
+            return true;
+        case ACTION_CHASE_AMBUSH:
+            _Show(_Ambush());
+            return true;
+        case ACTION_CHASE_HIDE:
+            _Show(_Hide());
             return true;
         case ACTION_GATE_DAY:
             _Show(_GoToGate(true));
@@ -3441,6 +3497,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveExecutionBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_PURSUERS) {
+        _Show(_ResolveChaseBattle(outcome));
+        return;
+    }
     switch (outcome) {
         case BATTLE_WON:
             _Show(SCREEN_WATCH_BEATEN);
@@ -3819,8 +3879,7 @@ CityVisit::_PickLock()
 // Climbing to the window (file 0x98DAA; the best cell only): an hour;
 // if random(100) is at most the climber's score / 3 (file 0x98E86), card
 // 10, a lesson in Stealth for the climber (mode 1), a club for every
-// member and the chase (state 0x7A: not implemented, the party gets
-// away); else card 11 and a worse cell
+// member and the chase (state 0x7A); else card 11 and a worse cell
 int
 CityVisit::_ClimbWindow()
 {
@@ -3956,7 +4015,7 @@ CityVisit::_FightJailGuards()
 
 
 // The guardroom's result (file 0x99A1B): won or fled, two hours, card 8
-// and the chase (not implemented: the side streets); lost, two hours,
+// and the chase; lost, two hours,
 // card 9, the search again, a beating, the same cell
 int
 CityVisit::_ResolveJailBattle(int outcome)
@@ -4167,8 +4226,8 @@ CityVisit::_FightAtExecution()
 }
 
 
-// Its result (file 0xFC0A4): won or fled, card 12, an hour and the chase
-// (not implemented: the side streets); lost, card 13, three hours and
+// Its result (file 0xFC0A4): won or fled, card 12, an hour and the
+// chase; lost, card 13, three hours and
 // the block again. Then the party is wanted (mark 0x11) for 240 hours,
 // 480 with a reputation of -75 or less.
 int
@@ -4179,6 +4238,168 @@ CityVisit::_ResolveExecutionBattle(int outcome)
     if (fClock != NULL)
         fClock->AddHours(outcome == BATTLE_LOST ? 3 : 1);
     _Mark(kMarkWanted, _Reputation() <= -75 ? 480 : 240);
+    return next;
+}
+
+
+// The chase (state 0x7A, file 0xF2112): no time on entry; the
+// reputation then decides how long the party stays wanted after a fight
+int
+CityVisit::_EnterChase()
+{
+    fChallengeReputation = _Reputation();
+    return SCREEN_CHASE;
+}
+
+
+// Running's value (file 0xF238A): three times the slowest's speed
+// (0E76:0656; the speed is the agility, the load is not kept)
+int
+CityVisit::_ChaseRunChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    return 3 * fParty->members[size_t(_Slowest())].attributes[ATTRIBUTE_AGILITY];
+}
+
+
+// The ambush's value (file 0xF249C): the leader's Streetwise + Stealth
+// within 0..100
+int
+CityVisit::_AmbushChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    return std::min(100, leader.skills[kSkillStreetwise]
+        + leader.skills[kSkillStealth]);
+}
+
+
+// Hiding's value (file 0xF25C4): the lowest Stealth (from 99), + 20
+// outside the game's day, + 3 · the city's size, within 0..100
+int
+CityVisit::_HideChance() const
+{
+    int stealth = 99;
+    for (int i = 0; fParty != NULL && i < int(fParty->members.size()); i++)
+        stealth = std::min(stealth, int(fParty->members[size_t(i)].skills[kSkillStealth]));
+    if (fClock != NULL && !IsGameDay(*fClock))
+        stealth += 20;
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    return std::max(0, std::min(100, stealth + 3 * size));
+}
+
+
+// Running (file 0xF22D0). As the game has it, the party gets away only
+// if random(100) is at least the value: random(4) hours, card 15, a
+// lesson in Streetwise for all (1462:0132(-2, 16, 1, 5)), the side
+// streets; else card 14, an hour and the fight.
+int
+CityVisit::_OutrunGuards()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (random(100) < _ChaseRunChance()) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_OVERTAKEN;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(uint32(random(4)));
+    if (fParty != NULL)
+        TrainParty(*fParty, kSkillStreetwise, 1, 5, random);
+    return SCREEN_OUTRUN;
+}
+
+
+// The ambush (file 0xF23F0), the same way round: at least the value,
+// lessons in Stealth and Streetwise for the leader (mode 1, 7) and card
+// 12; else card 11 (the leader sneezes: the hiding's card, as the game
+// has it) and lessons of mode 0 (not reproduced). The fight either way.
+int
+CityVisit::_Ambush()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CHASE;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (random(100) < _AmbushChance()) {
+        _SetChosen(fParty->leader);
+        return SCREEN_HIDING_FOUND;
+    }
+    character& leader = fParty->members[size_t(fParty->leader)];
+    TrainSkill(leader, kSkillStealth, 7, random);
+    TrainSkill(leader, kSkillStreetwise, 7, random);
+    return SCREEN_AMBUSH;
+}
+
+
+// Hiding (file 0xF24E4), the same way round: at least the value, a
+// lesson in Stealth for all (mode 1, 10), and by day a wait until 19
+// o'clock (card 9), at night until 5 (card 10), then the side streets;
+// else card 11 (the leader sneezes), a lesson of mode 0 and the fight
+int
+CityVisit::_Hide()
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (random(100) < _HideChance()) {
+        if (fParty != NULL && !fParty->members.empty())
+            _SetChosen(fParty->leader);
+        return SCREEN_HIDING_FOUND;
+    }
+    if (fParty != NULL)
+        TrainParty(*fParty, kSkillStealth, 1, 10, random);
+    const bool day = fClock == NULL || IsGameDay(*fClock);
+    if (fClock != NULL) {
+        const int until = day ? 19 : 5;
+        const int hour = fClock->Hour();
+        fClock->AddHours(uint32(hour > until ? until - hour + 24
+            : until - hour));
+    }
+    return day ? SCREEN_HIDDEN_TILL_NIGHT : SCREEN_HIDDEN_TILL_DAWN;
+}
+
+
+// The fight (file 0xF2A40): random(5) + 3 of enemy 3 at variant 2 and
+// random(4) + 3 of enemy 0 ("Sergeant") at variant 2; the reputation
+// -1..-5 (0E76:19D0)
+void
+CityVisit::_FightPursuers()
+{
+    _ChangeReputation(-5, -1);
+    fBattleKind = BATTLE_WITH_PURSUERS;
+    fFoes.clear();
+    fFoes.push_back(foes{ 3, 2, int(fRandom() % 5) + 3 });
+    fFoes.push_back(foes{ 0, 2, int(fRandom() % 4) + 3 });
+    fPendingBattle = true;
+}
+
+
+// Its result (file 0xF2AAB): won, card 1 and the guards nervous for
+// 2000 / size hours (0E76:2D5C(-2, location, 0x1E, 0x12, ...),
+// inferred); fled, card 3 and an hour; both then the side streets;
+// lost, card 4, three hours and the dungeon. Result 1 (card 2, "you cut
+// your way through") has no BattleView outcome. Then the party is
+// wanted (mark 0x11) for 120 hours, 240 at -75 or less.
+int
+CityVisit::_ResolveChaseBattle(int outcome)
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    int next = SCREEN_CHASE_FLED;
+    int hours = 1;
+    if (outcome == BATTLE_WON) {
+        _Mark(kMarkAlert, uint32(2000 / std::max(1, size)));
+        next = SCREEN_CHASE_WON;
+        hours = 0;
+    } else if (outcome == BATTLE_LOST) {
+        next = SCREEN_CHASE_CAUGHT;
+        hours = 3;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(uint32(hours));
+    _Mark(kMarkWanted, fChallengeReputation <= -75 ? 240 : 120);
     return next;
 }
 
