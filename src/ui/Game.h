@@ -47,6 +47,7 @@ private:
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC
     std::vector<world_event> fEvents;	// the game's events
     std::vector<uint8> fLocationFlags;	// by location: its state (+0x14)
+    std::vector<uint16> fEnterStates;	// by location: its arrival (+0x0C)
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from
     map_position	fPosition;		// else on the map, here

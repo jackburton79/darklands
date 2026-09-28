@@ -308,6 +308,24 @@ public:
         SCREEN_ROBBER_WHEREABOUTS,
         SCREEN_TOWER,			// a castle: the robber knight's tower,
         SCREEN_FORT,			// $RAUBI03 card 0, or his fort (24)
+        SCREEN_SIEGE,			// $RAUBI03: the siege camp (1)
+        SCREEN_SIEGE_ATTACK,	// the knight attacks (7)
+        SCREEN_SIEGE_RETURN,	// his band returns (8)
+        SCREEN_SIEGE_SALLY,		// a hungry sally (9)
+        SCREEN_TOWER_REFUSED,	// turned away (10)
+        SCREEN_TOWER_WELCOME,	// welcomed inside (11)
+        SCREEN_TOWER_ATTACK,	// attacked at the door (12)
+        SCREEN_DUEL,			// the duel accepted (13)
+        SCREEN_DUEL_MEN,		// his men sent instead (14)
+        SCREEN_TOWER_SAINT,		// a saint's welcome (15)
+        SCREEN_SNEAK_IN,		// in by a window (16)
+        SCREEN_SNEAK_HEARD,		// heard (17)
+        SCREEN_REINOLD_WINDOW,	// St. Reinold's window (18)
+        SCREEN_TOWER_UNANSWERED,	// no saint answers (19)
+        SCREEN_KNIGHT_SLAIN,	// the knight slain (20)
+        SCREEN_DRIVEN_OFF,		// driven off (21)
+        SCREEN_LEFT_FOR_DEAD,	// left for dead (22)
+        SCREEN_MEN_BEATEN,		// his men beaten (23)
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -336,10 +354,13 @@ public:
     void			SetReputations(std::vector<int16>* reputations)
                         { fReputations = reputations; }
     // The game's events and the locations' state (+0x14 of their saved
-    // records), not owned; NULL: none. The news tell of them.
+    // records) and arrival (+0x0C), not owned; NULL: none. The news tell
+    // of them, the quests change them.
     void			SetWorld(std::vector<world_event>* events,
-                        const std::vector<uint8>* locationFlags)
-                        { fEvents = events; fLocationFlags = locationFlags; }
+                        std::vector<uint8>* locationFlags,
+                        std::vector<uint16>* enterStates = NULL)
+                        { fEvents = events; fLocationFlags = locationFlags;
+                          fEnterStates = enterStates; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
     // city or the user quits. Another place of DARKLAND.LOC (a castle...)
@@ -587,6 +608,23 @@ private:
     bool			_InCity() const;
     // The robber knight's tower (DARKLAND.EXE, state 0x93, file 0xFF716)
     int				_EnterPlace(int place);
+    int				_TowerScreen() const;
+    int				_Losses() const;
+    void			_AddLosses(int count);
+    int				_DuelChance() const;
+    int				_TowerSneakChance() const;
+    int				_LaySiege();
+    int				_AskInside();
+    int				_Duel();
+    int				_SneakIntoTower();
+    int				_StormTower();
+    void			_FightKnight();
+    void			_FightKnightsMen();
+    int				_ResolveKnightBattle(int outcome);
+    int				_ResolveMenBattle(int outcome);
+    void			_KnightSlain();
+    int				_TowerInside(int state);
+    void			_ClaimRewards(int kind, int place);
 
     GameData&		fData;
     CardView		fView;
@@ -632,7 +670,9 @@ private:
         BATTLE_WITH_JAIL_GUARDS,
         BATTLE_AT_EXECUTION,
         BATTLE_WITH_PURSUERS,
-        BATTLE_AT_GATE
+        BATTLE_AT_GATE,
+        BATTLE_WITH_KNIGHT,
+        BATTLE_WITH_KNIGHTS_MEN
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -656,10 +696,13 @@ private:
     std::vector<std::pair<int, int> > fNewsQueue;	// the news' cards
                                     // still to show, and their places
     std::vector<world_event>* fEvents;
-    const std::vector<uint8>* fLocationFlags;
+    std::vector<uint8>* fLocationFlags;
+    std::vector<uint16>* fEnterStates;
     int				fQuestPatron;	// the bank giving a task (8, 6), -1
     int				fQuestPlace;	// the task's place (DS:E896)
     bool			fQuestRobber;	// the task is the robber knight
+    int				fAfterCard;		// the tower's results: the next screen,
+                                    // -1 the map
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

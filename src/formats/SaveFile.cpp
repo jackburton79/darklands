@@ -33,6 +33,7 @@ static const size_t kCharactersOffset	= 0x189;
 static const size_t kLocationSize		= 58;
 static const size_t kReputationOffset	= 0x12;	// in a location record
 static const size_t kLocationFlagsOffset = 0x14;
+static const size_t kEnterStateOffset	= 0x0C;
 
 
 static uint16
@@ -95,6 +96,8 @@ SaveFile::SaveFile(const std::string& fileName)
                     fReputations.push_back(int16(WordAt(data,
                         record + kReputationOffset)));
                     fLocationFlags.push_back(data[record + kLocationFlagsOffset]);
+                    fEnterStates.push_back(WordAt(data,
+                        record + kEnterStateOffset));
                 }
             }
         }

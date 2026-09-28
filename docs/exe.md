@@ -708,11 +708,57 @@ patron gives them. **verified** (code) unless marked.
   (a switch at file 0xFF940): lay siege, alchemy, ask to come inside
   (off while mark 0x26), single combat, sneak in after dark, a saint,
   storm it (offered with an event of kind 3, subject 5 or 0x27 here:
-  allies), go away. Not decoded yet.
+  allies), go away (state 0xC). Every option but "go away" sets mark
+  0x26 for 6480 hours. **verified** (code) s below is the garrison's
+  losses, +0x1E of the knight's event of subject 2 here (0E76:3742(3,
+  2, place), 0 without one).
+  - *lay siege* (file 0xFFD5A): random(24) hours, card 1; then the
+    knight attacks if random(3) + 2 <= s (card 7, the knight's
+    battle), else his band returns if random(11) <= s + 5 (card 8),
+    else a sally (card 9), both the men's battle;
+  - *ask to come inside* (file 0x10019E): s one less with a fame over
+    200, one more over 400; r = random(6); if s <= 0 or r > s + 4 card
+    11, an hour, the audience (state 0x95, $RAUBI05); if r <= s card
+    12, an hour, the men's battle; else card 10, three hours, the tower;
+  - *single combat* (file 0x100316): if random(100) <= s · 4 − fame /
+    10 + 50 (within 1..99) card 13, two hours, the knight's battle;
+    else if random(4) <= s card 14, an hour, the men's battle; else
+    card 10, three hours;
+  - *sneak in after dark* (file 0x100486): two hours, by day until 19h;
+    the chance (the average Agility + the average Stealth) / 2, + 30
+    with an event of kind 3, subject 4 here (0E76:360C), within 0..99:
+    card 16, a lesson in Stealth of mode 1 for all, inside (state 0x94,
+    $RAUBI04); else card 17, a lesson of mode 0, the men's battle;
+  - *a saint* (file 0x1005C4): Edward the Confessor, Eric, Hedwig
+    (card 15, an hour, the audience) or Reinold (card 18, a lesson in
+    Stealth of mode 1, an hour, inside); unanswered, card 19, an hour,
+    the tower;
+  - *storm it* (file 0x100722): an event of subject 6 for 3 hours
+    (0E76:2C4E(−2, place, 0, 0x1C, 6, 0, 0, 3, 0, 3)), inside.
+- **The tower's battles**: the knight's (file 0xFF9B8, battlefield
+  0x75): enemy 35 (the Raubritter) at variant 4, one. Won, card 20
+  and his end; fled, card 21, two hours, the tower; lost, card 22, a
+  day, a beating (a fall of 20 for all), the search (18E7:0854) and
+  s one less (0E76:2E74(..., add −1)), the map. The men's (file
+  0xFFBF6): random(5) + 3 of enemy 3 at variant 2. Won, card 23, an
+  hour, s one more (0E76:2E74(−2, place, 0x1C, 2, 1, 3, add), made for
+  999 hours if missing), the tower; fled, card 21, three hours, the
+  map; lost, card 22, three hours, the map.
+- **The knight's end** (file 0xFFA7F): an event of category 28,
+  subject 1, +0x20 0x5B for 2400 hours; 0E76:3E06(3, place): each
+  category-8 event of kind 3 here becomes a reward due (category 36,
+  8760 hours, at its +0x1E, +0x1A and subject the patron, +0x1E its
+  subject, +0x20 and +0x2E kept, +0x2C the place); the patron's city's
+  reputation rises by its +0x2A, the fame by 1462:1E06(its +0x2C) (0,
+  3, 10, 25, 64, else 200; 2/3 of it at difficulty 0, 3/2 at 2); if
+  there was any, the events of kind 3 here of categories 8 and 28 are
+  gone (0E76:3D92), the one just made too. Then mark 0x27 for 800
+  hours; the castle's flag 4 (+0x14) and state 0x157.
 - Reproduced in `CityVisit`: the banks' tasks, the robber knight's
-  offer, the tower's card and "go away". Not reproduced: the other
-  task (state 0x151), the other patrons, the companions, the rewards,
-  the tower's other options and the rest of the quest.
+  offer, the tower's options, battles and the knight's end (at the
+  middle difficulty). Not reproduced: the other task (state 0x151), the
+  other patrons, the companions, the alchemy, the audience (0x95),
+  inside the tower (0x94), the ruin (0x157), the rewards' collection.
 
 ## Leaving the city
 

@@ -52,6 +52,7 @@ Game::NewGame(int startCity)
         fTime = template_.Date();
         fEvents = template_.Events();
         fLocationFlags = template_.LocationFlags();
+        fEnterStates = template_.EnterStates();
     } catch (const std::exception&) {
         fTime = GameTime();		// no template: 1 January 1400
     }
@@ -78,6 +79,7 @@ Game::LoadGame(const std::string& fileName)
     fReputations.resize(fData.Locations().CountLocations(), 0);
     fEvents = save.Events();
     fLocationFlags = save.LocationFlags();
+    fEnterStates = save.EnterStates();
     // the cities are the first locations of DARKLAND.LOC; in a city the
     // game goes on in the main street (the saved screen is not decoded)
     if (save.Location() >= 0
@@ -108,7 +110,12 @@ Game::Run()
     });
     visit.SetSeed(fSeed);
     visit.SetReputations(&fReputations);
-    visit.SetWorld(&fEvents, &fLocationFlags);
+    // the locations' state, from DARKLAND.LOC where the file had none
+    const LocationFile& locations = fData.Locations();
+    fLocationFlags.resize(locations.CountLocations(), 0);
+    for (uint32 i = fEnterStates.size(); i < locations.CountLocations(); i++)
+        fEnterStates.push_back(locations.LocationAt(i).enterState);
+    visit.SetWorld(&fEvents, &fLocationFlags, &fEnterStates);
     MapViewer map(fData);
     map.SetClock(&fTime);
     InfoView info(fData);

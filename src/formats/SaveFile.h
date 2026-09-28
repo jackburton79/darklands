@@ -34,6 +34,8 @@ public:
     // the file has no location array.
     const std::vector<int16>& Reputations() const	{ return fReputations; }
     const std::vector<uint8>& LocationFlags() const	{ return fLocationFlags; }
+    // The state the game enters there (+0x0C, see LocationFile.h)
+    const std::vector<uint16>& EnterStates() const	{ return fEnterStates; }
     // The game's events (see EventFile.h)
     const std::vector<world_event>& Events() const	{ return fEvents; }
     // Empty in DEFAULT, the new game template.
@@ -50,6 +52,7 @@ private:
     std::vector<character>	fCharacters;
     std::vector<int16>	fReputations;
     std::vector<uint8>	fLocationFlags;
+    std::vector<uint16>	fEnterStates;
     std::vector<world_event> fEvents;
     party			fParty;
 };

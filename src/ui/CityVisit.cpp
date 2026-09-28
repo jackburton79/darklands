@@ -125,6 +125,15 @@ enum option_action {
                                 // the Medici
     ACTION_QUEST_OFFER,			// after the purse: the task
     ACTION_QUEST_RETURN,		// back to the patron
+    ACTION_TOWER_SIEGE,			// the robber knight's tower
+    ACTION_TOWER_ASK,
+    ACTION_TOWER_DUEL,
+    ACTION_TOWER_SNEAK,
+    ACTION_TOWER_STORM,
+    ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
+    ACTION_TOWER_FIGHT_MEN,
+    ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_AFTER_CARD,			// fAfterCard, or the map
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -230,6 +239,7 @@ static const int kMarkGuarded		= 0x17;	// the market is watched
 static const int kMarkBribeRefused	= 0x19;
 static const int kMarkSneakFailed	= 0x1A;
 static const int kMarkWatchMet		= 0x40;
+static const int kMarkTowerAsked	= 0x26;	// the tower's options taken
 
 // The game's day for some places (1367:072A): hour 5 to 18; the extra
 // hour to reach a guild then (file 0xA47A5)
@@ -344,14 +354,14 @@ struct screen_rules {
         DO(ACTION_CONFESS_GUILT) \
     }
 #define TOWER_OPTIONS { \
-        TODO,								/* lay siege */ \
+        DO(ACTION_TOWER_SIEGE),				/* lay siege */ \
         TODO,								/* alchemy */ \
-        TODO_IF(kNeedsTowerWelcome),		/* ask politely to come inside */ \
-        TODO,								/* single combat */ \
-        TODO,								/* sneak in after dark */ \
-        TODO,								/* a saint */ \
-        TODO_IF(kNeedsTowerAllies),			/* storm the tower */ \
-        LEAVE								/* go away */ \
+        DO_IF(ACTION_TOWER_ASK, kNeedsTowerWelcome),	/* come inside */ \
+        DO(ACTION_TOWER_DUEL),				/* single combat */ \
+        DO(ACTION_TOWER_SNEAK),				/* sneak in after dark */ \
+        DO_IF(ACTION_SAINT, kNeedsSaint),	/* a saint */ \
+        DO_IF(ACTION_TOWER_STORM, kNeedsTowerAllies),	/* storm it */ \
+        LEAVE								/* go away (state 0xC) */ \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
@@ -1118,6 +1128,25 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // raubritter has constructed a rude fort."
     { "RAUBI03", 0, NULL, TOWER_OPTIONS },
     { "RAUBI03", 24, NULL, TOWER_OPTIONS },
+    // the tower's cards (file 0xFFD5A...), in the order of the screens
+    { "RAUBI03", 1, NULL, { DO(ACTION_AFTER_CARD) } },	// the siege
+    { "RAUBI03", 7, NULL, { DO(ACTION_TOWER_FIGHT_KNIGHT) } },
+    { "RAUBI03", 8, NULL, { DO(ACTION_TOWER_FIGHT_MEN) } },
+    { "RAUBI03", 9, NULL, { DO(ACTION_TOWER_FIGHT_MEN) } },
+    { "RAUBI03", 10, NULL, { DO(ACTION_AFTER_CARD) } },	// turned away
+    { "RAUBI03", 11, NULL, { { ACTION_TOWER_INSIDE, 0x95, kAlways, 0 } } },
+    { "RAUBI03", 12, NULL, { DO(ACTION_TOWER_FIGHT_MEN) } },
+    { "RAUBI03", 13, NULL, { DO(ACTION_TOWER_FIGHT_KNIGHT) } },
+    { "RAUBI03", 14, NULL, { DO(ACTION_TOWER_FIGHT_MEN) } },
+    { "RAUBI03", 15, NULL, { { ACTION_TOWER_INSIDE, 0x95, kAlways, 0 } } },
+    { "RAUBI03", 16, NULL, { { ACTION_TOWER_INSIDE, 0x94, kAlways, 0 } } },
+    { "RAUBI03", 17, NULL, { DO(ACTION_TOWER_FIGHT_MEN) } },
+    { "RAUBI03", 18, NULL, { { ACTION_TOWER_INSIDE, 0x94, kAlways, 0 } } },
+    { "RAUBI03", 19, NULL, { DO(ACTION_AFTER_CARD) } },	// no answer
+    { "RAUBI03", 20, NULL, { LEAVE } },		// the knight slain
+    { "RAUBI03", 21, NULL, { DO(ACTION_AFTER_CARD) } },	// driven off
+    { "RAUBI03", 22, NULL, { LEAVE } },		// left for dead
+    { "RAUBI03", 23, NULL, { DO(ACTION_AFTER_CARD) } },	// his men beaten
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1535,6 +1564,24 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1636,9 +1683,11 @@ CityVisit::CityVisit(GameData& data)
     fNewsReturn(SCREEN_INN),
     fEvents(NULL),
     fLocationFlags(NULL),
+    fEnterStates(NULL),
     fQuestPatron(-1),
     fQuestPlace(-1),
     fQuestRobber(false),
+    fAfterCard(-1),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -2078,6 +2127,40 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_QUEST_OFFER:
             _Show(_OfferQuest());
+            return true;
+        case ACTION_TOWER_SIEGE:
+            _Mark(kMarkTowerAsked, 6480);
+            _Show(_LaySiege());
+            return true;
+        case ACTION_TOWER_ASK:
+            _Mark(kMarkTowerAsked, 6480);
+            _Show(_AskInside());
+            return true;
+        case ACTION_TOWER_DUEL:
+            _Mark(kMarkTowerAsked, 6480);
+            _Show(_Duel());
+            return true;
+        case ACTION_TOWER_SNEAK:
+            _Mark(kMarkTowerAsked, 6480);
+            _Show(_SneakIntoTower());
+            return true;
+        case ACTION_TOWER_STORM:
+            _Mark(kMarkTowerAsked, 6480);
+            _Show(_StormTower());
+            return true;
+        case ACTION_TOWER_FIGHT_KNIGHT:
+            _FightKnight();
+            return true;
+        case ACTION_TOWER_FIGHT_MEN:
+            _FightKnightsMen();
+            return true;
+        case ACTION_TOWER_INSIDE:
+            _Show(_TowerInside(rule.target));
+            return true;
+        case ACTION_AFTER_CARD:
+            if (fAfterCard < 0)
+                return false;			// back to the map (state 0xC)
+            _Show(fAfterCard);
             return true;
         case ACTION_QUEST_RETURN:
             // back to the patron (DS:E7D8)
@@ -2539,7 +2622,7 @@ CityVisit::_HiddenOptions(int screen) const
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
         } else if (rule.needs == kNeedsTowerWelcome) {
-            hide = _Marked(0x26);
+            hide = _Marked(kMarkTowerAsked);
         } else if (rule.needs == kNeedsTowerAllies) {
             hide = !_EventHere(3, 5) && !_EventHere(3, 0x27);
         } else if (rule.needs == kNeedsFuggerTasks
@@ -2646,12 +2729,324 @@ CityVisit::_HiddenOptions(int screen) const
 int
 CityVisit::_EnterPlace(int place)
 {
-    const location& l = fData.Locations().LocationAt(uint32(place));
-    if (l.enterState == 0x93) {
+    uint16 state = fData.Locations().LocationAt(uint32(place)).enterState;
+    if (fEnterStates != NULL && uint32(place) < fEnterStates->size())
+        state = (*fEnterStates)[size_t(place)];
+    if (state == 0x93) {
         fVariables["NamedOneName"] = _PersonName(uint16(place + 1100));
-        return _EventHere(3, 0x27) ? SCREEN_FORT : SCREEN_TOWER;
+        return _TowerScreen();
     }
     fPreviousScreen = -1;
+    return SCREEN_NOT_IMPLEMENTED;
+}
+
+
+// The tower, or the fort his men have built
+int
+CityVisit::_TowerScreen() const
+{
+    return _EventHere(3, 0x27) ? SCREEN_FORT : SCREEN_TOWER;
+}
+
+
+// The garrison's losses (0E76:3742(3, 2, place)): +0x1E of the robber
+// knight's event of subject 2 here, 0 if none
+int
+CityVisit::_Losses() const
+{
+    const int e = _FindEvent(0x1C, 2, fCity, -1, 3, -1);
+    return e >= 0 ? (*fEvents)[size_t(e)].unknown1E : 0;
+}
+
+
+// 0E76:2E74(-2, place, 0x1C, 2, count, 3, add): the event made for 999
+// hours if there is none
+void
+CityVisit::_AddLosses(int count)
+{
+    int e = _FindEvent(0x1C, 2, fCity, -1, 3, -1);
+    if (e < 0)
+        e = _AddEvent(-2, int16(fCity), 0, 0x1C, 2, 0, 0, 999, 0, 3);
+    if (e >= 0)
+        (*fEvents)[size_t(e)].unknown1E += int16(count);
+}
+
+
+// Laying siege (file 0xFFD5A): random(24) hours, card 1; then, s the
+// losses, the knight attacks if random(3) + 2 <= s (card 7), else his
+// band returns if random(11) <= s + 5 (card 8), else the garrison
+// sallies (card 9)
+int
+CityVisit::_LaySiege()
+{
+    const int s = _Losses();
+    if (fClock != NULL)
+        fClock->AddHours(fRandom() % 24);
+    if (int(fRandom() % 3) + 2 <= s)
+        fAfterCard = SCREEN_SIEGE_ATTACK;
+    else if (int(fRandom() % 11) <= s + 5)
+        fAfterCard = SCREEN_SIEGE_RETURN;
+    else
+        fAfterCard = SCREEN_SIEGE_SALLY;
+    return SCREEN_SIEGE;
+}
+
+
+// Asking to come inside (file 0x10019E): s the losses, one less with a
+// fame over 200, one more over 400; r = random(6). Welcome if s <= 0 or
+// r > s + 4 (card 11, an hour, the audience), attacked if r <= s (card
+// 12, an hour), else turned away (card 10, three hours)
+int
+CityVisit::_AskInside()
+{
+    const int fame = fParty != NULL ? fParty->fame : 0;
+    int s = _Losses();
+    if (fame > 200)
+        s--;
+    if (fame > 400)
+        s--;
+    const int r = int(fRandom() % 6);
+    int next = SCREEN_TOWER_REFUSED;
+    if (s <= 0 || r > s + 4)
+        next = SCREEN_TOWER_WELCOME;
+    else if (r <= s)
+        next = SCREEN_TOWER_ATTACK;
+    if (fClock != NULL)
+        fClock->AddHours(next == SCREEN_TOWER_REFUSED ? 3 : 1);
+    fAfterCard = _TowerScreen();
+    return next;
+}
+
+
+// The knight accepts a duel with a chance of s · 4 - fame / 10 + 50,
+// within 1..99
+int
+CityVisit::_DuelChance() const
+{
+    const int fame = fParty != NULL ? fParty->fame : 0;
+    return std::max(1, std::min(99, _Losses() * 4 - fame / 10 + 50));
+}
+
+
+// Single combat (file 0x100316): accepted if random(100) <= the chance
+// (card 13, two hours), else his men if random(4) <= s (card 14, an
+// hour), else turned away (card 10, three hours)
+int
+CityVisit::_Duel()
+{
+    int next = SCREEN_TOWER_REFUSED;
+    if (int(fRandom() % 100) <= _DuelChance())
+        next = SCREEN_DUEL;
+    else if (int(fRandom() % 4) <= _Losses())
+        next = SCREEN_DUEL_MEN;
+    if (fClock != NULL)
+        fClock->AddHours(next == SCREEN_DUEL ? 2
+            : next == SCREEN_DUEL_MEN ? 1 : 3);
+    fAfterCard = _TowerScreen();
+    return next;
+}
+
+
+// (average Agility + average Stealth) / 2, +30 where the knight's men are
+// away (0E76:360C(3, 4, place)), within 0..99
+int
+CityVisit::_TowerSneakChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    int agility = 0;
+    int stealth = 0;
+    for (const character& member : fParty->members) {
+        agility += member.attributes[ATTRIBUTE_AGILITY];
+        stealth += member.skills[kSkillStealth];
+    }
+    const int count = int(fParty->members.size());
+    int chance = (agility / count + stealth / count) / 2;
+    if (_EventHere(3, 4))
+        chance += 30;
+    return std::max(0, std::min(99, chance));
+}
+
+
+// Sneaking in after dark (file 0x100486): two hours, by day until 19h;
+// in (card 16, a lesson in Stealth of mode 1, inside) or heard (card 17,
+// a lesson of mode 0, his men)
+int
+CityVisit::_SneakIntoTower()
+{
+    if (fClock != NULL) {
+        fClock->AddHours(2);
+        if (!fClock->IsNight() && fClock->Hour() < 19)
+            fClock->AddHours(19 - fClock->Hour());
+    }
+    const bool in = int(fRandom() % 100) <= _TowerSneakChance();
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (fParty != NULL)
+        TrainParty(*fParty, kSkillStealth, in ? 1 : 0, 10, random);
+    return in ? SCREEN_SNEAK_IN : SCREEN_SNEAK_HEARD;
+}
+
+
+// Storming the tower with allies (file 0x100722): an event of subject 6
+// for 3 hours (0E76:2C4E(-2, place, 0, 0x1C, 6, 0, 0, 3, 0, 3)), inside
+int
+CityVisit::_StormTower()
+{
+    _AddEvent(-2, int16(fCity), 0, 0x1C, 6, 0, 0, 3, 0, 3);
+    return _TowerInside(0x94);
+}
+
+
+// The knight himself (file 0xFF9B8): enemy 35 at variant 4
+void
+CityVisit::_FightKnight()
+{
+    fFoes.clear();
+    fFoes.push_back(foes{ 35, 4, 1 });
+    fBattleKind = BATTLE_WITH_KNIGHT;
+    fPendingBattle = true;
+}
+
+
+// His men (file 0xFFBF6): random(5) + 3 of enemy 3 at variant 2
+void
+CityVisit::_FightKnightsMen()
+{
+    fFoes.clear();
+    fFoes.push_back(foes{ 3, 2, int(fRandom() % 5) + 3 });
+    fBattleKind = BATTLE_WITH_KNIGHTS_MEN;
+    fPendingBattle = true;
+}
+
+
+// Won, the knight slain (card 20, _KnightSlain()); fled, card 21, two
+// hours, the tower; lost, card 22, a day, a beating, the search, and his
+// losses one less
+int
+CityVisit::_ResolveKnightBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        _KnightSlain();
+        return SCREEN_KNIGHT_SLAIN;
+    }
+    if (outcome != BATTLE_LOST) {
+        if (fClock != NULL)
+            fClock->AddHours(2);
+        fAfterCard = _TowerScreen();
+        return SCREEN_DRIVEN_OFF;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(24);
+    _Beating();
+    _Search();
+    _AddLosses(-1);
+    return SCREEN_LEFT_FOR_DEAD;
+}
+
+
+// Won, card 23, an hour, his losses one more, the tower; fled, card 21,
+// three hours, the map; lost, card 22, three hours, the map
+int
+CityVisit::_ResolveMenBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _AddLosses(1);
+        fAfterCard = _TowerScreen();
+        return SCREEN_MEN_BEATEN;
+    }
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    fAfterCard = -1;
+    return outcome == BATTLE_LOST ? SCREEN_LEFT_FOR_DEAD : SCREEN_DRIVEN_OFF;
+}
+
+
+// The knight slain (file 0xFFA7F): an event of subject 1 for 2400 hours
+// (0E76:2C4E(-2, place, 0x5B, 0x1C, 1, 0, 0, 2400, 0, 3)), the patrons'
+// rewards (0E76:3E06(3, place)), mark 0x27 for 800 hours; the castle is
+// taken (flag 4 of +0x14) and becomes a ruin (state 0x157, not
+// implemented)
+void
+CityVisit::_KnightSlain()
+{
+    _AddEvent(-2, int16(fCity), 0x5B, 0x1C, 1, 0, 0, 2400, 0, 3);
+    _ClaimRewards(3, fCity);
+    _Mark(0x27, 800);
+    if (fLocationFlags != NULL && fCity >= 0
+            && fCity < int(fLocationFlags->size()))
+        (*fLocationFlags)[size_t(fCity)] |= 4;
+    if (fEnterStates != NULL && fCity >= 0
+            && fCity < int(fEnterStates->size()))
+        (*fEnterStates)[size_t(fCity)] = 0x157;
+}
+
+
+// The fame for a task of a level (1462:1E06), at the middle difficulty
+// (DS:906A = 1; 0 takes 2/3 of it, 2 3/2)
+static int
+FameFor(int level)
+{
+    static const int kFame[5] = { 0, 3, 10, 25, 64 };
+    return level >= 0 && level < 5 ? kFame[level] : 200;
+}
+
+
+// The tasks done (0E76:3E06(kind, place)): each patron's event of the
+// kind at the place (category 8) becomes a reward due for a year
+// (category 36) at the patron's city (+0x1E), its +0x1A the patron,
+// subject too, +0x1E the old subject, +0x2E kept, +0x2C the place; the
+// patron's city likes the party better by +0x2A, the fame grows by the
+// task's level (+0x2C). If there was any, the events of the kind at the
+// place (categories 8 and 28) are gone (0E76:3D92).
+void
+CityVisit::_ClaimRewards(int kind, int place)
+{
+    if (fEvents == NULL)
+        return;
+    bool any = false;
+    const size_t count = fEvents->size();
+    for (size_t i = 0; i < count; i++) {
+        const world_event e = (*fEvents)[i];
+        if (e.category != 8 || e.kind != kind || e.location != place)
+            continue;
+        any = true;
+        const int reward = _AddEvent(e.unknown1A, e.unknown1E, e.unknown20,
+            0x24, e.unknown1A, e.subject, 0, 8760, 0, int16(kind));
+        if (reward >= 0) {
+            (*fEvents)[size_t(reward)].unknown2E = e.unknown2E;
+            (*fEvents)[size_t(reward)].unknown2C = int16(place);
+        }
+        if (fReputations != NULL && e.unknown1E >= 0
+                && e.unknown1E < int(fReputations->size())) {
+            int16& reputation = (*fReputations)[size_t(e.unknown1E)];
+            reputation = int16(reputation + e.unknown2A);
+        }
+        if (fParty != NULL)
+            fParty->fame = uint16(fParty->fame + FameFor(e.unknown2C));
+    }
+    if (!any)
+        return;
+    std::vector<world_event> kept;
+    for (const world_event& e : *fEvents) {
+        if ((e.category == 8 || e.category == 0x1C) && e.kind == kind
+                && e.location == place)
+            continue;
+        kept.push_back(e);
+    }
+    *fEvents = kept;
+}
+
+
+// The audience (state 0x95, $RAUBI05) and inside the tower (0x94,
+// $RAUBI04) are not implemented: back to the tower
+int
+CityVisit::_TowerInside(int state)
+{
+    (void)state;
+    fPreviousScreen = _TowerScreen();
     return SCREEN_NOT_IMPLEMENTED;
 }
 
@@ -4084,6 +4479,14 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveGateBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_KNIGHT) {
+        _Show(_ResolveKnightBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_WITH_KNIGHTS_MEN) {
+        _Show(_ResolveMenBattle(outcome));
+        return;
+    }
     switch (outcome) {
         case BATTLE_WON:
             _Show(SCREEN_WATCH_BEATEN);
@@ -5152,6 +5555,10 @@ CityVisit::_SaintsFor(int screen) const
     // Christina, Lutgardis, Milburga
     if (screen == SCREEN_GATE || screen == SCREEN_INNER_WALL)
         saints = { 21, 89, 97 };
+    // the robber knight's tower (file 0xFF828): Edward the Confessor,
+    // Eric, Hedwig, Reinold
+    if (screen == SCREEN_TOWER || screen == SCREEN_FORT)
+        saints = { 41, 46, 64, 114 };
     return saints;
 }
 
@@ -5361,6 +5768,22 @@ CityVisit::_SaintAnswered(int screen, int index)
             if (fClock != NULL)
                 fClock->AddHours(1);
             return SCREEN_INNER_SAINT;
+        case SCREEN_TOWER:
+        case SCREEN_FORT:
+            // file 0x1005F3: an hour; the first three, card 15 and the
+            // audience; St. Reinold, card 18, a lesson in Stealth for all
+            // and inside
+            _Mark(kMarkTowerAsked, 6480);
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            if (index == 3) {
+                const std::function<int(int)> random
+                    = [this](int n) { return int(fRandom() % uint32(n)); };
+                if (fParty != NULL)
+                    TrainParty(*fParty, kSkillStealth, 1, 10, random);
+                return SCREEN_REINOLD_WINDOW;
+            }
+            return SCREEN_TOWER_SAINT;
         default:
             return screen;
     }
@@ -5411,6 +5834,13 @@ CityVisit::_SaintIgnored(int screen)
             if (fClock != NULL)
                 fClock->AddHours(1);
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
+        case SCREEN_TOWER:
+        case SCREEN_FORT:
+            _Mark(kMarkTowerAsked, 6480);
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            fAfterCard = _TowerScreen();
+            return SCREEN_TOWER_UNANSWERED;			// card 19, an hour
         default:
             return screen;
     }
