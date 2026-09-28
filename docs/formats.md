@@ -878,7 +878,16 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
     0x92    2     philosopher's stone quality
     0x7C    2     location: index into DARKLAND.LOC, 0xFFFF = wilderness
     0x7E    4     map tile: x, y (words)
+    0x82    2     the state the game goes on from, DS:A772 (0x0C the map
+                  in DKSAVE0, 0x1D the inn in DKSAVE1; **verified**:
+                  the save code writes it here)
+    0x84    8     DS:E898, E7D8 (the state to return to), E896 (a
+                  quest's location: 120, Grötsch, in DKSAVE0), A88D (the
+                  previous state)
+    0x96    1     the difficulty, DS:906A (0 basic, 1 standard, 2
+                  expert: 1 in both saved games)
     0xA1    1     party leader: party slot
+    0xA4    2     DS:A891: 3 on the map, 0 in a city
     0xEF    2     characters in the party
     0xF1    2     character count N
     0xF3    2·5   party: character indices (as in CHARACTR.TMP)
@@ -910,16 +919,28 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
 - **Leader**: 1 with the party order Hans, Gretchen, Gunther, Ebhard:
   a party slot, Gretchen, as in the new game. *inferred*
 - **Events and locations** — **verified**: the counts and sizes add up
-  to the file's end (24 bytes remain); only 10 location records differ
-  from DARKLAND.LOC in `DKSAVE0.SAV`, in the fields +0x0, +0x8,
-  +0xC..+0xE, +0x12 and +0x14; Olmütz, where the party is, has a
-  reputation of 64. DARKLAND.EXE reads the reputation at +0x12 and the
+  to the file's end (198 bytes remain: 0x63, then zeros); only 10
+  location records differ from DARKLAND.LOC in `DKSAVE0.SAV`, in the
+  fields +0x0, +0x8, +0xC..+0xE, +0x12 and +0x14; Olmütz, where the
+  party is, has a reputation of 64. DARKLAND.EXE reads the reputation at +0x12 and the
   flags at +0x14 of its location records (see exe.md).
 - **The save code** (file 0x751A8...) writes the header field by field
   with `fwrite`; the offsets it gives match all the fields above
   (**verified**). 0xA7..0xEE are 36 words of a local variable, perhaps
   padding. The party's standings with the banks (DS:4BB6, DS:4BB8) are
-  not written.
+  not written. It asks for a comment ("Save Game Comment:", 23
+  characters, "Darklands" to start with, file 0x74CD6), and names the
+  file `saves\dksaveN.sav` with the first N not taken (file 0x7505A);
+  the location name is the location's, or "Wilderness".
+- **Writing** (`SaveFile::Write()`): the bytes of the saved game the
+  party came from (`DEFAULT` for a new game) with the fields above, the
+  party's characters (their records as read, with the attributes,
+  skills, equipment, saints and items), the events and the locations'
+  state; `DEFAULT` has 405 location records, the others come from
+  DARKLAND.LOC. Rewriting `DKSAVE0.SAV` and `DKSAVE1.SAV` gives the same
+  fields back (**verified**); the bytes differ in the garbage after the
+  strings and in the order of the character records (2, 0, 1, 3 in the
+  game's files, the party's order here).
 - `DEFAULT` is the new game template: the four Quickstart characters,
   no party members, Rottweil, 28 April 1400 (month 4?), 0 fl 10 gr
   10 pf.
@@ -1495,8 +1516,9 @@ wolf). Not decoded.
 - [ ] Characters: the unknown fields of the record (0x00..0x11, 0x49:
       grows during the game), the sex byte (one female sample), where
       the starting money comes from
-- [ ] Saved games: the current screen (0x82), the local reputations
-      (presumably in the locations array), everything else
+- [ ] Saved games: 0x76..0x79, 0x84..0x9F (the quests' state), 0xA2,
+      0xA3, 0xA6, what follows the locations (198 bytes: the inns'
+      caches, `cache.tmp`?)
 - [ ] Information screens: the words for fame, the carrying capacity
 - [ ] Trade: which shop call is which place (two masks for some
       guilds), what the location flags mean

@@ -68,6 +68,7 @@ struct character {
     uint8 saints[20];			// the saints known, one bit each (0x80 of
                                 // byte 0 is saint 0)
     std::vector<item> items;
+    std::vector<uint8> record;	// the record read, kept for WriteCharacter()
 };
 
 struct money {
@@ -135,6 +136,9 @@ static const int kMaxPartySize = 5;
 
 // Decodes a 554-byte character record. Throws if it is inconsistent.
 character ReadCharacter(const uint8* record);
+// Encodes one: the record read (zeros if none) with the fields above.
+// Throws if the character has too many items.
+void WriteCharacter(const character& c, uint8* record);
 
 // Builds a party from the party table of CHARACTR.TMP or a saved game:
 // `indices` are kMaxPartySize little-endian words (0xFFFF: none),

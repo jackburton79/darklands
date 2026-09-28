@@ -79,7 +79,10 @@ include path: include headers by name (`#include "CityFile.h"`).
   `ExeData` (the people's names, the jobs, the weapon table, read
   from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made
-  of `Character` records (554 bytes) and giving a `party`;
+  of `Character` records (554 bytes) and giving a `party`; `SaveFile`
+  also writes a saved game (`Game::Save()`, Ctrl+S) over the bytes of
+  the one read, and `WriteCharacter()` keeps each record's unknown
+  bytes;
   `EventFile` (EVENTS.TMP, the saves' events too: `world_event`).
 - `WorldMap`: map tiles + icon sheets + palette; tile geometry, the column
   rule, `Draw(bitmap, origin)` for any part of the map, `TileAtPixel()`.

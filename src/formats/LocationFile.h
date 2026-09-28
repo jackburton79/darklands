@@ -27,11 +27,18 @@ public:
 
     uint32			CountLocations() const;
     const location&	LocationAt(uint32 index) const;
+    // The record as read (kRecordSize bytes), for the saved games
+    static const size_t kRecordSize = 58;
+    const uint8*	RecordAt(uint32 index) const;
 
     // Converts a name from the game's character set (ASCII with 0x1F, '{',
     // '|', '[', '\\', ']', '_' standing for ä ö ü Ä Ö Ü ß) to UTF-8.
     static std::string	DecodeName(const char* name, size_t length);
+    // The reverse: UTF-8 to the game's character set; other non-ASCII
+    // characters become '?'.
+    static std::string	EncodeName(const std::string& utf8);
 
 private:
     std::vector<location>	fLocations;
+    std::vector<uint8>		fRecords;
 };

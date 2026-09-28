@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 
-static const size_t kRecordSize		= 58;	// verified: 2 + 414 * 58 == file size
+// kRecordSize: verified, 2 + 414 * 58 == file size
 static const size_t kNameOffset		= 0x26;
 static const size_t kNameLength		= 20;
 
@@ -39,6 +39,7 @@ LocationFile::LocationFile(const std::string& fileName)
             const char* name = (const char*)&record[kNameOffset];
             loc.name = DecodeName(name, strnlen(name, kNameLength));
             fLocations.push_back(loc);
+            fRecords.insert(fRecords.end(), record, record + kRecordSize);
         }
     } catch (...) {
         delete stream;
@@ -64,6 +65,15 @@ LocationFile::LocationAt(uint32 index) const
 }
 
 
+const uint8*
+LocationFile::RecordAt(uint32 index) const
+{
+    if (index >= fLocations.size())
+        throw std::out_of_range("LocationFile::RecordAt(): invalid index");
+    return &fRecords[size_t(index) * kRecordSize];
+}
+
+
 /* static */
 std::string
 LocationFile::DecodeName(const char* name, size_t length)
@@ -80,6 +90,38 @@ LocationFile::DecodeName(const char* name, size_t length)
             case '_':	result += "\xC3\x9F"; break;	// ß
             default:	result += name[i]; break;
         }
+    }
+    return result;
+}
+
+
+/* static */
+std::string
+LocationFile::EncodeName(const std::string& utf8)
+{
+    static const struct {
+        const char* utf8;
+        char game;
+    } kLetters[] = {
+        { "\xC3\xA4", 0x1F }, { "\xC3\xB6", '{' }, { "\xC3\xBC", '|' },
+        { "\xC3\x84", '[' }, { "\xC3\x96", '\\' }, { "\xC3\x9C", ']' },
+        { "\xC3\x9F", '_' }
+    };
+    std::string result;
+    for (size_t i = 0; i < utf8.size(); i++) {
+        const uint8 c = uint8(utf8[i]);
+        if (c < 0x80) {
+            result += char(c);
+            continue;
+        }
+        char game = '?';
+        for (const auto& letter : kLetters) {
+            if (utf8.compare(i, 2, letter.utf8) == 0)
+                game = letter.game;
+        }
+        result += game;
+        while (i + 1 < utf8.size() && (uint8(utf8[i + 1]) & 0xC0) == 0x80)
+            i++;
     }
     return result;
 }

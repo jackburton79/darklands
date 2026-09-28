@@ -161,7 +161,8 @@ CardView::CardView(GameData& data)
     fCursorVisible(false),
     fTextLeft(0),
     fTextBottom(0),
-    fPromptLength(0)
+    fPromptLength(0),
+    fPromptDigits(true)
 {
     fFont.reset(new Font(fData.Fonts(), kTextFontIndex));
     fSidebar.reset(new PartySidebar(fData));
@@ -262,6 +263,9 @@ CardView::Run(GameWindow& window)
             case SDL_QUIT:
                 return -1;
             case SDL_KEYDOWN:
+                if (event.key.keysym.sym == SDLK_s
+                        && (event.key.keysym.mod & KMOD_CTRL) != 0)
+                    return kSaveRequested;
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
                         return -1;
@@ -283,14 +287,20 @@ CardView::Run(GameWindow& window)
                     case SDLK_DOWN:
                         SelectNext();
                         break;
+                    case SDLK_SPACE:
+                        if (Prompting() && !fPromptDigits)
+                            break;				// typed, as SDL_TEXTINPUT
+                        chosen = Choose();
+                        break;
                     case SDLK_RETURN:
                     case SDLK_KP_ENTER:
-                    case SDLK_SPACE:
                         chosen = Choose();
                         break;
                     default: {
                         const SDL_Keycode key = event.key.keysym.sym;
-                        if (Prompting()) {
+                        if (Prompting() && !fPromptDigits) {
+                            // the text comes as SDL_TEXTINPUT
+                        } else if (Prompting()) {
                             if (key >= SDLK_0 && key <= SDLK_9)
                                 TypeCharacter(char('0' + key - SDLK_0));
                             else if (key >= SDLK_KP_1 && key <= SDLK_KP_9)
@@ -303,6 +313,12 @@ CardView::Run(GameWindow& window)
                     }
                 }
                 dirty = true;
+                break;
+            case SDL_TEXTINPUT:
+                if (Prompting() && !fPromptDigits) {
+                    TypeText(event.text.text);
+                    dirty = true;
+                }
                 break;
             case SDL_MOUSEMOTION:
                 MouseMoved(GameWindow::ToScreen(event.motion.x,
@@ -394,21 +410,38 @@ CardView::SelectPrevious()
 
 void
 CardView::SetPrompt(const std::string& prompt, const std::string& text,
-    size_t maxLength)
+    size_t maxLength, bool digitsOnly)
 {
     fPrompt = prompt;
     fPromptLength = maxLength;
+    fPromptDigits = digitsOnly;
     fPromptText.clear();
-    for (char c : text)
-        TypeCharacter(c);
+    TypeText(text);
 }
 
 
 void
 CardView::TypeCharacter(char c)
 {
-    if (Prompting() && c >= '0' && c <= '9' && fPromptText.size() < fPromptLength)
+    if (!Prompting() || fPromptText.size() >= fPromptLength)
+        return;
+    if (fPromptDigits ? (c >= '0' && c <= '9') : uint8(c) >= 0x1F)
         fPromptText += c;
+}
+
+
+// The characters that stand for letters in the game's character set are
+// not typed as themselves
+void
+CardView::TypeText(const std::string& utf8)
+{
+    std::string text;
+    for (char c : utf8) {
+        if (std::string("[\\]_{|}~").find(c) == std::string::npos)
+            text += c;
+    }
+    for (char c : Font::ToGameCharset(text))
+        TypeCharacter(c);
 }
 
 

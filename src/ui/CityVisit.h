@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <random>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -384,6 +385,10 @@ public:
     void			SetSeed(uint16 seed)		{ fSeed = seed; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
+    // Called by Run() for Ctrl+S (not set: nothing happens)
+    void			SetSaveHandler(
+                        const std::function<void(GameWindow&)>& handler)
+                        { fSaveHandler = handler; }
     // The party's reputation in each location of DARKLAND.LOC (not
     // owned; NULL: 0 everywhere). Some options change it.
     void			SetReputations(std::vector<int16>* reputations)
@@ -686,6 +691,7 @@ private:
     party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
+    std::function<void(GameWindow&)> fSaveHandler;
     std::vector<int16>* fReputations;
     bool			fNight;			// the current card is a night card
     int				fCity;

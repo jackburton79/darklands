@@ -55,6 +55,7 @@ ReadCharacter(const uint8* record)
     c.equipment[EQUIPMENT_SHIELD] = record[kShieldOffset];
     c.equipment[EQUIPMENT_MISSILE] = record[kMissileOffset];
     memcpy(c.saints, &record[kSaintsOffset], sizeof(c.saints));
+    c.record.assign(record, record + kCharacterRecordSize);
 
     const size_t count = record[kItemCountOffset]
         | (record[kItemCountOffset + 1] << 8);
@@ -66,6 +67,55 @@ ReadCharacter(const uint8* record)
             data[3], data[4], data[5] });
     }
     return c;
+}
+
+
+static void
+PutString(uint8* record, size_t offset, size_t length, const std::string& utf8)
+{
+    const std::string name = LocationFile::EncodeName(utf8);
+    memset(&record[offset], 0, length);
+    memcpy(&record[offset], name.data(), std::min(name.size(), length - 1));
+}
+
+
+void
+WriteCharacter(const character& c, uint8* record)
+{
+    if (c.items.size() > kMaxItems)
+        throw std::runtime_error("character: too many items");
+    if (c.record.size() == kCharacterRecordSize)
+        memcpy(record, c.record.data(), kCharacterRecordSize);
+    else {
+        memset(record, 0, kCharacterRecordSize);
+        PutString(record, kFullNameOffset, kFullNameLength, c.fullName);
+        PutString(record, kShortNameOffset, kShortNameLength, c.shortName);
+        record[kAgeOffset] = uint8(c.age & 0xFF);
+        record[kAgeOffset + 1] = uint8(c.age >> 8);
+        record[kSexOffset] = c.female ? 1 : 0;
+        record[kHeraldryOffset] = uint8(c.heraldry);
+    }
+    memcpy(&record[kAttributesOffset], c.attributes, ATTRIBUTE_COUNT);
+    memcpy(&record[kMaxAttributesOffset], c.maxAttributes, ATTRIBUTE_COUNT);
+    memcpy(&record[kSkillsOffset], c.skills, kSkillCount);
+    record[kWeaponOffset] = c.equipment[EQUIPMENT_WEAPON];
+    record[kVitalsOffset] = c.equipment[EQUIPMENT_VITALS];
+    record[kLimbsOffset] = c.equipment[EQUIPMENT_LIMBS];
+    record[kShieldOffset] = c.equipment[EQUIPMENT_SHIELD];
+    record[kMissileOffset] = c.equipment[EQUIPMENT_MISSILE];
+    memcpy(&record[kSaintsOffset], c.saints, sizeof(c.saints));
+    record[kItemCountOffset] = uint8(c.items.size());
+    record[kItemCountOffset + 1] = 0;
+    memset(&record[kItemsOffset], 0, kMaxItems * kItemSize);
+    for (size_t i = 0; i < c.items.size(); i++) {
+        uint8* data = &record[kItemsOffset + i * kItemSize];
+        data[0] = uint8(c.items[i].code & 0xFF);
+        data[1] = uint8(c.items[i].code >> 8);
+        data[2] = c.items[i].type;
+        data[3] = c.items[i].quality;
+        data[4] = c.items[i].quantity;
+        data[5] = c.items[i].weight;
+    }
 }
 
 

@@ -16,6 +16,7 @@
 #include "Travel.h"
 
 #include <memory>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,10 @@ public:
     void			SetClock(GameTime* clock)	{ fClock = clock; }
     // The information screens that F1..F6 open (not owned; NULL: none).
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
+    // Called by Run() for Ctrl+S (not set: nothing happens)
+    void			SetSaveHandler(
+                        const std::function<void(GameWindow&)>& handler)
+                        { fSaveHandler = handler; }
 
     // Puts the party on a tile (e.g. a city it leaves) and centers the view
     // on it; the party stops and is no longer in a city.
@@ -101,6 +106,7 @@ private:
     GameTime*		fClock;
     int				fTravelMinutes;	// toward the next hour (DARKLAND.EXE)
     InfoView*		fInfo;
+    std::function<void(GameWindow&)> fSaveHandler;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

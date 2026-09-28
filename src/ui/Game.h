@@ -17,6 +17,7 @@
 #include <vector>
 
 class GameData;
+class GameWindow;
 
 class Game {
 public:
@@ -38,7 +39,20 @@ public:
     const party&	Party() const	{ return fParty; }
     const GameTime&	Time() const	{ return fTime; }
 
+    // Saves the game as the first free SAVES/DKSAVEn.SAV, as DARKLAND.EXE
+    // does (file 0x7505A), with a comment; returns the file's name.
+    // `location` is where the party is (-1: on the map), `state` the
+    // game's state to go on from (DS:A772: 0x0C the map, 0x1D the inn).
+    // Throws on error.
+    std::string		Save(const std::string& comment, int location,
+                        const map_position& position, uint16 state);
+
 private:
+    // Ctrl+S: asks for the comment ("Save Game Comment:", file 0x74CD6),
+    // saves and says where
+    void			_SaveDialog(GameWindow& window, int location,
+                        const map_position& position, uint16 state);
+
     GameData&		fData;
     party			fParty;
     GameTime		fTime;
@@ -51,4 +65,5 @@ private:
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from
     map_position	fPosition;		// else on the map, here
+    std::string		fTemplate;		// the saved game the others are made from
 };

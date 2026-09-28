@@ -46,6 +46,45 @@ ReadEvent(const uint8* r)
 }
 
 
+static void
+PutInt16(uint8* data, size_t offset, int16 value)
+{
+    data[offset] = uint8(value & 0xFF);
+    data[offset + 1] = uint8((uint16(value) >> 8) & 0xFF);
+}
+
+
+static void
+PutDate(uint8* data, size_t offset, const event_date& date)
+{
+    PutInt16(data, offset, date.hour);
+    PutInt16(data, offset + 2, date.day);
+    PutInt16(data, offset + 4, date.month);
+    PutInt16(data, offset + 6, date.year);
+}
+
+
+void
+WriteEvent(const world_event& e, uint8* r)
+{
+    PutInt16(r, 0x00, e.subject);
+    PutDate(r, 0x02, e.created);
+    PutDate(r, 0x0A, e.start);
+    PutDate(r, 0x12, e.end);
+    PutInt16(r, 0x1A, e.unknown1A);
+    PutInt16(r, 0x1C, e.location);
+    PutInt16(r, 0x1E, e.unknown1E);
+    PutInt16(r, 0x20, e.unknown20);
+    PutInt16(r, 0x22, e.category);
+    PutInt16(r, 0x24, e.unknown24);
+    PutInt16(r, 0x26, e.unknown26);
+    PutInt16(r, 0x28, e.kind);
+    PutInt16(r, 0x2A, e.unknown2A);
+    PutInt16(r, 0x2C, e.unknown2C);
+    PutInt16(r, 0x2E, e.unknown2E);
+}
+
+
 // -1, 0, 1 as `date` is before, at or after `now` (0E76:3180: year,
 // month, day, hour in turn)
 static int

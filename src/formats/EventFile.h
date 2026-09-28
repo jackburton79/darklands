@@ -43,6 +43,7 @@ static const size_t kEventRecordSize = 48;
 
 // A record of the game's 48 bytes
 world_event ReadEvent(const uint8* record);
+void WriteEvent(const world_event& e, uint8* record);
 // Whether an event has started (its start is not after `now`), and
 // whether it is over, as the game compares the dates (year, month, day,
 // hour).

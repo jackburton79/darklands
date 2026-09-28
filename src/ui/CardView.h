@@ -55,14 +55,17 @@ public:
     void			SetScene(const std::string& pictureName,
                         bool showFirst = true);
     // A line to type in under the text, e.g. "Deposit how many Florins?"
-    // (the game asks for numbers this way): digits only, at most
-    // `maxLength`, starting as `text`. Return, a click or any option
-    // ends it; SetCard() removes it.
+    // (the game asks for numbers this way): digits only, or any text,
+    // at most `maxLength`, starting as `text` (UTF-8). Return, a click or
+    // any option ends it; SetCard() removes it.
     void			SetPrompt(const std::string& prompt,
-                        const std::string& text, size_t maxLength);
+                        const std::string& text, size_t maxLength,
+                        bool digitsOnly = true);
     bool			Prompting() const		{ return !fPrompt.empty(); }
+    // In the game's character set
     const std::string& PromptText() const	{ return fPromptText; }
-    void			TypeCharacter(char c);	// ignored if not a digit
+    void			TypeCharacter(char c);	// game character set
+    void			TypeText(const std::string& utf8);
     void			Backspace();
 
     // The party shown in the sidebar (not owned; NULL: none). Throws if
@@ -73,8 +76,10 @@ public:
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
 
     // Runs until an option is chosen: returns its number, or -1 if the
-    // user quit. A card without options is left with a click or a key
-    // (as option 0). The first version opens its own window.
+    // user quit, or kSaveRequested for Ctrl+S. A card without options is
+    // left with a click or a key (as option 0). The first version opens
+    // its own window.
+    static const int kSaveRequested = -2;
     int				Run();
     int				Run(GameWindow& window);
 
@@ -160,4 +165,5 @@ private:
     std::string		fPrompt;		// empty: none
     std::string		fPromptText;
     size_t			fPromptLength;
+    bool			fPromptDigits;
 };

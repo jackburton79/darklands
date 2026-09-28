@@ -95,6 +95,7 @@ implemented yet. See the roadmap below.
 - [x] Show a menu card with its options (`--card`)
 - [x] The flow between the city cards (inn, streets, gate) and the map
 - [x] The party: characters and saved games, the sidebar
+- [x] Saving the game (Ctrl+S), in the original's format
 - [x] Game time: the clock, day and night, travel time (the game's own
       terrain costs, decoded from the executable)
 - [x] Party and character information screens
@@ -161,7 +162,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ```sh
 # Play, from a random city (--start <city>: from that one).
 # Cards: the mouse or the arrow keys to choose an option, click or
-# Return to take it, Esc to quit.
+# Return to take it, Esc to quit; Ctrl+S (on the map too) saves the game
+# as the first free SAVES/DKSAVEn.SAV, which --load reads.
 # Map: click to travel there (clicking a city goes there and shows it),
 # right click a city for its details, arrow keys (shift: faster) or drag
 # to scroll, space to center on the party, Esc to go back or quit
@@ -235,7 +237,7 @@ src/formats/        Readers for the game's files (no SDL)
   ListFile.*        The item, saint and formula lists (DARKLAND.LST)
   MsgFile.*         The menu cards (.MSG files in MSGFILES)
   CharacterFile.*   The new game's characters (CHARACTR.TMP)
-  SaveFile.*        The saved games (SAVES/*.SAV)
+  SaveFile.*        The saved games (SAVES/*.SAV): reading and writing
   EventFile.*       The game's events (EVENTS.TMP, and in the saved games)
   ExeData.*         Names and tables read from DARKLAND.EXE
 

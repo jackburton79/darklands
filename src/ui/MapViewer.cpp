@@ -154,7 +154,10 @@ MapViewer::Run(GameWindow& window)
                     const bool fast = (event.key.keysym.mod & KMOD_SHIFT) != 0;
                     const int step = fast ? kFastScrollStep : kScrollStep;
                     const SDL_Keycode key = event.key.keysym.sym;
-                    if (key == SDLK_ESCAPE) {
+                    if (key == SDLK_s && (event.key.keysym.mod & KMOD_CTRL) != 0) {
+                        if (fSaveHandler)
+                            fSaveHandler(window);
+                    } else if (key == SDLK_ESCAPE) {
                         if (!Escape())
                             quitting = true;
                     } else switch (key) {

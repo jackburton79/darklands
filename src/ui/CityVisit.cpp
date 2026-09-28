@@ -1862,6 +1862,11 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
     Enter(cityIndex, screen);
     for (;;) {
         const int option = fView.Run(window);
+        if (option == CardView::kSaveRequested) {
+            if (fSaveHandler)
+                fSaveHandler(window);
+            continue;
+        }
         if (option < 0)
             return QUIT;
         if (!Choose(option))
