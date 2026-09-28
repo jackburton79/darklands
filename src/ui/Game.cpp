@@ -133,8 +133,14 @@ Game::Run()
             }
             if (result == CityVisit::QUIT)
                 return;
-            const city& c = fData.Cities().CityAt(uint32(cityIndex));
-            position = map_position{ c.x, c.y };
+            if (uint32(cityIndex) < fData.Cities().CountCities()) {
+                const city& c = fData.Cities().CityAt(uint32(cityIndex));
+                position = map_position{ c.x, c.y };
+            } else {
+                const location& l = fData.Locations().LocationAt(
+                    uint32(cityIndex));
+                position = map_position{ l.x, l.y };
+            }
         }
         map.SetPartyPosition(position);
         cityIndex = map.Run(window);

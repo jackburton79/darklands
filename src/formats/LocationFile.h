@@ -16,6 +16,8 @@ struct location {
     uint16 x;				// map tile coordinates (DARKLAND.MAP)
     uint16 y;
     uint8 size;				// cities: 3..8 (inferred); others: 1
+    uint16 enterState;		// the game's state on arriving (+0x0C)
+    uint16 territoryState;	// on meeting its territory (+0x0E); 0x62: none
     std::string name;		// UTF-8
 };
 

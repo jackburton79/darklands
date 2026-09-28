@@ -263,7 +263,10 @@ DumpLocations(const LocationFile& locations)
         const location& loc = locations.LocationAt(i);
         std::cout << std::setw(3) << i << "  type " << std::setw(2) << loc.type
             << "  x " << std::setw(3) << loc.x << "  y " << std::setw(3) << loc.y
-            << "  size " << int(loc.size) << "  " << loc.name << std::endl;
+            << "  size " << int(loc.size) << "  states 0x" << std::hex
+            << std::setw(3) << std::setfill('0') << loc.enterState << " 0x"
+            << std::setw(3) << loc.territoryState << std::setfill(' ')
+            << std::dec << "  " << loc.name << std::endl;
     }
 }
 

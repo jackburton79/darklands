@@ -391,7 +391,17 @@ Record (relative offsets, little-endian):
     +0x04   2     x: map tile column (DARKLAND.MAP coordinates)
     +0x06   2     y: map tile row
     +0x08   2     unknown (uint16; values 1, 5, 9, 10)
-    +0x0A   7     unknown, varies
+    +0x0A   2     unknown, varies
+    +0x0C   2     the game's state on arriving there: 4 for the
+                  cities (before the walls), 0x93 the castles (the
+                  robber knight's tower), 0x85 type 8, 0xFA caves, 0x100
+                  tombs...; the saved games may change it (**verified**:
+                  DARKLAND.EXE returns it to its state machine, file
+                  0x5E6C3)
+    +0x0E   2     the state of its territory, met on the way: 0x92 the
+                  castles, else 0x62 (none) (**verified**: file
+                  0x5E6A5, 0x5F139)
+    +0x10   1     unknown
     +0x11   1     cities: size, 3..8; other locations: 1 (see below)
     +0x12   20    unknown; constant in the game data except +0x1C
                   (0x19 0x19 0x19 at +0x15, 0xFF 0xFF at +0x18)
@@ -402,7 +412,9 @@ Record (relative offsets, little-endian):
   Kassel, Frankfurt) are right next to one — large cities span several
   tiles. One cave has y = 931, one past the last map row.
 - **Types**, from the names (*inferred*): 0 city (92), 1 and 8 mostly
-  villages/castles (73 and 112), 2 and 3 monasteries/abbeys?,
+  villages (73 and 112), 2 castles (18: DARKLAND.EXE looks for the
+  nearest location of type 2 for a robber knight, and all enter state
+  0x93, the robber knight's tower: **verified**), 3 monasteries/abbeys?,
   5 and 19 "Cave", 13 "Tomb", 15 "Lair", 16 "Spring", 17 "Lake",
   18 "Shrine", 20 "Pagan Altar", 21 and up named special sites
   (e.g. "Brocken", "Hochk{nig"). The exact meaning of types 1..4, 6

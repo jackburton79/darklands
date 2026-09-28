@@ -701,9 +701,18 @@ patron gives them. **verified** (code) unless marked.
   the city nearest it, $NearestCity, $Direction from here). From a
   village or the League with four members or fewer, card 10 or 13
   offers a companion (0E76:4650); else back to the patron.
-- Reproduced in `CityVisit`: the banks' tasks and the robber knight's
-  offer. Not reproduced: the other task (state 0x151), the other
-  patrons, the companions, the rewards and the rest of the quest.
+- **The tower** (state 0x93, $RAUBI03, segment 1929 at file 0xFF710):
+  every castle's arrival; $NamedOneName the knight (1367:0DB4(place +
+  1100, 0, 0)); card 24 (a rude fort) instead of 0 with an event of
+  kind 3, subject 0x27 here (0E76:360C(3, 0x27, place)). Its options
+  (a switch at file 0xFF940): lay siege, alchemy, ask to come inside
+  (off while mark 0x26), single combat, sneak in after dark, a saint,
+  storm it (offered with an event of kind 3, subject 5 or 0x27 here:
+  allies), go away. Not decoded yet.
+- Reproduced in `CityVisit`: the banks' tasks, the robber knight's
+  offer, the tower's card and "go away". Not reproduced: the other
+  task (state 0x151), the other patrons, the companions, the rewards,
+  the tower's other options and the rest of the quest.
 
 ## Leaving the city
 
@@ -1190,6 +1199,20 @@ their content comes from the game's events. **verified** (code)
   (the step returns 9999) unless the previous tile was water too, or
   0E76:32CE(0x4B) is true (the party has something: item 0x4B is
   "Marsh Vapor"; not checked).
+
+- **Places** (the map's state, 0xC, 1462:0000 of overlay 0x1E at file
+  0x5DAA0; its loop at file 0x5DD60, a step at 0x5E6E4): a step onto
+  a place of DARKLAND.LOC returns its index, and the next state is
+  its location record's word +0x0C (file 0x5E6C3; the cities' is 4,
+  before the walls). Else, after every step, encounters: DS:E488 (at
+  most 10) grows by one when random(500) <= 9; there is one if
+  random(1000) < (DS:E488 + 1) · 1462:0344(place, terrain) (file
+  0x5F0E7; the place is the nearest, DS:907E); then with a place whose
+  word +0x0E is not 0x62, six times in ten (random(100) <= 60) its
+  territory: the state +0x0E (the castles' 0x92, the robber knight's
+  land, $RAUBI02); else a random encounter (file 0x5E1DB: the dragon's
+  and other events', then by the terrain, DS:D843). **verified**
+  (code); the encounters are not reproduced.
 
 ## The church
 

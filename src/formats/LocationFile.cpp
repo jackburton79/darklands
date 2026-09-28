@@ -34,6 +34,8 @@ LocationFile::LocationFile(const std::string& fileName)
             loc.x = record[0x04] | (record[0x05] << 8);
             loc.y = record[0x06] | (record[0x07] << 8);
             loc.size = record[0x11];
+            loc.enterState = uint16(record[0x0C] | (record[0x0D] << 8));
+            loc.territoryState = uint16(record[0x0E] | (record[0x0F] << 8));
             const char* name = (const char*)&record[kNameOffset];
             loc.name = DecodeName(name, strnlen(name, kNameLength));
             fLocations.push_back(loc);

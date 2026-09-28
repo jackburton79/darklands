@@ -209,6 +209,10 @@ static const int kNeedsRebelsHere	= -36;
 // (0E76:392C(7, patron, location)), a reputation of 0 or more
 static const int kNeedsFuggerTasks	= -37;
 static const int kNeedsMediciTasks	= -38;
+// or the tower (file 0xFF79B): asking to come inside needs no mark 0x26;
+// storming it needs allies (0E76:360C(3, 5 or 0x27, place))
+static const int kNeedsTowerWelcome	= -39;
+static const int kNeedsTowerAllies	= -40;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -338,6 +342,16 @@ struct screen_rules {
         DO(ACTION_PLEAD_INNOCENT), \
         DO_IF(ACTION_SAINT, kNeedsSaint), \
         DO(ACTION_CONFESS_GUILT) \
+    }
+#define TOWER_OPTIONS { \
+        TODO,								/* lay siege */ \
+        TODO,								/* alchemy */ \
+        TODO_IF(kNeedsTowerWelcome),		/* ask politely to come inside */ \
+        TODO,								/* single combat */ \
+        TODO,								/* sneak in after dark */ \
+        TODO,								/* a saint */ \
+        TODO_IF(kNeedsTowerAllies),			/* storm the tower */ \
+        LEAVE								/* go away */ \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
@@ -1099,6 +1113,11 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "RAUBI00", 6, NULL, { GO(SCREEN_ROBBER_WHEREABOUTS) } },
     { "RAUBI00", 8, NULL, { GO(SCREEN_ROBBER_WHEREABOUTS) } },
     { "RAUBI00", 14, NULL, { DO(ACTION_QUEST_RETURN) } },
+    // "Its spire outlined against the sky, the tower of the robber knight
+    // $NamedOneName is impressive." (state 0x93, file 0xFF716), or "...the
+    // raubritter has constructed a rude fort."
+    { "RAUBI03", 0, NULL, TOWER_OPTIONS },
+    { "RAUBI03", 24, NULL, TOWER_OPTIONS },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1514,6 +1533,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1531,6 +1552,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef OUTSIDE_OPTIONS
 #undef DAY_GATE_OPTIONS
 #undef WATCH_CAUGHT_OPTIONS
+#undef TOWER_OPTIONS
 #undef CELL_OPTIONS
 #undef COURT_OPTIONS
 #undef DO
@@ -1731,14 +1753,26 @@ CityVisit::Enter(int cityIndex, int screen)
         throw std::out_of_range("CityVisit::Enter(): invalid screen");
     fCity = cityIndex;
     if (fInfo != NULL) {
-        const city& c = fData.Cities().CityAt(uint32(cityIndex));
-        fInfo->SetPosition(map_position{ c.x, c.y });
+        if (_InCity()) {
+            const city& c = fData.Cities().CityAt(uint32(cityIndex));
+            fInfo->SetPosition(map_position{ c.x, c.y });
+        } else {
+            const location& l = fData.Locations().LocationAt(uint32(cityIndex));
+            fInfo->SetPosition(map_position{ l.x, l.y });
+        }
     }
     fVariables.clear();
-    AddCityVariables(fData, cityIndex, fVariables);
+    if (_InCity())
+        AddCityVariables(fData, cityIndex, fVariables);
+    else {
+        fVariables["PlaceName"]
+            = fData.Locations().LocationAt(uint32(cityIndex)).name;
+    }
     if (fParty != NULL)
         AddPartyVariables(*fParty, fVariables);
     fPreviousScreen = screen;
+    if (!_InCity() && screen == SCREEN_OUTSIDE)
+        screen = _EnterPlace(cityIndex);
     _Show(screen);
 }
 
@@ -1754,6 +1788,8 @@ CityVisit::Choose(int option)
     if (fParty != NULL)
         AddPartyVariables(*fParty, fVariables);
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
+        if (fPreviousScreen < 0)
+            return false;				// a place not implemented: away
         _Show(fPreviousScreen, false);
         return true;
     }
@@ -2015,7 +2051,7 @@ CityVisit::Choose(int option)
             // size / 2 hours
             if (fClock != NULL) {
                 fClock->AddHours(uint32(rule.minutes == kHalfSize
-                    ? fData.Cities().CityAt(uint32(fCity)).size / 2
+                    ? _City().size / 2
                     : rule.minutes / 60));
             }
             fNewsReturn = rule.target;
@@ -2288,7 +2324,7 @@ CityVisit::_Show(int screen, bool withScene)
         const bool fugger = screen == SCREEN_FUGGER
             || screen == SCREEN_FUGGER_COLD || screen == SCREEN_FUGGER_REDEEMED
             || screen == SCREEN_FUGGER_DEPOSIT;
-        const uint16 number = fData.Cities().CityAt(uint32(fCity)).peopleSeed;
+        const uint16 number = _City().peopleSeed;
         fVariables["NamedOneName"] = _PersonName(uint16(number
             + (fugger ? 8 : screen == SCREEN_HANSE ? 7 : 6)));
     }
@@ -2345,7 +2381,7 @@ CityVisit::_Show(int screen, bool withScene)
     // before the walls: the card of the city's rule (file 0x942E0), and
     // what the party expects there
     if (screen == SCREEN_OUTSIDE) {
-        const int rule = fData.Cities().CityAt(uint32(fCity)).rule;
+        const int rule = _City().rule;
         if (rule == CITY_CAPITAL)
             screen = SCREEN_OUTSIDE_CAPITAL;
         else if (rule != CITY_RULED)
@@ -2432,7 +2468,7 @@ CityVisit::_Show(int screen, bool withScene)
 std::vector<int>
 CityVisit::_HiddenOptions(int screen) const
 {
-    const city& c = fData.Cities().CityAt(uint32(fCity));
+    const city& c = _City();
     std::vector<int> hidden;
     const screen_rules& rules = RulesFor(screen, fNight);
     for (int i = 0; i < kMaxOptions; i++) {
@@ -2502,6 +2538,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsTowerWelcome) {
+            hide = _Marked(0x26);
+        } else if (rule.needs == kNeedsTowerAllies) {
+            hide = !_EventHere(3, 5) && !_EventHere(3, 0x27);
         } else if (rule.needs == kNeedsFuggerTasks
                 || rule.needs == kNeedsMediciTasks) {
             hide = _PatronBusy(rule.needs == kNeedsFuggerTasks ? 8 : 6);
@@ -2598,6 +2638,43 @@ CityVisit::_HiddenOptions(int screen) const
 }
 
 
+// Arriving at a place (file 0x5E6C3): its location record's state
+// (+0x0C). The castles' is the robber knight's tower (0x93): named after
+// the castle (1367:0DB4(place + 1100, 0, 0)), his fort (card 24) where
+// his men (0E76:360C(3, 0x27, place)) have built one. Other places are
+// not implemented: back to the map.
+int
+CityVisit::_EnterPlace(int place)
+{
+    const location& l = fData.Locations().LocationAt(uint32(place));
+    if (l.enterState == 0x93) {
+        fVariables["NamedOneName"] = _PersonName(uint16(place + 1100));
+        return _EventHere(3, 0x27) ? SCREEN_FORT : SCREEN_TOWER;
+    }
+    fPreviousScreen = -1;
+    return SCREEN_NOT_IMPLEMENTED;
+}
+
+
+bool
+CityVisit::_InCity() const
+{
+    return fCity >= 0 && uint32(fCity) < fData.Cities().CountCities();
+}
+
+
+const city&
+CityVisit::_City() const
+{
+    static city sNoCity;
+    if (_InCity())
+        return fData.Cities().CityAt(uint32(fCity));
+    sNoCity = city();
+    sNoCity.size = 1;
+    return sNoCity;
+}
+
+
 // 1367:0DB4 adds the seed global to `seed`
 std::string
 CityVisit::_PersonName(uint16 seed)
@@ -2611,7 +2688,7 @@ CityVisit::_PersonName(uint16 seed)
 uint16
 CityVisit::_PeopleSeed() const
 {
-    return uint16(fData.Cities().CityAt(uint32(fCity)).peopleSeed + fSeed);
+    return uint16(_City().peopleSeed + fSeed);
 }
 
 
@@ -2640,7 +2717,7 @@ CityVisit::_Mass()
     // Compline); 99: none
     static const int kMassSize[9] = { 99, 99, 0, 5, 6, 7, 4, 6, 99 };
     static const int kNightMassSize[9] = { 99, 7, 0, 5, 99, 99, 4, 6, 99 };
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int bell = fClock->Hour() / 3 + 1;
     if (size < (night ? kNightMassSize : kMassSize)[bell]) {
         int next = 6;
@@ -2671,7 +2748,7 @@ CityVisit::_AltarBoy()
 {
     int next = 6;
     if (fClock != NULL) {
-        const int size = fData.Cities().CityAt(uint32(fCity)).size;
+        const int size = _City().size;
         switch (fClock->Hour() / 3 + 1) {
             case 1:
                 next = size >= 7 ? 0 : 6;
@@ -2776,7 +2853,7 @@ uint32
 CityVisit::InnPrice() const
 {
     const int reputation = _Reputation();
-    int price = fData.Cities().CityAt(uint32(fCity)).size + 1;
+    int price = _City().size + 1;
     if (reputation <= -10)
         price = price * 4 / 3;
     else if (reputation >= 50)
@@ -2885,7 +2962,7 @@ CityVisit::_PhysicianSkill()
     std::map<int, int>::const_iterator found = fPhysicianSkill.find(fCity);
     if (found != fPhysicianSkill.end())
         return found->second;
-    const city& c = fData.Cities().CityAt(uint32(fCity));
+    const city& c = _City();
     const int skill = (_PeopleSeed() % 10)
         * (c.size + int(fRandom() % 4) - 3);
     return fPhysicianSkill[fCity] = std::max(1, std::min(skill, 99));
@@ -3089,7 +3166,7 @@ CityVisit::_LeavePhysician(bool apologize)
 int
 CityVisit::_AlchemistSkill(bool withBonus) const
 {
-    const city& c = fData.Cities().CityAt(uint32(fCity));
+    const city& c = _City();
     int skill = c.size * 3 + (_PeopleSeed() + 4) % 41;
     if (withBonus && (c.flags & 0x100) != 0)
         skill += (_PeopleSeed() + 9) % 11 + 10;
@@ -3215,7 +3292,7 @@ CityVisit::_Mark(int kind, uint32 hours, bool extend)
 uint32
 CityVisit::_Bribe() const
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int each = std::max(4, size - _Reputation() / 10);
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     return uint32(std::max(each * count * 24, 48));
@@ -3227,7 +3304,7 @@ CityVisit::_Bribe() const
 uint32
 CityVisit::_Fine() const
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int florins = fParty != NULL ? fParty->cash.florins : 0;
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     return uint32(std::max(1, (size - _Reputation() / 50 + florins + 1) * count));
@@ -3386,7 +3463,7 @@ CityVisit::_GoToGate(bool byDay)
 uint32
 CityVisit::_Toll() const
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     return uint32((size / 3 + 1) * count);
 }
@@ -3550,7 +3627,7 @@ CityVisit::_NightBribe() const
     const int reputation = _Reputation();
     if (reputation < 0)
         return uint32((100 - reputation) / 33);
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     return uint32((size / 3 + 1) * count * 18 / 10);
 }
@@ -3638,7 +3715,7 @@ CityVisit::_BribeWatch()
 int
 CityVisit::_GoToWall(bool byDay)
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     if (fClock == NULL)
         return byDay ? SCREEN_DAY_WALL : SCREEN_NIGHT_WALL;
     if (byDay) {
@@ -3670,7 +3747,7 @@ CityVisit::_WallBribe() const
     const int reputation = _Reputation();
     if (reputation < 0)
         return uint32((100 - reputation) / 33);
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     return uint32((size / 3 + 1) * count * 14 / 10);
 }
@@ -3859,7 +3936,7 @@ CityVisit::_ForceGrate()
         if (_Reputation() > 0)
             _ChangeReputation(-4, -2);
         if (fClock != NULL)
-            fClock->AddHours(uint32(fData.Cities().CityAt(uint32(fCity)).size / 3));
+            fClock->AddHours(uint32(_City().size / 3));
         return SCREEN_SEWER;
     }
     _Mark(kMarkGrateFailed, 500);
@@ -4043,7 +4120,7 @@ CityVisit::_Challenge(int from)
 uint32
 CityVisit::_ChallengeBribe() const
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     int florins = size / 2;
     if (_Reputation() < 0)
         florins += std::abs(_Reputation() / 20);
@@ -4161,7 +4238,7 @@ CityVisit::_FightGuards()
 int
 CityVisit::_ResolveGuardBattle(int outcome)
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     int next = SCREEN_CHALLENGE_FLED;
     int hours = 1;
     if (outcome == BATTLE_WON) {
@@ -4619,7 +4696,7 @@ CityVisit::_Plead(bool guilty)
 int
 CityVisit::_CourtFine()
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int florins = std::max(1, int(fRandom() % 3) + size / 3);
     fVariables["Money1"] = MoneyText(uint32(florins) * 240);
     if (fParty != NULL && florins <= fParty->cash.florins) {
@@ -4827,7 +4904,7 @@ CityVisit::_HideChance() const
         stealth = std::min(stealth, int(fParty->members[size_t(i)].skills[kSkillStealth]));
     if (fClock != NULL && !IsGameDay(*fClock))
         stealth += 20;
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     return std::max(0, std::min(100, stealth + 3 * size));
 }
 
@@ -4927,7 +5004,7 @@ CityVisit::_FightPursuers()
 int
 CityVisit::_ResolveChaseBattle(int outcome)
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     int next = SCREEN_CHASE_FLED;
     int hours = 1;
     if (outcome == BATTLE_WON) {
@@ -5498,7 +5575,7 @@ CityVisit::_LeaveHorses()
 uint32
 CityVisit::_InnerWallBribe() const
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     const int count = fParty != NULL ? int(fParty->members.size()) : 1;
     int bribe = (size / 3 + 1) * count * 2;
     if (_Reputation() < 0)
@@ -5573,7 +5650,7 @@ CityVisit::_Sewer(bool horses)
     if (_Reputation() > 0)
         _ChangeReputation(-4, -2);
     if (fClock != NULL)
-        fClock->AddHours(uint32(fData.Cities().CityAt(uint32(fCity)).size / 3));
+        fClock->AddHours(uint32(_City().size / 3));
     return SCREEN_SEWER_BLOCKED;
 }
 
@@ -6151,11 +6228,11 @@ CityVisit::_BankTaskChance(int patron) const
 int
 CityVisit::_BankTasks(int patron)
 {
-    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int size = _City().size;
     fQuestPatron = patron;
     // the master banker (the city's number + 8, the Medici's + 6)
     fVariables["NamedOneName"] = _PersonName(uint16(
-        fData.Cities().CityAt(uint32(fCity)).peopleSeed + patron));
+        _City().peopleSeed + patron));
     if (int(fRandom() % 100) > _BankTaskChance(patron)) {
         _AddEvent(-2, int16(fCity), 0x5F, 7, int16(patron), 0, 0, 72, 0, 0);
         return patron == 6 ? SCREEN_MEDICI_BUSY : SCREEN_FUGGER_BUSY;
@@ -6177,7 +6254,7 @@ CityVisit::_OfferQuest()
         return SCREEN_NOT_IMPLEMENTED;
     }
     const int castle = _NearestCastle();
-    const uint16 number = fData.Cities().CityAt(uint32(fCity)).peopleSeed;
+    const uint16 number = _City().peopleSeed;
     const int patronSeed = number + (fQuestPatron == 6 ? 6 : 8);
     _HireAgainstRobber(fQuestPatron, castle, patronSeed, 12, 2, 0);
     fQuestPlace = castle;

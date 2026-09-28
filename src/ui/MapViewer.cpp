@@ -71,8 +71,8 @@ MapViewer::MapViewer(GameData& data)
     fCursorVisible(false),
     fSelectedCity(-1),
     fParty{ 0, 0 },
-    fDestinationCity(-1),
-    fCity(-1)
+    fDestinationPlace(-1),
+    fPlace(-1)
 {
     // load everything up front, so missing files are reported right away
     const WorldMap& map = fData.Map();
@@ -121,7 +121,7 @@ MapViewer::Run()
 int
 MapViewer::Run(GameWindow& window)
 {
-    fCity = -1;
+    fPlace = -1;
 
     bool quitting = false;
     bool dirty = true;
@@ -135,8 +135,8 @@ MapViewer::Run(GameWindow& window)
                 IsTraveling() ? kTickMilliseconds : 100) == 0) {
             // no event before the timeout: move the party on
             dirty = Tick();
-            if (fCity >= 0)
-                return fCity;
+            if (fPlace >= 0)
+                return fPlace;
             continue;
         }
         if (dirty) {
@@ -227,8 +227,8 @@ MapViewer::Run(GameWindow& window)
                     break;
             }
         } while (!quitting && SDL_PollEvent(&event));
-        if (fCity >= 0)
-            return fCity;
+        if (fPlace >= 0)
+            return fPlace;
     }
     return -1;
 }
@@ -239,8 +239,8 @@ MapViewer::SetPartyPosition(const map_position& position)
 {
     fParty = position;
     fPath.clear();
-    fDestinationCity = -1;
-    fCity = -1;
+    fDestinationPlace = -1;
+    fPlace = -1;
     fSelectedCity = -1;
     CenterOnParty();
 }
@@ -299,10 +299,9 @@ MapViewer::Clicked(const GFX::point& point)
         return;
 
     const GFX::point mapPoint = _ScreenToMap(point);
-    const int cityIndex = _CityAt(mapPoint);
-    if (cityIndex >= 0 && !IsTraveling()) {
-        const city& c = fData.Cities().CityAt(cityIndex);
-        _TravelTo(map_position{ c.x, c.y }, cityIndex);
+    const int place = _PlaceAt(mapPoint);
+    if (place >= 0 && !IsTraveling()) {
+        _TravelTo(_PlacePosition(place), place);
         return;
     }
     uint16 x, y;
@@ -315,7 +314,7 @@ void
 MapViewer::RightClicked(const GFX::point& point)
 {
     MouseMoved(point);
-    if (fCity >= 0 || !fMouseInside)
+    if (fPlace >= 0 || !fMouseInside)
         return;
     fSelectedCity = _CityAt(_ScreenToMap(point));
 }
@@ -330,7 +329,7 @@ MapViewer::Escape()
     }
     if (IsTraveling()) {
         fPath.clear();
-        fDestinationCity = -1;
+        fDestinationPlace = -1;
         return true;
     }
     return false;
@@ -349,8 +348,8 @@ MapViewer::Tick()
     fParty = fPath.front();
     fPath.erase(fPath.begin());
     _KeepPartyVisible();
-    if (fPath.empty() && fDestinationCity >= 0)
-        _EnterCity(fDestinationCity);
+    if (fPath.empty() && fDestinationPlace >= 0)
+        _EnterPlace(fDestinationPlace);
     return true;
 }
 
@@ -403,6 +402,54 @@ MapViewer::_CityAt(const GFX::point& mapPoint) const
 }
 
 
+// Index of the place of DARKLAND.LOC (the cities first) whose tile
+// center is nearest to mapPoint, or -1 if none is close enough; the
+// cities by their DARKLAND.CTY tile
+int
+MapViewer::_PlaceAt(const GFX::point& mapPoint) const
+{
+    const WorldMap& map = fData.Map();
+    const LocationFile& locations = fData.Locations();
+    int best = -1;
+    int bestDistance = kCityHitRadius * kCityHitRadius;
+    for (uint32 i = 0; i < locations.CountLocations(); i++) {
+        const map_position p = _PlacePosition(int(i));
+        if (p.x >= map.Width() || p.y >= map.Height())
+            continue;
+        const GFX::point center = map.TileCenter(p.x, p.y);
+        const int dx = center.x - mapPoint.x;
+        const int dy = center.y - mapPoint.y;
+        if (dx * dx + dy * dy < bestDistance
+                || (best < 0 && dx * dx + dy * dy == bestDistance)) {
+            best = int(i);
+            bestDistance = dx * dx + dy * dy;
+        }
+    }
+    return best;
+}
+
+
+std::string
+MapViewer::_PlaceName(int place) const
+{
+    if (place >= 0 && uint32(place) < fData.Cities().CountCities())
+        return fData.Cities().CityAt(uint32(place)).fullName;
+    return fData.Locations().LocationAt(uint32(place)).name;
+}
+
+
+map_position
+MapViewer::_PlacePosition(int place) const
+{
+    if (place >= 0 && uint32(place) < fData.Cities().CountCities()) {
+        const city& c = fData.Cities().CityAt(uint32(place));
+        return map_position{ c.x, c.y };
+    }
+    const location& l = fData.Locations().LocationAt(uint32(place));
+    return map_position{ l.x, l.y };
+}
+
+
 // Clamps in int before storing: GFX::point coordinates are 16-bit.
 void
 MapViewer::_SetOrigin(int x, int y)
@@ -415,27 +462,27 @@ MapViewer::_SetOrigin(int x, int y)
 }
 
 
-// Starts traveling to `destination`; `city` is the city there, or -1.
+// Starts traveling to `destination`; `place` is the place there, or -1.
 void
-MapViewer::_TravelTo(const map_position& destination, int city)
+MapViewer::_TravelTo(const map_position& destination, int place)
 {
     if (destination == fParty) {
         fPath.clear();
-        fDestinationCity = -1;
-        if (city >= 0)
-            _EnterCity(city);
+        fDestinationPlace = -1;
+        if (place >= 0)
+            _EnterPlace(place);
         return;
     }
-    fPath = FindPath(fData.Map(), fParty, destination, city >= 0);
-    fDestinationCity = fPath.empty() ? -1 : city;
+    fPath = FindPath(fData.Map(), fParty, destination, place >= 0);
+    fDestinationPlace = fPath.empty() ? -1 : place;
 }
 
 
 void
-MapViewer::_EnterCity(int city)
+MapViewer::_EnterPlace(int place)
 {
-    fCity = city;
-    fDestinationCity = -1;
+    fPlace = place;
+    fDestinationPlace = -1;
     fSelectedCity = -1;
 }
 
@@ -464,22 +511,22 @@ MapViewer::_DrawStatusBar()
     fBuffer->StrokeLine(0, top, kScreenWidth - 1, top, fGray);
 
     // the time on the left, then the tile under the mouse; the traveling
-    // destination or the city under the mouse on the right
+    // destination or the place under the mouse on the right
     int left = 3;
     if (fClock != NULL) {
         const std::string time = fClock->Describe();
         _DrawText(*fTextFont, time, left, top + 2, fYellow);
         left += fTextFont->StringWidth(Font::ToGameCharset(time)) + 10;
     }
-    if (fCity >= 0) {
-        _DrawText(*fTextFont, "In " + fData.Cities().CityAt(fCity).fullName,
-            left, top + 2, fWhite);
+    if (fPlace >= 0) {
+        _DrawText(*fTextFont, "In " + _PlaceName(fPlace), left, top + 2,
+            fWhite);
         return;
     }
     if (IsTraveling()) {
         std::string text = "Traveling";
-        if (fDestinationCity >= 0)
-            text += " to " + fData.Cities().CityAt(fDestinationCity).fullName;
+        if (fDestinationPlace >= 0)
+            text += " to " + _PlaceName(fDestinationPlace);
         const int width = fTextFont->StringWidth(Font::ToGameCharset(text));
         _DrawText(*fTextFont, text, kScreenWidth - 3 - width, top + 2, fYellow);
     }
@@ -493,9 +540,9 @@ MapViewer::_DrawStatusBar()
         text << x << "," << y << "  " << kTerrainNames[map.TileTypeAt(x, y) & 31];
         _DrawText(*fTextFont, text.str(), left, top + 2, fWhite);
     }
-    const int cityIndex = _CityAt(mapPoint);
-    if (cityIndex >= 0) {
-        const std::string name = fData.Cities().CityAt(cityIndex).fullName;
+    const int place = _PlaceAt(mapPoint);
+    if (place >= 0) {
+        const std::string name = _PlaceName(place);
         const int width = fTextFont->StringWidth(Font::ToGameCharset(name));
         _DrawText(*fTextFont, name, kScreenWidth - 3 - width, top + 2, fYellow);
     }

@@ -34,8 +34,9 @@ public:
     explicit		MapViewer(GameData& data);	// throws if data is missing
                     ~MapViewer();
 
-    // Runs until the party reaches a city: returns its index (the party
-    // is then in front of it, CurrentCity()), or -1 if the user quit.
+    // Runs until the party reaches a place of DARKLAND.LOC (a city, a
+    // castle...): returns its index (the party is then in front of it,
+    // CurrentPlace()), or -1 if the user quit.
     // The first version opens its own window.
     int				Run();
     int				Run(GameWindow& window);
@@ -57,7 +58,7 @@ public:
     void			MouseMoved(const GFX::point& point);
     // The mouse left the window: hides the cursor.
     void			MouseLeft();
-    // Left click: travel there (reaching the city, if it is one).
+    // Left click: travel there (reaching the place, if there is one).
     void			Clicked(const GFX::point& point);
     // Right click: the info panel of the city under the mouse.
     void			RightClicked(const GFX::point& point);
@@ -74,8 +75,8 @@ public:
     const map_position& PartyPosition() const	{ return fParty; }
     // Index of the city whose info panel is open, or -1.
     int				SelectedCity() const	{ return fSelectedCity; }
-    // Index of the city the party has reached, or -1 when on the map.
-    int				CurrentCity() const		{ return fCity; }
+    // Index of the place the party has reached, or -1 when on the map.
+    int				CurrentPlace() const		{ return fPlace; }
 
     // Draws the current view into the 320x200 buffer and returns it.
     Bitmap*			Draw();
@@ -83,9 +84,12 @@ public:
 private:
     GFX::point		_ScreenToMap(const GFX::point& point) const;
     int				_CityAt(const GFX::point& mapPoint) const;
+    int				_PlaceAt(const GFX::point& mapPoint) const;
+    std::string		_PlaceName(int place) const;
+    map_position	_PlacePosition(int place) const;
     void			_SetOrigin(int x, int y);
-    void			_TravelTo(const map_position& destination, int city);
-    void			_EnterCity(int city);
+    void			_TravelTo(const map_position& destination, int place);
+    void			_EnterPlace(int place);
     void			_KeepPartyVisible();
     void			_DrawStatusBar();
     void			_DrawCityPanel();
@@ -109,8 +113,8 @@ private:
 
     map_position	fParty;
     std::vector<map_position> fPath;	// tiles still to walk, in order
-    int				fDestinationCity;	// city at the end of fPath, or -1
-    int				fCity;				// city the party reached, or -1
+    int				fDestinationPlace;	// place at the end of fPath, or -1
+    int				fPlace;				// place the party reached, or -1
 
     uint8			fBlack;
     uint8			fWhite;

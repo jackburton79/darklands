@@ -95,7 +95,9 @@ include path: include headers by name (`#include "CityFile.h"`).
   card, scene, what each option does, which options need a place); a
   constructor check catches a miscounted table. `CardView` hides the
   cards' placeholder options itself. `MapViewer::Run()` returns
-  when the party reaches a city.
+  when the party reaches a place of DARKLAND.LOC; `CityVisit` also
+  runs the other places (the castles' robber knight's tower) from
+  SCREEN_OUTSIDE, by the location's enter state.
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
   same structure as `MapViewer`. `PartySidebar`: the character boxes.
   `InfoView`: the F6 party and F1..F5 character screens, opened from

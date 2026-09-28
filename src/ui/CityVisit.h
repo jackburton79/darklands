@@ -306,6 +306,8 @@ public:
         SCREEN_ROBBER_FUGGER,	// Medici), where his castle is (14)
         SCREEN_ROBBER_MEDICI,
         SCREEN_ROBBER_WHEREABOUTS,
+        SCREEN_TOWER,			// a castle: the robber knight's tower,
+        SCREEN_FORT,			// $RAUBI03 card 0, or his fort (24)
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -340,7 +342,8 @@ public:
                         { fEvents = events; fLocationFlags = locationFlags; }
 
     // Runs from `screen` in city `cityIndex` until the party leaves the
-    // city or the user quits.
+    // city or the user quits. Another place of DARKLAND.LOC (a castle...)
+    // starts from SCREEN_OUTSIDE, its arrival.
     result			Run(GameWindow& window, int cityIndex, int screen);
 
     // Step by step: Enter() shows a screen, Choose() takes an option of
@@ -579,6 +582,11 @@ private:
     // A man of the city named by the game (1367:0DB4) for `seed`
     std::string		_PersonName(uint16 seed);
     std::vector<int> _HiddenOptions(int screen) const;
+    // The city's record, or an empty one in another place (size 1)
+    const city&		_City() const;
+    bool			_InCity() const;
+    // The robber knight's tower (DARKLAND.EXE, state 0x93, file 0xFF716)
+    int				_EnterPlace(int place);
 
     GameData&		fData;
     CardView		fView;
