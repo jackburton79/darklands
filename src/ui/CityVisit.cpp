@@ -59,6 +59,13 @@ enum option_action {
     ACTION_TALK_TO_WATCH,
     ACTION_BRIBE_WATCH,
     ACTION_FALL_BACK,
+    ACTION_WALL_DAY,			// before the walls: the wall by day, at night
+    ACTION_WALL_NIGHT,
+    ACTION_BRIBE_WALL,			// the wall
+    ACTION_ROPE,
+    ACTION_CLIMB,
+    ACTION_GRATE,
+    ACTION_BACK_TO_WALL,		// the wall by day or at night, by the hour
     ACTION_WATCH_RETURN,		// on where paying the fine would lead
     ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
@@ -105,12 +112,22 @@ static const int kNeedsSlip			= -20;
 static const int kNeedsHail			= -21;
 static const int kNeedsTalk			= -22;
 static const int kNeedsNightBribe	= -23;
+// or the wall: its bribe in the purse; a rope, or none; no failed climb
+// this stay, no alarm; no failed try at the sewer's grate lately
+static const int kNeedsWallBribe	= -24;
+static const int kNeedsRope			= -25;
+static const int kNeedsNoRope		= -26;
+static const int kNeedsClimb		= -27;
+static const int kNeedsGrate		= -28;
+static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
 static const int kMarkCharmFailed	= 0x0A;	// the gate's guards
 static const int kMarkSlipFailed	= 0x0B;
 static const int kMarkHailFailed	= 0x0C;	// the gate at night
 static const int kMarkTalkFailed	= 0x0D;
+static const int kMarkWallAlert		= 0x0F;	// the wall by day: guarded
+static const int kMarkGrateFailed	= 0x10;
 static const int kMarkWanted		= 0x11;	// by the gate (inferred)
 static const int kMarkAlert			= 0x12;	// the gate's guards nervous
 static const int kMarkGuarded		= 0x17;	// the market is watched
@@ -192,7 +209,8 @@ struct screen_rules {
 #define OUTSIDE_OPTIONS { \
         DO(ACTION_GATE_DAY),				/* the main gate by day */ \
         DO(ACTION_GATE_NIGHT),				/* at night */ \
-        TODO, TODO,							/* the wall by day, at night */ \
+        DO(ACTION_WALL_DAY),				/* the wall by day */ \
+        DO(ACTION_WALL_NIGHT),				/* at night */ \
         LEAVE								/* travel elsewhere */ \
     }
 #define DAY_GATE_OPTIONS { \
@@ -676,6 +694,42 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYG00", 5, NULL, { GO(SCREEN_SIDE_STREET) } },
     // "You retire to a quiet corner of the woods near the gate..."
     { "CITYG00", 12, NULL, { GO(SCREEN_OUTSIDE) } },
+    // "You stare glumly at the least-guarded section of $PlaceName's
+    // walls." (state 0xE, file 0x99AEC)
+    { "CITYW00", 0, NULL, {
+        DO_IF(ACTION_BRIBE_WALL, kNeedsWallBribe),	// $Money1 at a door
+        { ACTION_ROPE, 0, kNeedsRope, 0 },	// $ChosenOneName and a rope
+        { ACTION_CLIMB, 0, kNeedsNoRope, 0 },	// everybody, no rope
+        TODO, TODO,							// potion, saint
+        GO(SCREEN_OUTSIDE)					// fall back
+    } },
+    // "You finish your examination at night... wait until dawn"
+    { "CITYE00", 3, NULL, { GO(SCREEN_DAY_WALL) } },
+    { "CITYW00", 1, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW00", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW00", 4, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    { "CITYW00", 11, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW00", 12, NULL, { GO(SCREEN_DAY_WALL_HELP) } },
+    { "CITYW00", 13, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    { "CITYW00", 12, NULL, { DO(ACTION_BACK_TO_WALL) } },	// nobody up
+    // "Dark masses of stone loom over you." (state 0xF, file 0x9A7E0)
+    { "CITYW01", 0, NULL, {
+        { ACTION_ROPE, 0, kNeedsRope, 0 },
+        { ACTION_CLIMB, 0, kNeedsClimb, 0 },
+        DO_IF(ACTION_GRATE, kNeedsGrate),	// force a sewer grate
+        TODO, TODO,							// potion, saint
+        GO(SCREEN_OUTSIDE)					// fall back
+    } },
+    // "It's broad daylight when you finish... wait until dark"
+    { "CITYE00", 4, NULL, { GO(SCREEN_NIGHT_WALL) } },
+    { "CITYW01", 1, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW01", 2, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    { "CITYW01", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW01", 11, NULL, { GO(SCREEN_NIGHT_WALL_HELP) } },
+    { "CITYW01", 12, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    { "CITYW01", 11, NULL, { DO(ACTION_BACK_TO_WALL) } },	// nobody up
+    { "CITYW01", 4, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW01", 5, NULL, { DO(ACTION_BACK_TO_WALL) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -920,7 +974,26 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
-    { NULL, 0, NULL, {} },					// before the walls, the gates
+    { NULL, 0, NULL, {} },					// before the walls, the gates,
+    { NULL, 0, NULL, {} },					// the walls
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
@@ -1024,7 +1097,8 @@ CityVisit::CityVisit(GameData& data)
     fStoneOffered(false),
     fWatchReturn(SCREEN_NOT_IMPLEMENTED),
     fPendingBattle(false),
-    fPartyLost(false)
+    fPartyLost(false),
+    fWallFailed(false)
 {
     // every screen has a day card (a miscounted table would leave some
     // zero-filled), and the decks load: missing files show up right away
@@ -1288,6 +1362,29 @@ CityVisit::Choose(int option)
         case ACTION_BRIBE_WATCH:
             _Show(_BribeWatch());
             return true;
+        case ACTION_WALL_DAY:
+            _Show(_GoToWall(true));
+            return true;
+        case ACTION_WALL_NIGHT:
+            _Show(_GoToWall(false));
+            return true;
+        case ACTION_BRIBE_WALL:
+            _Show(_BribeWall());
+            return true;
+        case ACTION_ROPE:
+            _Show(_ClimbWithRope(fScreen == SCREEN_DAY_WALL));
+            return true;
+        case ACTION_CLIMB:
+            _Show(_ClimbAlone(fScreen == SCREEN_DAY_WALL));
+            return true;
+        case ACTION_GRATE:
+            _Show(_ForceGrate());
+            return true;
+        case ACTION_BACK_TO_WALL:
+            // states 0xE or 0xF by 1367:072A
+            _Show(fClock == NULL || IsGameDay(*fClock) ? SCREEN_DAY_WALL
+                : SCREEN_NIGHT_WALL);
+            return true;
         case ACTION_FALL_BACK:
             // file 0x93BF2: card 12, an hour, before the walls
             if (fClock != NULL)
@@ -1414,6 +1511,7 @@ CityVisit::AddPartyVariables(const party& members, card_variables& variables)
 void
 CityVisit::_Show(int screen, bool withScene)
 {
+    const int previous = fScreen;
     fScreen = screen;
     fNight = fClock != NULL && fClock->IsNight();
     if (fClock != NULL) {
@@ -1521,6 +1619,22 @@ CityVisit::_Show(int screen, bool withScene)
     if (screen == SCREEN_NIGHT_GATE || screen == SCREEN_NIGHT_GATE_ALERTED
             || screen == SCREEN_NIGHT_GATE_BRIBED)
         fVariables["Money1"] = MoneyText(_NightBribe());
+    // the wall: its bribe; a failed climb holds for this stay only (the
+    // handler's disabled options), a new one begins before the walls or
+    // when the day turns to night and back
+    if (screen == SCREEN_DAY_WALL || screen == SCREEN_DAY_WALL_BRIBED)
+        fVariables["Money1"] = MoneyText(_WallBribe());
+    if (screen == SCREEN_OUTSIDE || screen == SCREEN_OUTSIDE_CAPITAL
+            || screen == SCREEN_OUTSIDE_FREE
+            || (screen == SCREEN_DAY_WALL && previous != SCREEN_DAY_WALL_FALL
+                && previous != SCREEN_DAY_WALL_HELP
+                && previous != SCREEN_DAY_WALL_SLIP_ALONE)
+            || (screen == SCREEN_NIGHT_WALL
+                && previous != SCREEN_NIGHT_WALL_FALL
+                && previous != SCREEN_NIGHT_WALL_HELP
+                && previous != SCREEN_NIGHT_WALL_SLIP_ALONE
+                && previous != SCREEN_SEWER_STUCK))
+        fWallFailed = false;
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
         screen = SCREEN_FUGGER_COLD;
@@ -1603,6 +1717,27 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkHailFailed);
         } else if (rule.needs == kNeedsTalk) {
             hide = _Marked(kMarkTalkFailed);
+        } else if (rule.needs == kNeedsWallBribe) {
+            hide = fParty == NULL
+                || TotalPfennigs(fParty->cash) < _WallBribe();
+        } else if (rule.needs == kNeedsRope || rule.needs == kNeedsNoRope
+                || rule.needs == kNeedsClimb) {
+            // 0E76:0C76(-2, 0x3B): a rope (item 59) in the party
+            bool rope = false;
+            if (fParty != NULL) {
+                for (const character& member : fParty->members) {
+                    for (const item& carried : member.items)
+                        rope = rope || (carried.code & 0x0FFF) == kRopeCode;
+                }
+            }
+            const bool day = fScreen == SCREEN_DAY_WALL;
+            hide = fWallFailed || (day && _Marked(kMarkWallAlert));
+            if (rule.needs == kNeedsRope)
+                hide = hide || !rope;
+            else if (rule.needs == kNeedsNoRope)
+                hide = hide || rope;
+        } else if (rule.needs == kNeedsGrate) {
+            hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsNightBribe) {
             hide = fParty == NULL
                 || TotalPfennigs(fParty->cash) < _NightBribe();
@@ -2664,6 +2799,242 @@ CityVisit::_BribeWatch()
     if (fClock != NULL)
         fClock->AddHours(1);
     return SCREEN_NIGHT_GATE_BRIBED;
+}
+
+
+// To the wall (file 0x944E6, 0x9457A): searching for the best spot
+// takes city size / 2 + 1 hours by day (card 3 and a wait for dawn if
+// the night came meanwhile), size / 2 + 2 at night (the game waits for
+// midnight when it is before it, card 4 by day)
+int
+CityVisit::_GoToWall(bool byDay)
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    if (fClock == NULL)
+        return byDay ? SCREEN_DAY_WALL : SCREEN_NIGHT_WALL;
+    if (byDay) {
+        fClock->AddHours(uint32(size / 2 + 1));
+        if (IsGameDay(*fClock))
+            return SCREEN_DAY_WALL;
+        const int now = fClock->Hour() * 60 + fClock->Minute();
+        fClock->AddMinutes(uint32((7 * 60 - now + 24 * 60) % (24 * 60)));
+        return SCREEN_WALL_DAWN;
+    }
+    const int hours = size / 2 + 2;
+    const int hour = fClock->Hour();
+    if (hour + hours <= 24 && hour != 0) {
+        const int now = hour * 60 + fClock->Minute();
+        fClock->AddMinutes(uint32(24 * 60 - now));
+        return SCREEN_WALL_DUSK;
+    }
+    fClock->AddHours(uint32(hours));
+    return SCREEN_NIGHT_WALL;
+}
+
+
+// The wall's bribe (file 0x99C1E): (city size / 3 + 1) · the party's
+// size · 14 / 10 pfennigs, or (100 - reputation) / 33 for a negative
+// reputation, as at the gate by night
+uint32
+CityVisit::_WallBribe() const
+{
+    const int reputation = _Reputation();
+    if (reputation < 0)
+        return uint32((100 - reputation) / 33);
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    const int count = fParty != NULL ? int(fParty->members.size()) : 1;
+    return uint32((size / 3 + 1) * count * 14 / 10);
+}
+
+
+// A climber's score (file 0x99BCE): (2 · speed + Stealth) / 2, the speed
+// being the agility (the load is not kept)
+int
+CityVisit::_ClimberScore(int member) const
+{
+    const character& c = fParty->members[size_t(member)];
+    return (2 * c.attributes[ATTRIBUTE_AGILITY] + c.skills[kSkillStealth]) / 2;
+}
+
+
+// The best climber from `first` on (file 0x99BB9, 0x9A87C), the first
+// member being the default
+int
+CityVisit::_BestClimber(int first) const
+{
+    int best = 0;
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    int score = _ClimberScore(0);
+    for (int i = first; i < int(fParty->members.size()); i++) {
+        if (_ClimberScore(i) > score) {
+            score = _ClimberScore(i);
+            best = i;
+        }
+    }
+    return best;
+}
+
+
+// Climbing alone's chance (file 0x9A210): the weakest climber's score
+int
+CityVisit::_WeakestClimber() const
+{
+    int weakest = 0;
+    if (fParty == NULL)
+        return 0;
+    for (int i = 1; i < int(fParty->members.size()); i++) {
+        if (_ClimberScore(i) < _ClimberScore(weakest))
+            weakest = i;
+    }
+    return weakest;
+}
+
+
+// The strongest member (file 0x9AF58), who tries the sewer's grate
+int
+CityVisit::_Strongest() const
+{
+    int strongest = 0;
+    if (fParty == NULL)
+        return 0;
+    for (int i = 1; i < int(fParty->members.size()); i++) {
+        if (fParty->members[size_t(i)].attributes[ATTRIBUTE_STRENGTH]
+                > fParty->members[size_t(strongest)].attributes[ATTRIBUTE_STRENGTH])
+            strongest = i;
+    }
+    return strongest;
+}
+
+
+// A fall (1462:026A(member, 0, 1, 10), file 0x80C0A): Strength loses
+// random(10 · Strength / 40 + 1) - 1, at least 0; Endurance random(10 ·
+// Endurance / 20 + 1) - 1, at least that and at least 1; neither more
+// than the attribute's maximum (0E76:0B64); AddToAttribute() keeps them
+// at 1 at least
+void
+CityVisit::_Fall(int member)
+{
+    character& c = fParty->members[size_t(member)];
+    const int strength = c.attributes[ATTRIBUTE_STRENGTH];
+    int lost = int(fRandom() % uint32(10 * strength / 40 + 1)) - 1;
+    lost = std::min(std::max(lost, 0), int(c.maxAttributes[ATTRIBUTE_STRENGTH]));
+    AddToAttribute(c, ATTRIBUTE_STRENGTH, -lost);
+    const int endurance = c.attributes[ATTRIBUTE_ENDURANCE];
+    int wounds = int(fRandom() % uint32(10 * endurance / 20 + 1)) - 1;
+    wounds = std::min(std::max(std::max(wounds, lost), 1),
+        int(c.maxAttributes[ATTRIBUTE_ENDURANCE]));
+    AddToAttribute(c, ATTRIBUTE_ENDURANCE, -wounds);
+}
+
+
+// Bribing a guard at a door (file 0x99E76): paid, card 1, an hour, the
+// side streets
+int
+CityVisit::_BribeWall()
+{
+    if (fParty != NULL)
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) - _WallBribe());
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_DAY_WALL_BRIBED;
+}
+
+
+// Up the rope (file 0x99F0E, 0x9AAC4): the best climber
+// ($ChosenOneName) climbs if random(100) is under his score: card 3 (1
+// at night), a lesson in Stealth for him, an hour, the side streets;
+// else he falls (card 4, or 2), a lesson of mode 0 (not reproduced), an
+// hour, and no more climbing this stay
+int
+CityVisit::_ClimbWithRope(bool byDay)
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_OUTSIDE;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    // by day the game looks from the first member, at night from the
+    // second with the first as the default: the same one
+    const int climber = _BestClimber(1);
+    _SetChosen(climber);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (random(100) < _ClimberScore(climber)) {
+        TrainSkill(fParty->members[size_t(climber)], kSkillStealth, 10, random);
+        return byDay ? SCREEN_DAY_WALL_ROPE : SCREEN_NIGHT_WALL_ROPE;
+    }
+    _Fall(climber);
+    fWallFailed = true;
+    return byDay ? SCREEN_DAY_WALL_FALL : SCREEN_NIGHT_WALL_FALL;
+}
+
+
+// Everybody climbing alone (file 0x9A024, 0x9ABD4): if random(100) is
+// under the weakest one's score, all are up (card 11, 3 at night), a
+// lesson in Stealth for all, an hour, the side streets; else each whose
+// score is at most that roll falls (card 12, 11 at night; hurt as by
+// _Fall()), those up come back down to help (card 13, 12), an hour, and
+// no more climbing this stay. The game shows the card of every fallen
+// and every climber; here the first fallen's, and one for those up.
+int
+CityVisit::_ClimbAlone(bool byDay)
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_OUTSIDE;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    const int weakest = _WeakestClimber();
+    const int roll = random(100);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (roll < _ClimberScore(weakest)) {
+        TrainParty(*fParty, kSkillStealth, 7, 10, random);
+        return byDay ? SCREEN_DAY_WALL_CLIMBED : SCREEN_NIGHT_WALL_CLIMBED;
+    }
+    int fallen = -1;
+    int up = -1;
+    for (int i = 0; i < int(fParty->members.size()); i++) {
+        if (_ClimberScore(i) <= roll) {
+            _Fall(i);
+            if (fallen < 0)
+                fallen = i;
+        } else if (up < 0)
+            up = i;
+    }
+    fWallFailed = true;
+    _SetChosen(fallen >= 0 ? fallen : weakest);
+    if (up < 0)
+        return byDay ? SCREEN_DAY_WALL_SLIP_ALONE : SCREEN_NIGHT_WALL_SLIP_ALONE;
+    return byDay ? SCREEN_DAY_WALL_SLIP : SCREEN_NIGHT_WALL_SLIP;
+}
+
+
+// The sewer's grate (file 0x9AE3A): the strongest ($ChosenOneName) loses
+// 3 Endurance; if random(100) is under 1.6 · his Strength (file
+// 0x9AF58): card 4, a positive local reputation falls by 2..4 (the
+// smell?), city size / 3 hours, the side streets; else card 5, an hour,
+// and a mark 0x10 made by 0E76:2D5C(..., 0x10, 3, 99...) (taken as 3
+// hours without trying again)
+int
+CityVisit::_ForceGrate()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_OUTSIDE;
+    const int strongest = _Strongest();
+    character& c = fParty->members[size_t(strongest)];
+    _SetChosen(strongest);
+    AddToAttribute(c, ATTRIBUTE_ENDURANCE, -3);
+    if (int(fRandom() % 100) < c.attributes[ATTRIBUTE_STRENGTH] * 16 / 10) {
+        if (_Reputation() > 0)
+            _ChangeReputation(-4, -2);
+        if (fClock != NULL)
+            fClock->AddHours(uint32(fData.Cities().CityAt(uint32(fCity)).size / 3));
+        return SCREEN_SEWER;
+    }
+    _Mark(kMarkGrateFailed, 3);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_SEWER_STUCK;
 }
 
 

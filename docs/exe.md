@@ -410,8 +410,54 @@ coming from the map the party stands before the walls. **verified**
   - potion (file 0x939EC), saint (0x93B24): not decoded; *fall back*
     (0x93BF2): card 12 of one of two decks at random, an hour, before
     the walls.
-- Reproduced in `CityVisit`: before the walls, the waits, the gates but
-  for their potion, saint and attack options. The speed is the agility (the load is not kept); state 1
+- **The wall by day** (state 0xE, $CITYW00, file 0x99AEC; actions
+  through a switch at file 0x99DD9): the bribe is (size / 3 + 1) · the
+  party's size · 14 / 10 pfennigs, or (100 − reputation) / 33 for a
+  negative reputation; not offered without it. "Climb with a rope" is
+  offered when the party has item 59, the rope (0E76:0C76(−2, 0x3B)
+  counts it by the item code), "everybody climbs" when it has none and
+  nobody has status 2 or 3 (0E76:1972); mark 0x0F takes the climbs away.
+  The climber ($ChosenOneName) is the member with the best (2 · speed,
+  0E76:06DE, + Stealth) / 2.
+  - *bribe* (file 0x99E76): paid, card 1, an hour, the side streets;
+  - *the rope* (file 0x99F0E): if random(100) < the climber's score:
+    card 3, a lesson in Stealth for him (1462:0132 mode 7), an hour, the
+    side streets; else card 4, a fall (1462:026A), a lesson of mode 0,
+    an hour, and both climbs gone for this stay (the handler's options),
+    the wall again (state 0xE or 0xF by the hour);
+  - *everybody climbs* (file 0x9A024; chance: the weakest member's
+    score, file 0x9A210): random(100) < it, card 11, a lesson in Stealth
+    for all, an hour, the side streets; else every member whose score
+    is at most that roll falls (card 12 with his name, a fall, a lesson
+    of mode 2), the others a lesson of mode 5 and card 13 each (back down
+    to help), an hour, both climbs gone;
+  - potion (file 0x9A272), saint (0x9A392): not decoded; *fall back*
+    (0x9A476): before the walls, no time.
+- **A fall** (1462:026A(member, 0, 1, 10), the training overlay at file
+  0x809A0): Strength loses random(10 · Strength / 40 + 1) − 1, at least
+  0; Endurance random(10 · Endurance / 20 + 1) − 1, at least that and at
+  least 1; neither more than the attribute's maximum (0E76:0B64); the
+  attribute is changed by 0E76:0A72, so it stays at 1 at least.
+- **The wall at night** (state 0xF, $CITYW01, file 0x9A7E0; switch at
+  0x9AA35): the rope needs item 59, everybody climbs needs 0E76:1972,
+  the sewer grate is taken away by mark 0x10. The climber is chosen
+  from the second member on, the first being the default.
+  - *the rope* (file 0x9AAC4) and *everybody climbs* (0x9ABD4): as by
+    day with cards 1, 2 and 3, 11, 12;
+  - *the sewer grate* (file 0x9AE3A): the strongest member
+    ($ChosenOneName, 0E76:05EE(m, 1)) loses 3 Endurance; if random(100)
+    < 16 · his Strength / 10 (file 0x9AF58): card 4, a positive local
+    reputation falls by 2..4 (0E76:19D0(−2, −4)), size / 3 hours, the
+    side streets; else 0E76:2D5C(member, location, 0, 0x10, 3, 99, ...)
+    (a mark 0x10; its length is not decoded), card 5, an hour, the wall;
+  - potion (0x9AFAE), saint (0x9B0C4): not decoded; *fall back*
+    (0x9B1D6): before the walls, no time.
+- Reproduced in `CityVisit`: before the walls, the waits, the gates and
+  the walls but for their potion, saint and attack options. Not
+  reproduced: the lessons of modes 0, 2, 5 (TrainSkill() has mode 1),
+  the cards of every fallen and climber after a failed climb (one of
+  each is shown), the grate's mark length (taken as 3 hours), the
+  statuses of 0E76:1972. The speed is the agility (the load is not kept); state 1
   (the challenge) and the walls are not implemented.
 
 ## The alchemist

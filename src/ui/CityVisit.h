@@ -145,6 +145,25 @@ public:
         SCREEN_NIGHT_GATE_TALKED,	// bribed (5), falling back (12)
         SCREEN_NIGHT_GATE_BRIBED,
         SCREEN_NIGHT_GATE_RETIRED,
+        SCREEN_DAY_WALL,		// the wall by day: $CITYW00 card 0,
+        SCREEN_WALL_DAWN,		// having searched until night, the wait
+        SCREEN_DAY_WALL_BRIBED,	// for dawn ($CITYE00 3); bribed (1),
+        SCREEN_DAY_WALL_ROPE,	// up the rope (3) or fallen (4), all up
+        SCREEN_DAY_WALL_FALL,	// (11) or one fallen (12) and the others
+        SCREEN_DAY_WALL_CLIMBED,	// back down (13)
+        SCREEN_DAY_WALL_SLIP,
+        SCREEN_DAY_WALL_HELP,
+        SCREEN_DAY_WALL_SLIP_ALONE,	// (12 when nobody is up)
+        SCREEN_NIGHT_WALL,		// the wall at night: $CITYW01 card 0,
+        SCREEN_WALL_DUSK,		// the wait for the night ($CITYE00 4);
+        SCREEN_NIGHT_WALL_ROPE,	// up the rope (1) or fallen (2), all up
+        SCREEN_NIGHT_WALL_FALL,	// (3) or one fallen (11) and the others
+        SCREEN_NIGHT_WALL_CLIMBED,	// back down (12), through the sewer
+        SCREEN_NIGHT_WALL_SLIP,	// (4) or not (5)
+        SCREEN_NIGHT_WALL_HELP,
+        SCREEN_NIGHT_WALL_SLIP_ALONE,
+        SCREEN_SEWER,
+        SCREEN_SEWER_STUCK,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -269,6 +288,17 @@ private:
     int				_HailWatch();
     int				_TalkToWatch();
     int				_BribeWatch();
+    int				_GoToWall(bool byDay);
+    uint32			_WallBribe() const;
+    int				_ClimberScore(int member) const;
+    int				_BestClimber(int first) const;
+    int				_WeakestClimber() const;
+    int				_Strongest() const;
+    void			_Fall(int member);
+    int				_BribeWall();
+    int				_ClimbWithRope(bool byDay);
+    int				_ClimbAlone(bool byDay);
+    int				_ForceGrate();
     void			_ChangeReputation(int low, int high);
     void			_RunBattle(GameWindow& window);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
@@ -326,6 +356,7 @@ private:
     int				fWatchReturn;	// where paying the fine leads
     bool			fPendingBattle;
     bool			fPartyLost;
+    bool			fWallFailed;	// this stay at the wall: climbing failed
     std::vector<cache_item> fLoot;
     std::unique_ptr<ExeData> fNames;
 };
