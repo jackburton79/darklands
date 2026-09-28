@@ -562,8 +562,8 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     in ten the magistrate;
   - *wait* (file 0x995A2): until 13 o'clock (1367:0716), then the
     magistrate if random(100) <= 11;
-  - saint (file 0x9932A), acid (0x99638: an Eater Water used, clubs,
-    card 24, the guardroom): not reproduced.
+  - saint (file 0x9932A): see "Saints"; acid (0x99638: an Eater Water
+    used, clubs, card 24, the guardroom): not reproduced.
 - **The magistrate** (state 0x8C, $MAGIS00, file 0xFB4A0): card 1
   instead of 0 after a torture (DS:8E14, reset on entry). Pleading
   and confessing call 0E76:3CDE(0x11, ...) (the wanted mark lifted,
@@ -636,6 +636,50 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     the dungeon;
   - *leave* (file 0xF6C64): the dungeon.
   Reproduced in `CityVisit` but for bit 0x40 (not kept: 0).
+
+## Saints
+
+- **The rules** (**verified**, code; `ExeData::Saints()`, `darklands
+  --saints`): a far pointer per saint at 290E:2937 (136) to an RTLink
+  thunk into segment 165C of overlay 0x27 (file 0x82940, the overlay of
+  1462 at 0x809A0). Each function takes (member, value, mode): modes
+  0..6 return a word of a table it fills on the stack: 0 flags (bits
+  1 and 2 tested by the saint screen), 1 a kind (0..9), 2 the divine
+  favor it costs, 3 a number 50..99 (not known; not used by mode 7), 4
+  the Virtue it needs, 5 the chance's base, 6 always 1; mode 7 is the
+  chance, 165C:0000(base, Virtue, needed Virtue, value, cost, 0) (file
+  0x82940): 0 if the Virtue is under the needed one or the value under
+  the cost, else base + (Virtue − needed) / 2 − cost + 0 + value; the
+  caller passes the cost as the value when the member's divine favor
+  (attribute 6) is at least the cost, else 0, so the chance is base +
+  (Virtue − needed) / 2, or 0. Mode 8 is the saint's own effect (e.g.
+  St. Adrian: attributes and all weapon skills up for a while,
+  0E76:4C04, 4B08), different for each saint.
+- **A card's saints**: each state's handler puts up to four saints in
+  DS:EE4B (−1: none; its potions in DS:EE43). The saint option
+  (150B:168C) is available when a member standing knows one of them
+  (0E76:1260). Choosing it (file 0x8E252) replaces the card's text
+  with a line per member and per card's saint he knows; the line's
+  value gives the member (DS:EE6C) and the saint's place in the list
+  (DS:EE6A), and the handler's saint function calls 0E76:2180(member,
+  saint) = 1462:0000(member, saint, 1) of overlay 0x22 (file 0x6B7D0):
+  the saint's screen (file 0x6B9FC: its picture and description from
+  DARKLAND.SNT, where one may give up: −1), then if random(100) <= the
+  chance, mode 8 and the divine favor − the cost (1); else the favor −
+  the cost, and − half of it more if random(99) < chance − 66 (0).
+- **DARKLAND.SNT**: a count byte (136) and 136 records of 360 bytes,
+  the saints' descriptions (NUL-padded). **verified** (1 + 136 · 360 =
+  48961, the file's size)
+- Reproduced in `CityVisit`: the option, the list (with a line to give
+  up), the chance and the favor. Not reproduced: the saint's screen,
+  the saints' own effects (mode 8), the meaning of mode 3. The
+  dungeon's saints (file 0x9932A; list at file 0x9896E): St.
+  Bathildis (card 7: half the purse, the square), St. Dismas and St.
+  Peter (card 19, the reputation −1..−8, the square), then by the cell
+  St. Reinold (card 20, the side streets), St. Lucy (card 3, the lit
+  cell; nothing in it already), St. Jude (card 21, the reputation
+  +2..+7, the square); three hours; no answer, card 23 and three hours
+  more.
 
 ## The chase
 

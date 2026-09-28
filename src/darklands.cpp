@@ -8,12 +8,14 @@
 #include "CityLabels.h"
 #include "CityVisit.h"
 #include "EnemyFile.h"
+#include "ExeData.h"
 #include "Game.h"
 #include "GameData.h"
 #include "GraphicsDefs.h"
 #include "GraphicsEngine.h"
 #include "ImcFile.h"
 #include "ImgFile.h"
+#include "ListFile.h"
 #include "LocationFile.h"
 #include "MsgFile.h"
 #include "PICImage.h"
@@ -119,6 +121,33 @@ DumpEnemies(const EnemyFile& enemies)
             << e.name << std::right << "  type " << std::setw(2) << e.type
             << " (" << enemies.TypeAt(e.type).name << ")  flags 0x"
             << std::hex << e.flags << std::dec << std::endl;
+    }
+}
+
+
+// The saints' rules from DARKLAND.EXE, and who knows them in the
+// party of CHARACTR.TMP
+static void
+DumpSaints(GameData& data)
+{
+    const ExeData exe(data.PathFor("DARKLAND.EXE"));
+    const std::vector<std::string>& names = data.Lists().Saints();
+    const party members = CharacterFile(data.PathFor("CHARACTR.TMP")).Party();
+    const std::vector<exe_saint>& saints = exe.Saints();
+    for (size_t i = 0; i < saints.size(); i++) {
+        const exe_saint& s = saints[i];
+        std::cout << std::setw(3) << i << "  " << std::left << std::setw(20)
+            << (i < names.size() ? names[i] : "?") << std::right
+            << "  flags 0x" << std::hex << s.flags << std::dec
+            << "  kind " << s.kind << "  cost " << std::setw(2) << s.cost
+            << "  virtue " << std::setw(2) << s.minVirtue
+            << "  base " << std::setw(2) << s.base
+            << "  (" << s.unknown3 << ", " << s.unknown6 << ")";
+        for (const character& member : members.members) {
+            if (KnowsSaint(member, int(i)))
+                std::cout << "  " << member.shortName;
+        }
+        std::cout << std::endl;
     }
 }
 
@@ -458,6 +487,7 @@ Usage()
         "  --locations                   list DARKLAND.LOC\n"
         "  --cities                      list DARKLAND.CTY\n"
         "  --enemies                     list DARKLAND.ENM\n"
+        "  --saints                      list the saints' rules (DARKLAND.EXE)\n"
         "  --battlemap <name>            dump a battlefield map of IMAPS.CAT\n"
         "                                (e.g. ICITY.000)\n"
         "  --battle <name> [enemy] [save]\n"
@@ -506,6 +536,10 @@ int main(int argc, char **argv)
             return DoMapMode(data, extra > 0 ? argv[arg + 1] : "map");
         if (command == "--cities") {
             DumpCities(data.Cities());
+            return 0;
+        }
+        if (command == "--saints") {
+            DumpSaints(data);
             return 0;
         }
         if (command == "--enemies") {

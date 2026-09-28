@@ -52,6 +52,20 @@ struct exe_weapon {
     uint8 range;				// missiles only
 };
 
+// A saint's rules (DARKLAND.EXE: one function per saint, 165C:xxxx of
+// overlay 0x27, listed at 290E:2937; its first seven values answer the
+// modes 0..6): the divine favor an invocation costs, the Virtue it
+// needs, the chance's base. The meaning of the others is not known.
+struct exe_saint {
+    uint16 flags;				// mode 0; bits 0x01, 0x02 are tested
+    uint16 kind;				// mode 1, 0..9
+    uint16 cost;				// mode 2: divine favor
+    uint16 unknown3;			// mode 3: 50..99
+    uint16 minVirtue;			// mode 4
+    uint16 base;				// mode 5: the chance's base
+    uint16 unknown6;			// mode 6: always 1
+};
+
 class ExeData {
 public:
     explicit		ExeData(const std::string& exePath);	// throws on error
@@ -65,6 +79,7 @@ public:
     const std::vector<std::string>& Surnames() const	{ return fSurnames; }
     const std::vector<exe_job>& Jobs() const	{ return fJobs; }
     const std::vector<exe_weapon>& Weapons() const	{ return fWeapons; }
+    const std::vector<exe_saint>& Saints() const	{ return fSaints; }
     // The strength of an armor, by item type (0 for none; 67..84 the
     // armors, 85..91 the monsters' hides)
     int				ArmorStrength(int type) const;
@@ -75,6 +90,7 @@ private:
     std::vector<std::string>	fSurnames;
     std::vector<exe_job>		fJobs;
     std::vector<exe_weapon>		fWeapons;
+    std::vector<exe_saint>		fSaints;
     std::vector<uint8>			fArmor;
 };
 

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <stdexcept>
 
 // Data segments are at segment · 16 + this in the file (docs/exe.md)
@@ -36,6 +37,14 @@ static const uint32 kWeaponMaximum	= 0x77A4;
 static const uint32 kWeaponRanges	= 0x77E3;
 static const uint32 kArmorStrengths	= 0x781E;	// by item type
 static const size_t kArmorCount		= 100;
+// The saints' functions: far pointers at 290E:2937 to RTLink thunks
+// (09C0:xxxx, 10 bytes: E8 rel16, EA off seg, overlay) into segment 165C
+// of overlay 0x27, at file 0x82940
+static const uint32 kSaintTable		= 0x2937;
+static const size_t kSaintCount		= 136;
+static const uint32 kThunkSegment	= 0x09C0;
+static const uint32 kSaintSegment	= 0x165C;
+static const uint32 kSaintCode		= 0x82940;
 static const uint32 kJobTable		= 0x3ACE;
 static const size_t kJobCount		= 31;
 static const size_t kJobSize		= 18;
@@ -71,6 +80,63 @@ ReadNames(const std::vector<uint8>& data, uint32 table, size_t count)
         names.push_back(LocationFile::DecodeName(text, length));
     }
     return names;
+}
+
+
+static inline uint16
+CheckedWordAt(const std::vector<uint8>& data, size_t offset)
+{
+    if (offset + 2 > data.size())
+        throw std::runtime_error("ExeData: saint code past the end");
+    return uint16(data[offset] | (data[offset + 1] << 8));
+}
+
+
+// A saint's function begins with `enter`, `push si` (and `push di`),
+// `mov si, [bp+0xA]` (the mode), then fills a table of words on the
+// stack, `mov word [bp-x], imm` or `mov ax, imm` + `mov [bp-x], ax`, and
+// for modes 0..6 returns `[bp+si-first]` (`8B C6`: mov ax, si).
+static exe_saint
+ReadSaint(const std::vector<uint8>& data, size_t function)
+{
+    if (function + 4 > data.size() || data[function] != 0xC8)
+        throw std::runtime_error("ExeData: not a saint's function");
+    size_t p = function + 4;
+    while (p < data.size() && (data[p] == 0x56 || data[p] == 0x57))
+        p++;
+    if (p + 3 > data.size() || data[p] != 0x8B || data[p + 1] != 0x76
+            || data[p + 2] != 0x0A)
+        throw std::runtime_error("ExeData: unexpected saint's function");
+    p += 3;
+    std::map<int, uint16> slots;
+    uint16 ax = 0;
+    for (;;) {
+        if (p + 5 <= data.size() && data[p] == 0xC7 && data[p + 1] == 0x46) {
+            slots[int8(data[p + 2])] = CheckedWordAt(data, p + 3);
+            p += 5;
+        } else if (p + 3 <= data.size() && data[p] == 0xB8) {
+            ax = CheckedWordAt(data, p + 1);
+            p += 3;
+        } else if (p + 3 <= data.size() && data[p] == 0x89
+                && data[p + 1] == 0x46) {
+            slots[int8(data[p + 2])] = ax;
+            p += 3;
+        } else
+            break;
+    }
+    if (slots.size() != 7 || CheckedWordAt(data, p) != 0xC68B)
+        throw std::runtime_error("ExeData: unexpected saint's table");
+    uint16 values[7];
+    int i = 0;
+    int previous = slots.begin()->first - 2;
+    for (const auto& slot : slots) {
+        if (slot.first != previous + 2)
+            throw std::runtime_error("ExeData: saint's table not contiguous");
+        previous = slot.first;
+        values[i++] = slot.second;
+    }
+    return exe_saint{ values[0], values[1], values[2], values[3], values[4],
+        values[5], values[6] };
 }
 
 
@@ -134,6 +200,21 @@ ExeData::ExeData(const std::string& exePath)
     if (weapons + kArmorStrengths + kArmorCount > data.size())
         throw std::runtime_error("ExeData: armor table past the end");
     fArmor.assign(w + kArmorStrengths, w + kArmorStrengths + kArmorCount);
+
+    const size_t saints = kNamesSegment * 16 + kDataBase + kSaintTable;
+    if (saints + 4 * kSaintCount > data.size())
+        throw std::runtime_error("ExeData: saint table past the end");
+    for (size_t i = 0; i < kSaintCount; i++) {
+        const uint16 offset = CheckedWordAt(data, saints + 4 * i);
+        if (CheckedWordAt(data, saints + 4 * i + 2) != kThunkSegment)
+            throw std::runtime_error("ExeData: saint's function not a thunk");
+        const size_t thunk = 0x1800 + kThunkSegment * 16 + offset;
+        if (thunk + 10 > data.size() || data[thunk] != 0xE8
+                || data[thunk + 3] != 0xEA
+                || CheckedWordAt(data, thunk + 6) != kSaintSegment)
+            throw std::runtime_error("ExeData: unexpected saint's thunk");
+        fSaints.push_back(ReadSaint(data, kSaintCode + CheckedWordAt(data, thunk + 4)));
+    }
 }
 
 

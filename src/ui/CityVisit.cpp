@@ -14,6 +14,7 @@
 #include "ScreenSupport.h"
 #include "EnemyFile.h"
 #include "Stream.h"
+#include "TextSupport.h"
 
 #include <stdexcept>
 
@@ -97,6 +98,7 @@ enum option_action {
     ACTION_CHASE_FIGHT,
     ACTION_CHASE_AMBUSH,
     ACTION_CHASE_HIDE,
+    ACTION_SAINT,				// invoke one of the card's saints
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -165,6 +167,8 @@ static const int kLockpickCode		= 64;	// in DARKLAND.LST
 static const int kDaggerCode		= 7;
 static const int kClubCode			= 15;
 static const int kSkillArtifice		= 14;	// picking locks
+// or a member standing who knows one of the card's saints (150B:168C)
+static const int kNeedsSaint		= -32;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -279,7 +283,7 @@ struct screen_rules {
         DO_IF(ACTION_SEDUCE, kNeedsWoman),	/* the turnkey */ \
         DO(ACTION_CALL_PRIEST), \
         DO(ACTION_PRAY), \
-        TODO,								/* invoke a saint */ \
+        DO_IF(ACTION_SAINT, kNeedsSaint),	/* invoke a saint */ \
         DO(ACTION_WAIT_MAGISTRATE), \
         TODO								/* acid on the lock */ \
     }
@@ -898,6 +902,12 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "DUNGE01", 4, NULL, { DO(ACTION_FROM_PRIEST) } },
     { "DUNGE01", 5, NULL, { DO(ACTION_AFTER_GOOD_WORD) } },
     { "DUNGE01", 6, NULL, { DO(ACTION_TO_COURT) } },
+    // the dungeon's saints (file 0x9932A)
+    { "DUNGE00", 7, NULL, { GO(SCREEN_SQUARE) } },	// "Soon you are outside."
+    { "DUNGE00", 19, NULL, { GO(SCREEN_SQUARE) } },
+    { "DUNGE00", 20, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "DUNGE00", 21, NULL, { GO(SCREEN_SQUARE) } },
+    { "DUNGE00", 23, NULL, { DO(ACTION_BACK_TO_CELL) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1242,6 +1252,11 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1334,6 +1349,7 @@ CityVisit::CityVisit(GameData& data)
     fTunnel(0),
     fTortures(0),
     fMagistrateComing(false),
+    fChoosingSaint(false),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1472,6 +1488,20 @@ CityVisit::Choose(int option)
         AddPartyVariables(*fParty, fVariables);
     if (fScreen == SCREEN_NOT_IMPLEMENTED) {
         _Show(fPreviousScreen, false);
+        return true;
+    }
+    if (fChoosingSaint) {
+        // the saint list: a member and a saint, or none (the last line)
+        fChoosingSaint = false;
+        if (option < 0 || option >= int(fSaintChoices.size())) {
+            _Show(fScreen, false);
+            return true;
+        }
+        const std::pair<int, int> choice = fSaintChoices[size_t(option)];
+        const int saint = _SaintsFor(fScreen)[size_t(choice.second)];
+        const int screen = fScreen;
+        _Show(_Invoke(choice.first, saint) > 0
+            ? _SaintAnswered(screen, choice.second) : _SaintIgnored(screen));
         return true;
     }
     const option_rule& rule = RuleFor(RulesFor(fScreen, fNight), option);
@@ -1662,6 +1692,9 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_CHASE_HIDE:
             _Show(_Hide());
+            return true;
+        case ACTION_SAINT:
+            _ShowSaints();
             return true;
         case ACTION_CALL_PRIEST:
             // file 0x991CA: three hours; the cell and the tunnel are kept
@@ -1865,6 +1898,7 @@ CityVisit::_Show(int screen, bool withScene)
 {
     const int previous = fScreen;
     fScreen = screen;
+    fChoosingSaint = false;
     fNight = fClock != NULL && fClock->IsNight();
     if (fClock != NULL) {
         fVariables["CurrentBell"] = fClock->BellName();
@@ -2098,6 +2132,8 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = hide || rope;
         } else if (rule.needs == kNeedsGrate) {
             hide = _Marked(kMarkGrateFailed);
+        } else if (rule.needs == kNeedsSaint) {
+            hide = !_SaintKnown(screen);
         } else if (rule.needs == kNeedsLockpicks) {
             bool lockpicks = false;
             if (fParty != NULL) {
@@ -4547,6 +4583,157 @@ CityVisit::_BackFromPriest()
 {
     _Search();
     return SCREEN_CELL;
+}
+
+
+// A card's saints (DS:EE4B, four words, set by each state's handler)
+std::vector<int>
+CityVisit::_SaintsFor(int screen) const
+{
+    std::vector<int> saints;
+    if (screen >= SCREEN_CELL && screen <= SCREEN_LIT_CELL) {
+        // file 0x9896E: Bathildis, Dismas, Peter, and by the cell
+        // Reinold, Lucy (the dark cell, its light) or Jude (0x98A50)
+        static const int kCellSaints[4] = { 114, 87, 80, 87 };
+        saints = { 14, 35, 108, kCellSaints[screen - SCREEN_CELL] };
+    }
+    return saints;
+}
+
+
+// 150B:168C: a member standing who knows one of the card's saints
+bool
+CityVisit::_SaintKnown(int screen) const
+{
+    if (fParty == NULL)
+        return false;
+    for (const character& member : fParty->members) {
+        for (int saint : _SaintsFor(screen)) {
+            if (KnowsSaint(member, saint))
+                return true;
+        }
+    }
+    return false;
+}
+
+
+// The saint list (file 0x8E252, the card's text replaced): a line for
+// each member and each of the card's saints he knows; one more to give
+// up (inferred)
+void
+CityVisit::_ShowSaints()
+{
+    fSaintChoices.clear();
+    const std::vector<int> saints = _SaintsFor(fScreen);
+    const std::vector<std::string>& names = fData.Lists().Saints();
+    std::string text = "Which saint do you call upon?\n";
+    text += char(MSG_CODE_PARAGRAPH);
+    text += char(MSG_CODE_PARAGRAPH);
+    for (int m = 0; fParty != NULL && m < int(fParty->members.size()); m++) {
+        const character& member = fParty->members[size_t(m)];
+        for (size_t i = 0; i < saints.size(); i++) {
+            if (!KnowsSaint(member, saints[i]))
+                continue;
+            fSaintChoices.push_back(std::make_pair(m, int(i)));
+            text += char(MSG_CODE_OPTION);
+            text += "...";
+            text += char(MSG_CODE_OPTION_TEXT);
+            text += Font::ToGameCharset(member.shortName + " calls upon "
+                + names[size_t(saints[i])] + ".") + "\n";
+        }
+    }
+    text += char(MSG_CODE_OPTION);
+    text += "...";
+    text += char(MSG_CODE_OPTION_TEXT);
+    text += "call upon none of them.\n";
+    msg_card card = fNotImplementedCard;
+    card.text = text;
+    fView.SetCard(card, fVariables);
+    fChoosingSaint = true;
+}
+
+
+// An invocation (0E76:2180, 1462:0000 of overlay 0x22, file 0x6B7D0):
+// the chance is the saint's base + (Virtue - its Virtue) / 2 (165C:0000,
+// file 0x82940), 0 under its Virtue or while the divine favor is under
+// its cost. If random(100) is at most the chance, the saint answers
+// (its own effect, mode 8, is not reproduced) and the divine favor
+// falls by the cost; else by the cost, and by half of it more if
+// random(99) is under the chance - 66. The game first shows the saint
+// (0x6B9FC), where one can give up: not reproduced. Returns 1 or 0.
+int
+CityVisit::_Invoke(int member, int saint)
+{
+    if (fExe == NULL)
+        fExe.reset(new ExeData(fData.PathFor("DARKLAND.EXE")));
+    character& c = fParty->members[size_t(member)];
+    const exe_saint& rule = fExe->Saints()[size_t(saint)];
+    const int favor = c.attributes[ATTRIBUTE_DIVINE_FAVOR];
+    const int virtue = c.skills[kSkillVirtue];
+    const int cost = favor < int(rule.cost) ? 0 : int(rule.cost);
+    const int chance = virtue < int(rule.minVirtue) || cost < int(rule.cost)
+        ? 0 : int(rule.base) + (virtue - int(rule.minVirtue)) / 2;
+    _SetChosen(member);
+    fVariables["NamedOneName"] = fData.Lists().Saints()[size_t(saint)];
+    if (int(fRandom() % 100) <= chance) {
+        AddToAttribute(c, ATTRIBUTE_DIVINE_FAVOR, -cost);
+        return 1;
+    }
+    if (int(fRandom() % 99) < chance - 66)
+        AddToAttribute(c, ATTRIBUTE_DIVINE_FAVOR, -(cost / 2));
+    AddToAttribute(c, ATTRIBUTE_DIVINE_FAVOR, -cost);
+    return 0;
+}
+
+
+// A saint answered: the card's own outcome, by the saint's place in its
+// list
+int
+CityVisit::_SaintAnswered(int screen, int index)
+{
+    if (screen >= SCREEN_CELL && screen <= SCREEN_LIT_CELL) {
+        // the dungeon (file 0x9932A): three hours; Bathildis (card 7)
+        // pays with half the purse, Dismas and Peter (card 19) with the
+        // reputation (-1..-8), both to the square; Reinold (card 20) to
+        // the side streets, Lucy (card 3) lights the dark cell, Jude
+        // (card 21) to the square, the reputation +2..+7
+        if (fClock != NULL)
+            fClock->AddHours(3);
+        if (index == 0) {
+            if (fParty != NULL)
+                fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash) / 2);
+            return SCREEN_BATHILDIS;
+        }
+        if (index <= 2) {
+            _ChangeReputation(-8, -1);
+            return SCREEN_WALL_CRACKED;
+        }
+        if (fCell == 0)
+            return SCREEN_REINOLD_CLIMB;
+        if (fCell == 1) {
+            fCell = 3;
+            return SCREEN_LIT_CELL;
+        }
+        if (fCell == 2) {
+            _ChangeReputation(2, 7);
+            return SCREEN_EARTHQUAKE;
+        }
+        return SCREEN_CELL;				// Lucy again: nothing
+    }
+    return fScreen;
+}
+
+
+// No answer: the dungeon's card 23, six hours in all
+int
+CityVisit::_SaintIgnored(int screen)
+{
+    if (screen >= SCREEN_CELL && screen <= SCREEN_LIT_CELL) {
+        if (fClock != NULL)
+            fClock->AddHours(6);
+        return SCREEN_NO_ANSWER;
+    }
+    return screen;
 }
 
 

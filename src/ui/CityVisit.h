@@ -226,6 +226,11 @@ public:
         SCREEN_PRIEST_OUTRAGED,	// magistrate (6)
         SCREEN_PRIEST_GOOD_WORD,
         SCREEN_PRIEST_MAGISTRATE,
+        SCREEN_BATHILDIS,		// the dungeon's saints: $DUNGE00 cards 7,
+        SCREEN_WALL_CRACKED,	// 19 (Dismas, Peter), 20 (Reinold), 21
+        SCREEN_REINOLD_CLIMB,	// (Jude), no answer (23)
+        SCREEN_EARTHQUAKE,
+        SCREEN_NO_ANSWER,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -421,6 +426,14 @@ private:
     int				_AskPriestForHelp();
     int				_AskGoodWord();
     int				_BackFromPriest();
+    // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
+    // 0E76:2180, overlay 0x22 at file 0x6B7D0)
+    std::vector<int> _SaintsFor(int screen) const;
+    bool			_SaintKnown(int screen) const;
+    void			_ShowSaints();
+    int				_Invoke(int member, int saint);
+    int				_SaintAnswered(int screen, int index);
+    int				_SaintIgnored(int screen);
     // The alchemist (DARKLAND.EXE, file 0xD9B53)
     int				_AlchemistSkill(bool withBonus) const;
     int				_StoneQuality() const;
@@ -493,6 +506,11 @@ private:
     int				fTunnel;		// how far the tunnel is dug, in %
     int				fTortures;
     bool			fMagistrateComing;
+    // the saint list shown in place of a card: (member, index in the
+    // card's saints)
+    bool			fChoosingSaint;
+    std::vector<std::pair<int, int> > fSaintChoices;
+    std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from
     int				fChallengeReputation;	// the reputation then (the
                                             // guards', the chase's)

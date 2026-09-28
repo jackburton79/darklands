@@ -23,6 +23,7 @@ static const size_t kAttributesOffset	= 0x5D;
 static const size_t kMaxAttributesOffset = 0x64;
 static const size_t kSkillsOffset		= 0x6B;
 static const size_t kItemCountOffset	= 0x7E;
+static const size_t kSaintsOffset		= 0x80;
 static const size_t kItemsOffset		= 0xAA;
 static const size_t kItemSize			= 6;
 static const size_t kMaxItems			= 64;	// fills the record
@@ -53,6 +54,7 @@ ReadCharacter(const uint8* record)
     c.equipment[EQUIPMENT_LIMBS] = record[kLimbsOffset];
     c.equipment[EQUIPMENT_SHIELD] = record[kShieldOffset];
     c.equipment[EQUIPMENT_MISSILE] = record[kMissileOffset];
+    memcpy(c.saints, &record[kSaintsOffset], sizeof(c.saints));
 
     const size_t count = record[kItemCountOffset]
         | (record[kItemCountOffset + 1] << 8);
@@ -253,4 +255,13 @@ RemoveMember(party& members, size_t index)
         members.leader = 0;
     if (members.leader >= int(members.members.size()))
         members.leader = 0;
+}
+
+
+bool
+KnowsSaint(const character& member, int saint)
+{
+    if (saint < 0 || saint >= int(sizeof(member.saints)) * 8)
+        return false;
+    return (member.saints[saint >> 3] & (0x80 >> (saint & 7))) != 0;
 }

@@ -810,7 +810,9 @@ layout is wendigo's; checked on the four characters:
     +0x64   7     maximum attributes
     +0x6B   19    skills (order below)
     +0x7E   2     item count (at most 64)
-    +0x80   20    saints known, 160 bits
+    +0x80   20    saints known, 160 bits: saint i is bit 0x80 >> (i & 7)
+                  of byte i >> 3 (DARKLAND.EXE 0E76:1260, **verified**
+                  in the code)
     +0x94   22    alchemical formulae known
     +0xAA   6·64  items: code (word), type, quality, quantity, weight
 

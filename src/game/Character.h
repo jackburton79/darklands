@@ -64,6 +64,8 @@ struct character {
     uint8 maxAttributes[ATTRIBUTE_COUNT];
     uint8 skills[kSkillCount];
     uint8 equipment[EQUIPMENT_COUNT];		// item types, see equipment_slot
+    uint8 saints[20];			// the saints known, one bit each (0x80 of
+                                // byte 0 is saint 0)
     std::vector<item> items;
 };
 
@@ -95,6 +97,9 @@ money MoneyFromPfennigs(uint32 pfennigs);
 // "2 florins, 3 groschen and 1 pfennig", as the cards' $Money variables
 // (DARKLAND.EXE 1367:0376)
 std::string MoneyText(uint32 pfennigs);
+
+// Whether a character knows a saint (DARKLAND.EXE 0E76:1260)
+bool KnowsSaint(const character& member, int saint);
 
 // A member leaves the party (dead, executed): his images and colors go
 // too; the leader stays the same member, or becomes the first.

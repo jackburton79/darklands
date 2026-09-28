@@ -184,6 +184,7 @@ Game files are looked up by name, in that directory and then in `PICS`:
 
 # List the enemy types (attributes, skills) and the enemies
 ./darklands --enemies
+./darklands --saints
 
 # Print a battlefield map as text (e.g. ICITY.000, IWILDGEN.101)
 ./darklands --battlemap ICITY.000
@@ -210,8 +211,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 
 ```
 src/darklands.cpp   Program entry point: the game, catalog dump, --extract,
-                    --map, --locations, --cities, --enemies, --messages,
-                    --card
+                    --map, --locations, --cities, --enemies, --saints,
+                    --messages, --card
 
 src/formats/        Readers for the game's files (no SDL)
   Catalog.*         .CAT archive/catalog files

@@ -50,6 +50,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
 ./darklands --enemies                # dump DARKLAND.ENM
+./darklands --saints                 # the saints' rules (DARKLAND.EXE)
 ./darklands --battlemap ICITY.000    # a battlefield map, as text
 ./darklands --battle IWILDGEN.101 M03 DKSAVE0.SAV  # seen from above,
                                      # with the party and 4 skeletons
