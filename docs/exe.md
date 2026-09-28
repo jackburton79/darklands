@@ -648,6 +648,63 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
   - *leave* (file 0xF6C64): the dungeon.
   Reproduced in `CityVisit` but for bit 0x40 (not kept: 0).
 
+## Quests
+
+The game makes its quests as events (formats.md "Events") when a
+patron gives them. **verified** (code) unless marked.
+
+- **Making an event** (0E76:2C4E(a0..a9), file 0x5A4FE): a free slot
+  of the 300, filled by file 0x5A8E4: +0x1A = a0, +0x1C = a1 (the
+  place), +0x20 = a2, +0x22 = a3 (category), +0x00 = a4 (subject),
+  +0x1E = a5, +0x26 = a6, +0x24 = a8, +0x28 = a9 (kind), +0x2A..+0x2E
+  0; created and started now; the end a7 hours later (1367:09EA), or
+  never for 9999 (31/12/1499 23h). 0E76:3B62(category, subject, place,
+  +0x1A, kind, +0x2A), −1 for any, finds one; 0E76:353E(kind, +0x1A,
+  +0x1E): one of category 8 started; 0E76:3404(kind, +0x1A, place): one
+  of category 36 (a reward due) started; 0E76:392C(category, subject,
+  place): one started (unless DS:00F0).
+- **The banks' tasks** (the Fuggers, file 0xC473E; the Medici, 0xC677E;
+  the patron 8 or 6, its seed the city's number + 8 or + 6): offered
+  (file 0xC42C3) unless a task of theirs of kind 10 or 3 runs from here
+  (0E76:353E(k, patron, location)), a refusal lately (0E76:392C(7,
+  patron, location)), a reputation or standing under 0, or a reward due
+  (0E76:3404: the reward's option instead). The chance (file 0xC48EE,
+  0xC68F4): the reputation + the fame (0E76:1326(4)) + the location's
+  property 0x0C (the Fuggers) or the Medici's standing (DS:4BB8),
+  within 10..50. If random(100) is at most it: one time in two
+  (random(100) < 50) the robber knight: $Money1 twice the city's size
+  in florins, card 1, the castle nearest the city (1462:2842(x, y, 2):
+  the nearest location of type 2 not on the city, without bit 4 of its
+  byte +0x14, by the octile distance), 1462:10B6 (below), an hour,
+  state 0x90 with DS:E896 the castle and DS:E7D8 the bank; else the
+  city's size in florins, card 1, an hour, state 0x151 (another quest,
+  1462:1712: not decoded). Else card 10 and an event of category 7,
+  subject the patron, +0x20 0x5F, 72 hours (the refusal).
+- **The robber knight's task** (1462:10B6(patron, castle, seed, level,
+  strength, extra), overlay 0x27, file 0x81A56): an event of category
+  8, kind 3 at the castle (+0x1A the patron, subject its seed, +0x1E
+  the city, +0x20 0x5F, 9998 hours); if the castle has no knight yet
+  (0E76:3B62(8, −1, castle, −1, 3, −1)) it is his: +0x2A the level
+  (12 for the banks), +0x2C the strength (at most 4), +0x2E; with his
+  men (category 28, kind 3, subjects 2, 3, 4, 9998 hours) and the
+  castle taken (category 43, +0x1E 1, forever); else the knight's
+  event keeps the higher level and strength. The saved games' robber
+  knight at Grötsch has exactly this shape.
+- **The offer** (state 0x90, $RAUBI00, 1838:0000 of overlay 0x50 at
+  file 0xFE800): the knight's event at DS:E896; $NamedOneName the
+  patron (1367:0DB4(its subject)), $NamedTwoName the knight
+  (1367:0DB4(castle + 1100, 0, 1)); the card by the patron's place
+  (DS:E7D8): 6 the Fuggers, 8 the Medici, 7 the League, 5 the
+  alchemist, 3 or 4 the market's merchants (+0x1A 4: the foreign
+  traders), 0 the cathedral's bishop, 2 a village's Schulz, else 1 the
+  city's ruler; then card 14, where the castle is ($Direction2 from
+  the city nearest it, $NearestCity, $Direction from here). From a
+  village or the League with four members or fewer, card 10 or 13
+  offers a companion (0E76:4650); else back to the patron.
+- Reproduced in `CityVisit`: the banks' tasks and the robber knight's
+  offer. Not reproduced: the other task (state 0x151), the other
+  patrons, the companions, the rewards and the rest of the quest.
+
 ## Leaving the city
 
 - **The gate from inside** (state 0x3A, $SELEC00, 191A:0004 of overlay
@@ -967,8 +1024,8 @@ file 0xC6253) follow the same code. **verified** (code); see
   word +0x56 + 8 (the Fuggers, file 0xC4280), + 6 (the Medici, file
   0xC62E9); the League's master's + 7 (file 0xC7BBF). They are
   $NamedOneName in the cards of the tasks and rewards.
-- Not reproduced: the standings (not in the saved games), the tasks,
-  rewards and politics. The League's options are all tasks
+- Not reproduced: the standings (not in the saved games), the rewards
+  and politics. The tasks: see "Quests". The League's options are all tasks
   and politics.
 
 ## The crafts' guilds

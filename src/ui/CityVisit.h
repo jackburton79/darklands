@@ -299,6 +299,13 @@ public:
         SCREEN_GOSSIP_POLITICS,
         SCREEN_GOSSIP_TRAITORS,
         SCREEN_GOSSIP_NEW_RULERS,
+        SCREEN_FUGGER_TASK,		// the banks' special tasks: $FUGGE00 and
+        SCREEN_MEDICI_TASK,		// $MEDIC00 card 1 (the purse shown), card
+        SCREEN_FUGGER_BUSY,		// 10 (too busy); the robber knight's offer:
+        SCREEN_MEDICI_BUSY,		// $RAUBI00 card 6 (the Fuggers), 8 (the
+        SCREEN_ROBBER_FUGGER,	// Medici), where his castle is (14)
+        SCREEN_ROBBER_MEDICI,
+        SCREEN_ROBBER_WHEREABOUTS,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -328,7 +335,7 @@ public:
                         { fReputations = reputations; }
     // The game's events and the locations' state (+0x14 of their saved
     // records), not owned; NULL: none. The news tell of them.
-    void			SetWorld(const std::vector<world_event>* events,
+    void			SetWorld(std::vector<world_event>* events,
                         const std::vector<uint8>* locationFlags)
                         { fEvents = events; fLocationFlags = locationFlags; }
 
@@ -531,6 +538,24 @@ private:
     int				_EventLocation(int category, int kind) const;
     uint8			_CityState() const;
     void			_SetPlaceVariables(int place, int from);
+    int				_NearestCity(int place) const;
+    std::string		_DirectionTo(int from, int place) const;
+    // Quests (0E76:2C4E makes an event, 3B62 finds one, 353E, 3404, 392C
+    // ask of them)
+    int				_AddEvent(int16 unknown1A, int16 location, int16 unknown20,
+                        int16 category, int16 subject, int16 unknown1E,
+                        int16 unknown26, int hours, int16 unknown24, int16 kind);
+    int				_FindEvent(int category, int subject, int location,
+                        int unknown1A, int kind, int unknown2A) const;
+    bool			_PatronQuest(int kind, int patron) const;
+    bool			_RewardDue(int kind, int patron) const;
+    bool			_PatronBusy(int patron) const;
+    int				_NearestCastle() const;
+    int				_BankTaskChance(int patron) const;
+    int				_BankTasks(int patron);
+    int				_OfferQuest();
+    void			_HireAgainstRobber(int patron, int castle, int patronSeed,
+                        int reward, int strength, int extra);
     // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
     // 0E76:2180, overlay 0x22 at file 0x6B7D0)
     std::vector<int> _SaintsFor(int screen) const;
@@ -622,8 +647,11 @@ private:
     int				fNewsReturn;	// where the news menu goes back to
     std::vector<std::pair<int, int> > fNewsQueue;	// the news' cards
                                     // still to show, and their places
-    const std::vector<world_event>* fEvents;
+    std::vector<world_event>* fEvents;
     const std::vector<uint8>* fLocationFlags;
+    int				fQuestPatron;	// the bank giving a task (8, 6), -1
+    int				fQuestPlace;	// the task's place (DS:E896)
+    bool			fQuestRobber;	// the task is the robber knight
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

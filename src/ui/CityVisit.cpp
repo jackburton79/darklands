@@ -121,6 +121,10 @@ enum option_action {
     ACTION_AFFAIRS,
     ACTION_GOSSIP,
     ACTION_NEWS_NEXT,			// the news' next card, or the menu
+    ACTION_BANK_TASKS,			// `target`: the patron, 8 the Fuggers, 6
+                                // the Medici
+    ACTION_QUEST_OFFER,			// after the purse: the task
+    ACTION_QUEST_RETURN,		// back to the patron
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -200,6 +204,11 @@ static const int kNeedsJobRumor		= -34;
 // here (0E76:360C(2, 0, location))
 static const int kNeedsUnrestHere	= -35;
 static const int kNeedsRebelsHere	= -36;
+// or the banks' tasks (file 0xC42C3): no task of theirs running from this
+// city (0E76:353E(10 or 3, patron, location)), no refusal lately
+// (0E76:392C(7, patron, location)), a reputation of 0 or more
+static const int kNeedsFuggerTasks	= -37;
+static const int kNeedsMediciTasks	= -38;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -654,6 +663,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     // The banks (DARKLAND.EXE, file 0xC41E7 and 0xC6253): letters of
     // credit; the tasks, rewards and politics are not implemented
+#define FUGGER_TASKS { ACTION_BANK_TASKS, 8, kNeedsFuggerTasks, 0 }
+#define MEDICI_TASKS { ACTION_BANK_TASKS, 6, kNeedsMediciTasks, 0 }
 #define BANK_OPTIONS(redeemed, deposit, tasks) { \
         { ACTION_REDEEM, CityVisit::redeemed, kNeedsBankNotes, 0 }, \
         GO_IF(deposit, kNeedsFlorins),		/* a letter of credit */ \
@@ -665,9 +676,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_SIDE_STREET) \
     }
     { "FUGGE00", 0, NULL, BANK_OPTIONS(SCREEN_FUGGER_REDEEMED,
-        SCREEN_FUGGER_DEPOSIT, TODO) },
+        SCREEN_FUGGER_DEPOSIT, FUGGER_TASKS) },
     { "MEDIC00", 0, NULL, BANK_OPTIONS(SCREEN_MEDICI_REDEEMED,
-        SCREEN_MEDICI_DEPOSIT, TODO) },
+        SCREEN_MEDICI_DEPOSIT, MEDICI_TASKS) },
     // "In the rich, wood-paneled offices of the Hanseatic League..."
     { "HANSE00", 0, NULL, {
         TODO, TODO, TODO, TODO, TODO,		// tasks, rewards, politics
@@ -1077,6 +1088,17 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "SITUA01", 3, NULL, { DO(ACTION_NEWS_NEXT) } },
     { "SITUA01", 8, NULL, { DO(ACTION_NEWS_NEXT) } },
     { "SITUA01", 9, NULL, { DO(ACTION_NEWS_NEXT) } },
+    // the banks' special tasks (file 0xC473E, 0xC677E): the purse, or
+    // "busy all week"
+    { "FUGGE00", 1, NULL, { DO(ACTION_QUEST_OFFER) } },
+    { "MEDIC00", 1, NULL, { DO(ACTION_QUEST_OFFER) } },
+    { "FUGGE00", 10, NULL, { GO(SCREEN_FUGGER) } },
+    { "MEDIC00", 10, NULL, { GO(SCREEN_MEDICI) } },
+    // the robber knight's offer (state 0x90, file 0xFE800), then where
+    // his castle is; back to the patron
+    { "RAUBI00", 6, NULL, { GO(SCREEN_ROBBER_WHEREABOUTS) } },
+    { "RAUBI00", 8, NULL, { GO(SCREEN_ROBBER_WHEREABOUTS) } },
+    { "RAUBI00", 14, NULL, { DO(ACTION_QUEST_RETURN) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1485,6 +1507,13 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1585,6 +1614,9 @@ CityVisit::CityVisit(GameData& data)
     fNewsReturn(SCREEN_INN),
     fEvents(NULL),
     fLocationFlags(NULL),
+    fQuestPatron(-1),
+    fQuestPlace(-1),
+    fQuestRobber(false),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -2004,6 +2036,16 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_NEWS_NEXT:
             _Show(_NextNews());
+            return true;
+        case ACTION_BANK_TASKS:
+            _Show(_BankTasks(rule.target));
+            return true;
+        case ACTION_QUEST_OFFER:
+            _Show(_OfferQuest());
+            return true;
+        case ACTION_QUEST_RETURN:
+            // back to the patron (DS:E7D8)
+            _Show(fQuestPatron == 6 ? SCREEN_MEDICI : SCREEN_FUGGER);
             return true;
         case ACTION_GOSSIP:
             _Show(_Gossip());
@@ -2460,6 +2502,9 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsFuggerTasks
+                || rule.needs == kNeedsMediciTasks) {
+            hide = _PatronBusy(rule.needs == kNeedsFuggerTasks ? 8 : 6);
         } else if (rule.needs == kNeedsUnrestHere) {
             hide = !_EventHere(2);
         } else if (rule.needs == kNeedsRebelsHere) {
@@ -5871,20 +5916,18 @@ MapDistance(int x1, int y1, int x2, int y2)
 }
 
 
-// $LocName (a place), $Direction (from `from` to it, 1462:29FA: West or
-// East when |dx| / 2 >= |dy| / 3, North or South when the reverse, else
-// the diagonal) and $NearestCity (the city nearest to the place, the
-// first 92 locations but one on the place itself, 1462:271A)
-void
-CityVisit::_SetPlaceVariables(int place, int from)
+// The direction from one location to another (1462:29FA): West or East
+// when |dx| / 2 >= |dy| / 3, North or South when the reverse, else the
+// diagonal; "North"... as the game's words (290E:20E3)
+std::string
+CityVisit::_DirectionTo(int from, int place) const
 {
     const LocationFile& locations = fData.Locations();
     if (place < 0 || uint32(place) >= locations.CountLocations()
             || from < 0 || uint32(from) >= locations.CountLocations())
-        return;
+        return "";
     const location& there = locations.LocationAt(uint32(place));
     const location& here = locations.LocationAt(uint32(from));
-    fVariables["LocName"] = there.name;
     static const char* const kDirections[8] = { "North", "Northeast", "East",
         "Southeast", "South", "Southwest", "West", "Northwest" };
     const int dx = std::abs(int(there.x) - int(here.x));
@@ -5898,7 +5941,20 @@ CityVisit::_SetPlaceVariables(int place, int from)
         direction = there.y > here.y ? 3 : 1;
     else
         direction = there.y > here.y ? 5 : 7;
-    fVariables["Direction"] = kDirections[direction];
+    return kDirections[direction];
+}
+
+
+// The city nearest to a place (1462:271A): of the first 92 locations,
+// not a city on the place itself, by max + min / 2 of dx, dy (dy a
+// third); -1 if none
+int
+CityVisit::_NearestCity(int place) const
+{
+    const LocationFile& locations = fData.Locations();
+    if (place < 0 || uint32(place) >= locations.CountLocations())
+        return -1;
+    const location& there = locations.LocationAt(uint32(place));
     int nearest = -1;
     int best = 9999;
     const uint32 cities = std::min(locations.CountLocations(),
@@ -5913,8 +5969,258 @@ CityVisit::_SetPlaceVariables(int place, int from)
             nearest = int(i);
         }
     }
-    if (nearest >= 0)
+    return nearest;
+}
+
+
+// $LocName (a place), $Direction (from `from` to it), $NearestCity (the
+// city nearest to it) and $Direction2 (from that city to it)
+void
+CityVisit::_SetPlaceVariables(int place, int from)
+{
+    const LocationFile& locations = fData.Locations();
+    if (place < 0 || uint32(place) >= locations.CountLocations())
+        return;
+    fVariables["LocName"] = locations.LocationAt(uint32(place)).name;
+    fVariables["Direction"] = _DirectionTo(from, place);
+    const int nearest = _NearestCity(place);
+    if (nearest >= 0) {
         fVariables["NearestCity"] = locations.LocationAt(uint32(nearest)).name;
+        fVariables["Direction2"] = _DirectionTo(nearest, place);
+    }
+}
+
+
+// A new event (0E76:2C4E): created and started now, over after `hours`
+// (1367:09EA), or never (9999: 31 December 1499, 23h); +0x2A..+0x2E 0.
+// Returns its index.
+int
+CityVisit::_AddEvent(int16 unknown1A, int16 location, int16 unknown20,
+    int16 category, int16 subject, int16 unknown1E, int16 unknown26,
+    int hours, int16 unknown24, int16 kind)
+{
+    if (fEvents == NULL)
+        return -1;
+    world_event e = world_event();
+    const GameTime now = fClock != NULL ? GameTime(fClock->Year(),
+        fClock->Month(), fClock->Day(), fClock->Hour()) : GameTime();
+    e.created = event_date{ int16(now.Hour()), int16(now.Day()),
+        int16(now.Month()), int16(now.Year()) };
+    e.start = e.created;
+    if (hours == 9999)
+        e.end = event_date{ 23, 31, 12, 1499 };
+    else {
+        GameTime end = now;
+        end.AddHours(uint32(hours));
+        e.end = event_date{ int16(end.Hour()), int16(end.Day()),
+            int16(end.Month()), int16(end.Year()) };
+    }
+    e.unknown1A = unknown1A;
+    e.location = location;
+    e.unknown20 = unknown20;
+    e.category = category;
+    e.subject = subject;
+    e.unknown1E = unknown1E;
+    e.unknown26 = unknown26;
+    e.unknown24 = unknown24;
+    e.kind = kind;
+    fEvents->push_back(e);
+    return int(fEvents->size()) - 1;
+}
+
+
+// The first event matching (0E76:3B62; -1: any; category 28 takes 8
+// too, 0E76:324C), or -1
+int
+CityVisit::_FindEvent(int category, int subject, int location,
+    int unknown1A, int kind, int unknown2A) const
+{
+    for (size_t i = 0; fEvents != NULL && i < fEvents->size(); i++) {
+        const world_event& e = (*fEvents)[i];
+        if ((e.category == category || (category == 0x1C && e.category == 8))
+                && (subject == -1 || e.subject == subject)
+                && (location == -1 || e.location == location)
+                && (unknown1A == -1 || e.unknown1A == unknown1A)
+                && (kind == -1 || e.kind == kind)
+                && (unknown2A == -1 || e.unknown2A == unknown2A))
+            return int(i);
+    }
+    return -1;
+}
+
+
+// A task of a patron's (+0x1A) from this city (+0x1E) running (0E76:353E)
+bool
+CityVisit::_PatronQuest(int kind, int patron) const
+{
+    for (size_t i = 0; fEvents != NULL && i < fEvents->size(); i++) {
+        const world_event& e = (*fEvents)[i];
+        if (e.category == 8 && e.kind == kind && e.unknown1A == patron
+                && e.unknown1E == fCity && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// A patron's reward due here (0E76:3404: category 36)
+bool
+CityVisit::_RewardDue(int kind, int patron) const
+{
+    for (size_t i = 0; fEvents != NULL && i < fEvents->size(); i++) {
+        const world_event& e = (*fEvents)[i];
+        if (e.category == 0x24 && e.kind == kind && e.unknown1A == patron
+                && e.location == fCity && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// The banks' tasks are not offered (file 0xC42C3) with a task of theirs
+// running from here (kinds 10 and 3), after a refusal lately (an event of
+// category 7 and subject the patron here, 0E76:392C), with a reputation
+// under 0 (the bank's standing, DS:4BB6/4BB8, not kept: 0), or with a
+// reward due (the reward's option then)
+bool
+CityVisit::_PatronBusy(int patron) const
+{
+    if (_Reputation() < 0 || _PatronQuest(10, patron)
+            || _PatronQuest(3, patron) || _RewardDue(10, patron)
+            || _RewardDue(3, patron))
+        return true;
+    for (size_t i = 0; fEvents != NULL && i < fEvents->size(); i++) {
+        const world_event& e = (*fEvents)[i];
+        if (e.category == 7 && e.subject == patron && e.location == fCity
+                && _EventRunning(e))
+            return true;
+    }
+    return false;
+}
+
+
+// The castle (location type 2) nearest to the city, not taken (+0x14 bit
+// 4 of its record), not on the city itself (1462:2842)
+int
+CityVisit::_NearestCastle() const
+{
+    const LocationFile& locations = fData.Locations();
+    if (fCity < 0 || uint32(fCity) >= locations.CountLocations())
+        return fCity;
+    const location& here = locations.LocationAt(uint32(fCity));
+    int nearest = -1;
+    int best = 9999;
+    for (uint32 i = 0; i < locations.CountLocations(); i++) {
+        const location& c = locations.LocationAt(i);
+        if (c.type != 2 || (c.x == here.x && c.y == here.y))
+            continue;
+        if (fLocationFlags != NULL && i < fLocationFlags->size()
+                && ((*fLocationFlags)[i] & 0x04) != 0)
+            continue;
+        const int d = MapDistance(here.x, here.y, c.x, c.y);
+        if (d < best) {
+            best = d;
+            nearest = int(i);
+        }
+    }
+    return nearest >= 0 ? nearest : fCity;
+}
+
+
+// The chance of a task (file 0xC48EE, 0xC68F4): the reputation + the
+// fame (0E76:1326(4)) + the Fuggers' location property 0x0C (the
+// location's byte +0x15, 25 in every city) or the Medici's standing
+// (DS:4BB8, not kept: 0), within 10..50
+int
+CityVisit::_BankTaskChance(int patron) const
+{
+    const int fame = fParty != NULL ? fParty->fame : 0;
+    const int chance = _Reputation() + fame + (patron == 8 ? 25 : 0);
+    return std::max(10, std::min(50, chance));
+}
+
+
+// Asking the banks for a task (file 0xC473E, 0xC677E): if random(100) is
+// at most the chance, one time in two the robber knight (the reward,
+// $Money1, twice the city's size in florins; card 1; the castle nearest
+// the city, 1462:2842(x, y, 2); the knight's events, 1462:10B6; an hour;
+// his offer, state 0x90), else another task (the city's size in florins,
+// card 1, an hour, state 0x151: not implemented); else card 10 and a
+// refusal remembered for 72 hours (an event of category 7, subject the
+// patron, +0x20 0x5F)
+int
+CityVisit::_BankTasks(int patron)
+{
+    const int size = fData.Cities().CityAt(uint32(fCity)).size;
+    fQuestPatron = patron;
+    // the master banker (the city's number + 8, the Medici's + 6)
+    fVariables["NamedOneName"] = _PersonName(uint16(
+        fData.Cities().CityAt(uint32(fCity)).peopleSeed + patron));
+    if (int(fRandom() % 100) > _BankTaskChance(patron)) {
+        _AddEvent(-2, int16(fCity), 0x5F, 7, int16(patron), 0, 0, 72, 0, 0);
+        return patron == 6 ? SCREEN_MEDICI_BUSY : SCREEN_FUGGER_BUSY;
+    }
+    fQuestRobber = fRandom() % 100 < 50;
+    fVariables["Money1"] = MoneyText(uint32(fQuestRobber ? 2 * size : size) * 240);
+    return patron == 6 ? SCREEN_MEDICI_TASK : SCREEN_FUGGER_TASK;
+}
+
+
+// After the purse: the robber knight's offer, or the other task
+int
+CityVisit::_OfferQuest()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (!fQuestRobber) {
+        fPreviousScreen = fQuestPatron == 6 ? SCREEN_MEDICI : SCREEN_FUGGER;
+        return SCREEN_NOT_IMPLEMENTED;
+    }
+    const int castle = _NearestCastle();
+    const uint16 number = fData.Cities().CityAt(uint32(fCity)).peopleSeed;
+    const int patronSeed = number + (fQuestPatron == 6 ? 6 : 8);
+    _HireAgainstRobber(fQuestPatron, castle, patronSeed, 12, 2, 0);
+    fQuestPlace = castle;
+    // the offer (file 0xFE84A): the patron and the knight, named after
+    // the castle (1367:0DB4(castle + 1100, 0, 1)), where the castle is
+    fVariables["NamedOneName"] = _PersonName(uint16(patronSeed));
+    fVariables["NamedTwoName"] = _PersonName(uint16(castle + 1100));
+    _SetPlaceVariables(castle, fCity);
+    return fQuestPatron == 6 ? SCREEN_ROBBER_MEDICI : SCREEN_ROBBER_FUGGER;
+}
+
+
+// Hiring the party against the robber knight of a castle (1462:10B6):
+// the patron's task, an event of category 8, kind 3 at the castle
+// (+0x1A the patron, subject its seed, +0x1E this city, +0x20 0x5F, for
+// 9998 hours); if the castle has no knight yet, the task's event is his
+// (+0x2A the reward's level, +0x2C his strength, at most 4, +0x2E), with
+// his three men (category 28, kind 3, subjects 2, 3, 4) and the castle
+// taken (category 43, +0x1E 1, forever); else the knight's event keeps
+// the higher level and strength
+void
+CityVisit::_HireAgainstRobber(int patron, int castle, int patronSeed,
+    int reward, int strength, int extra)
+{
+    strength = std::min(strength, 4);
+    const int knight = _FindEvent(8, -1, castle, -1, 3, -1);
+    const int task = _AddEvent(int16(patron), int16(castle), 0x5F, 8,
+        int16(patronSeed), int16(fCity), 0, 9998, 0, 3);
+    if (knight >= 0) {
+        world_event& e = (*fEvents)[size_t(knight)];
+        e.unknown2A = int16(std::max(int(e.unknown2A), reward));
+        e.unknown2C = int16(std::max(int(e.unknown2C), strength));
+        return;
+    }
+    if (task < 0)
+        return;
+    world_event& e = (*fEvents)[size_t(task)];
+    e.unknown2A = int16(reward);
+    e.unknown2C = int16(strength);
+    e.unknown2E = int16(extra);
+    for (int16 man = 2; man <= 4; man++)
+        _AddEvent(-2, int16(castle), 0, 0x1C, man, 0, 0, 9998, 0, 3);
+    _AddEvent(-2, int16(castle), 0, 0x2B, 0, 1, 0, 9999, 0, 0);
 }
 
 
