@@ -111,6 +111,14 @@ enum option_action {
     ACTION_INNER_CLIMB,
     ACTION_INNER_AFTER_DARK,
     ACTION_SALLY_CHALLENGE,
+    ACTION_INN_NEWS,			// news and rumors
+    ACTION_NEWS,				// from `target`, after `minutes` (kHalfSize:
+                                // city size / 2 hours)
+    ACTION_NEWS_RETURN,
+    ACTION_INN_RAID,
+    ACTION_NOTICES,
+    ACTION_NOTICE_POSTED,
+    ACTION_GOSSIP,
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -183,6 +191,9 @@ static const int kSkillArtifice		= 14;	// picking locks
 static const int kNeedsSaint		= -32;
 // or the wall from inside: by the option (horses, a rope, the marks)
 static const int kNeedsInnerWall	= -33;
+// or the special jobs' first rumor: the city's property 0x21 a multiple
+// of 20 and no mark 0x65 (file 0xE3FED)
+static const int kNeedsJobRumor		= -34;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -214,6 +225,7 @@ static const int kUntilNight		= -1;	// "wait until nightfall"
 static const int kUntilMorning		= -2;	// "camp here until morning"
 static const int kAnHourMoreAtNight	= -3;	// an hour, two outside the
                                             // game's day
+static const int kHalfSize			= -4;	// city size / 2 hours
 
 struct option_rule {
     int action;
@@ -342,7 +354,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "Here you can enjoy the good food... of the $Inn common-room."
     // (DARKLAND.EXE, file 0xA6B5E; a wanted party gets SCREEN_UNWELCOME)
     { "URBAN00", 0, NULL, {
-        TODO,								// local news and rumors
+        DO(ACTION_INN_NEWS),				// local news and rumors
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),	// a meal and sleep for $Money1
         DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
@@ -393,7 +405,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 2, NULL, { WAIT(SCREEN_INN, 9 * 60) } },
     // "The $citySquare, the main city square of $PlaceName..."
     { "CITYS00", 0, "XTOWN.PIC", {
-        TODO,								// notices and gossip
+        { ACTION_NEWS, CityVisit::SCREEN_SQUARE, kAlways, 60 },	// notices,
+                                            // gossip (file 0x9DB66)
         GO_IF(SCREEN_TOWN_HALL, CITY_TOWN_HALL),
         TODO,								// the prison
         GO_IF(SCREEN_BARRACKS, CITY_ARMORY),
@@ -542,7 +555,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "The $slum of $PlaceName is full of paupers, drifters, thieves..."
     { "SLUMD00", 0, NULL, {
         WAIT(SCREEN_SLUM, 60),				// rest for an hour
-        TODO,								// listen to the rumors
+        { ACTION_NEWS, CityVisit::SCREEN_SLUM, kAlways, kHalfSize },	// the
+                                            // rumors (file 0xAB15A)
         TODO, TODO, TODO, TODO, TODO, TODO,	// placeholders
         TODO,								// live very cheaply
         GO(SCREEN_SIDE_STREET)
@@ -590,7 +604,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // that we have no room.'" The game offers neither the meal nor the
     // room, nor the storage.
     { "URBAN00", 3, NULL, {
-        TODO,								// talk, daring the guards
+        DO(ACTION_INN_NEWS),				// talk, daring the guards
         HIDE, HIDE,							// eat and rest, a room
         DO(ACTION_STABLES),
         HIDE, HIDE,							// store, recover items
@@ -1005,6 +1019,40 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "SELEC01", 12, NULL, { DO(ACTION_INNER_AFTER_DARK) } },
     // "You stumble and trip frequently..."
     { "SIDES01", 1, NULL, { GO(SCREEN_INNER_WALL) } },
+    // "Eyes and ears open, you..." (state 0x66, file 0xE3A70)
+    { "CITYN00", 0, NULL, {
+        DO(ACTION_NOTICES),					// the official notices (0x6D)
+        GO(SCREEN_AFFAIRS_NONE),			// elsewhere in the Empire (0x6E)
+        DO(ACTION_GOSSIP),					// the situation here (0xAE)
+        GO(SCREEN_JOBS),					// special jobs (0x67)
+        HIDE,								// politics: an event of kind 2
+                                            // here (0E76:3470), none kept
+        HIDE, HIDE, HIDE, HIDE,				// placeholders
+        DO(ACTION_NEWS_RETURN)				// have learned what you can
+    } },
+    // "...A squad of city guardsmen leap into the common room!"
+    { "URBAN00", 4, NULL, { DO(ACTION_INN_RAID) } },
+    // the notices (state 0x6D, file 0xE97C2)
+    { "OFFIC00", 4, NULL, { DO(ACTION_NOTICE_POSTED) } },
+    { "OFFIC00", 5, NULL, { GO(SCREEN_NEWS) } },
+    { "OFFIC00", 0, NULL, { GO(SCREEN_NEWS) } },
+    { "OFFIC00", 6, NULL, { GO(SCREEN_NEWS) } },
+    // "...nobody has any travellers' tales" (state 0x6E, file 0xE9FE4)
+    { "AFFAI00", 3, NULL, { GO(SCREEN_NEWS) } },
+    // the gossip (state 0xAE, file 0x10F96E)
+    { "SITUA01", 0, NULL, { GO(SCREEN_NEWS) } },
+    { "SITUA01", 5, NULL, { GO(SCREEN_NEWS) } },
+    { "SITUA01", 6, NULL, { GO(SCREEN_NEWS) } },
+    { "SITUA01", 7, NULL, { GO(SCREEN_NEWS) } },
+    // "After a few casual conversations, you learn that..." (state
+    // 0x67, file 0xE3F7A): the employers' leads are quests, not
+    // implemented; 1 and 2 need an event of kind 2 here (0E76:360C)
+    { "SPECI00", 0, NULL, {
+        TODO_IF(kNeedsJobRumor),			// a well-placed personage
+        HIDE, HIDE, HIDE,
+        HIDE, HIDE, HIDE, HIDE, HIDE,		// "info 4." ... "info 8."
+        GO(SCREEN_NEWS)						// nothing more to hear
+    } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1018,7 +1066,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },					// outside
     // "Mellow lanterns and a warm fire make the $Inn..." (file 0xA7545)
     { "URBAN01", 0, NULL, {
-        TODO,								// local news and rumors
+        DO(ACTION_INN_NEWS),				// local news and rumors
         DO_IF(ACTION_SLEEP, kNeedsInnPrice),
         DO(ACTION_RESIDENCE),				// take up residence
         DO(ACTION_STABLES),
@@ -1183,7 +1231,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { "URBAN01", 3, NULL, {					// "no rooms available"
-        TODO,
+        DO(ACTION_INN_NEWS),
         HIDE, HIDE,
         DO(ACTION_STABLES),
         HIDE, HIDE,
@@ -1388,6 +1436,18 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },					// the news
+    { "URBAN01", 4, NULL, { DO(ACTION_INN_RAID) } },	// the guards at the inn
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1485,6 +1545,7 @@ CityVisit::CityVisit(GameData& data)
     fGateReturn(SCREEN_MAIN_STREET),
     fGateShoutFight(false),
     fAfterDark(-1),
+    fNewsReturn(SCREEN_INN),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1875,6 +1936,37 @@ CityVisit::Choose(int option)
             _Show(option == 4 ? _RopeDown(false) : _ClimbOver(false));
             return true;
         }
+        case ACTION_INN_NEWS:
+            _Show(_InnNews());
+            return true;
+        case ACTION_NEWS:
+            // the square (file 0x9DB66): an hour; the slum (0xAB15A): city
+            // size / 2 hours
+            if (fClock != NULL) {
+                fClock->AddHours(uint32(rule.minutes == kHalfSize
+                    ? fData.Cities().CityAt(uint32(fCity)).size / 2
+                    : rule.minutes / 60));
+            }
+            fNewsReturn = rule.target;
+            _Show(SCREEN_NEWS);
+            return true;
+        case ACTION_NEWS_RETURN:
+            // file 0xE3EF6: back where the news came from (DS:E7D8)
+            _Show(fNewsReturn);
+            return true;
+        case ACTION_INN_RAID:
+            _Show(_Challenge(SCREEN_INN));
+            return true;
+        case ACTION_NOTICES:
+            _Show(_Notices());
+            return true;
+        case ACTION_NOTICE_POSTED:
+            _Show(int16(_PeopleSeed()) % 2 == 0 ? SCREEN_NOTICE_CURFEW_LORD
+                : SCREEN_NOTICE_CURFEW);
+            return true;
+        case ACTION_GOSSIP:
+            _Show(_Gossip());
+            return true;
         case ACTION_SALLY_CHALLENGE:
             _Show(_Challenge(SCREEN_INNER_WALL));
             return true;
@@ -2327,6 +2419,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkGrateFailed);
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsJobRumor) {
+            hide = int16(_PeopleSeed()) % 20 != 0 || _Marked(0x65);
         } else if (rule.needs == kNeedsInnerWall) {
             // file 0xBD992: the grate tried (mark 0x10), the sally port's
             // alarm (0x22), the walls guarded (0x0F), a rope (item 59),
@@ -4455,7 +4549,8 @@ CityVisit::_CourtFine()
 // 100: the ruler's pardon if at most the reputation / 10 (card 7, the
 // reputation set to -9, the square); the abbot if at most the best
 // Virtue + Religion + Charisma + Speak Latin / 10 (card 8, the church;
-// 0E76:360C(2, 0, location), not decoded, taken as true); the bankers if
+// with an event of kind 2 here, 0E76:360C, the game starts from an
+// uninitialized word: no events are kept here); the bankers if
 // at most the florins in the purse (card 9, five more hours, the
 // reputation -9, the square); the mob if at most |reputation / 5| (card
 // 10, a weapon each by the best weapon skill, the fight). Two more, on
@@ -5495,6 +5590,72 @@ CityVisit::_ClimbOver(bool afterDark)
         fClock->AddHours(3);
     return fallen == 0 ? SCREEN_OVER_WALL
         : fallen == 1 ? SCREEN_OVER_WALL_ONE_FELL : SCREEN_OVER_WALL_FALLS;
+}
+
+
+// News and rumors at the inn (file 0xA6E40): every member gains an
+// eighth of his maximum Endurance; a party of -40 or less is found by
+// the guards (card 4, then the guards' challenge) if random(100) is over
+// -10 - the reputation (file 0xA6F26); else two hours and the news, back
+// to the inn after (DS:E7D8)
+int
+CityVisit::_InnNews()
+{
+    if (fParty != NULL) {
+        for (character& member : fParty->members) {
+            const int most = member.maxAttributes[ATTRIBUTE_ENDURANCE];
+            member.attributes[ATTRIBUTE_ENDURANCE] = uint8(std::min(most,
+                member.attributes[ATTRIBUTE_ENDURANCE] + most / 8));
+        }
+    }
+    const int reputation = _Reputation();
+    if (reputation <= -40 && int(fRandom() % 100) > -10 - reputation)
+        return SCREEN_INN_RAID;
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    fNewsReturn = SCREEN_INN;
+    return SCREEN_NEWS;
+}
+
+
+// The notices (state 0x6D, file 0xE97C2): with nobody reading better
+// than 10 (0E76:14A4(12)), by day a citizen reads them (card 4), at
+// night nothing (card 5); then the curfew, card 6 when the city's
+// property 0x21 is even, else card 0. The notices of the location's
+// state (+0x14: 1, 2, cards 1, 2) and of an event of kind 2 here (card
+// 3) are not reproduced; no time passes.
+int
+CityVisit::_Notices()
+{
+    if (_BestSkill(kSkillReadWrite) > 10 || fParty == NULL
+            || fParty->members.empty()) {
+        return int16(_PeopleSeed()) % 2 == 0 ? SCREEN_NOTICE_CURFEW_LORD
+            : SCREEN_NOTICE_CURFEW;
+    }
+    if (fClock != NULL && !IsGameDay(*fClock))
+        return SCREEN_NOTICES_TOO_DARK;
+    return SCREEN_NOTICES_EXPLAINED;
+}
+
+
+// The gossip (state 0xAE, file 0x10F96E): by the city's property 0x21 %
+// 20 (a signed remainder): over 14 card 5, over 9 card 6, over 4 card 7,
+// else card 0 (card 4, for 20, never comes); an hour. The location's
+// state (+0x14 bits 1, 2 and 0x80: cards 1, 2, 9), mark 0x42 (card 8)
+// and an event of kind 2 here (card 3) are not reproduced.
+int
+CityVisit::_Gossip()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    const int r = int16(_PeopleSeed()) % 20;
+    if (r > 14)
+        return SCREEN_GOSSIP_JOKES;
+    if (r > 9)
+        return SCREEN_GOSSIP_DULL;
+    if (r > 4)
+        return SCREEN_GOSSIP_NOTHING_EVER;
+    return SCREEN_GOSSIP_NOTHING;
 }
 
 

@@ -273,6 +273,18 @@ public:
         SCREEN_INNER_SAINT_UNANSWERED,
         SCREEN_WAIT_FOR_DARK,
         SCREEN_STUMBLING,		// the back alleys at night: $SIDES01 1
+        SCREEN_NEWS,			// news and rumors: $CITYN00 card 0; the
+        SCREEN_INN_RAID,		// guards at the inn ($URBAN00/01 4); the
+        SCREEN_NOTICES_EXPLAINED,	// notices ($OFFIC00 4, 5, 0, 6), news
+        SCREEN_NOTICES_TOO_DARK,	// from elsewhere ($AFFAI00 3), gossip
+        SCREEN_NOTICE_CURFEW,	// ($SITUA01 0, 5, 6, 7), special jobs
+        SCREEN_NOTICE_CURFEW_LORD,	// ($SPECI00 0)
+        SCREEN_AFFAIRS_NONE,
+        SCREEN_GOSSIP_NOTHING,
+        SCREEN_GOSSIP_JOKES,
+        SCREEN_GOSSIP_DULL,
+        SCREEN_GOSSIP_NOTHING_EVER,
+        SCREEN_JOBS,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -485,6 +497,11 @@ private:
     int				_BribeSally();
     int				_RopeDown(bool afterDark);
     int				_ClimbOver(bool afterDark);
+    // News and rumors (DARKLAND.EXE: the inn's option, file 0xA6E40;
+    // the menu, file 0xE3A70, state 0x66)
+    int				_InnNews();
+    int				_Notices();
+    int				_Gossip();
     // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
     // 0E76:2180, overlay 0x22 at file 0x6B7D0)
     std::vector<int> _SaintsFor(int screen) const;
@@ -573,6 +590,7 @@ private:
     int				fGateReturn;	// where "not leave just yet" goes
     bool			fGateShoutFight;	// card 1 of the gate: the fight next
     int				fAfterDark;		// the wall's option waiting for the dark
+    int				fNewsReturn;	// where the news menu goes back to
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

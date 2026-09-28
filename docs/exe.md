@@ -593,8 +593,9 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     the rescues, each tried with random(100) (random(50) for argument
     0x50), then an hour: the reputation / 10 or less, card 7, the
     pardon (reputation set to −9, the square); the best Virtue +
-    Religion + Charisma + Speak Latin / 10 (while 0E76:360C(2, 0,
-    location), not decoded, is true), card 8, the abbot (the church,
+    Religion + Charisma + Speak Latin / 10 (added to 0; with an event
+    of kind 2 here, 0E76:360C, to an uninitialized word), card 8, the
+    abbot (the church,
     state 0x34 or 0x35); the florins in the purse, card 9, the bankers
     (five hours, reputation −9, the square; the bank is not touched);
     |reputation / 5|, card 10, the mob (a falchion, mace or short spear
@@ -1024,11 +1025,58 @@ segment base 0xA6B50), $URBAN01.MSG at night (file 0xA7545). **verified**
   else card 7 ("whether any of your mounts are for sale"); one hour; then
   the trade screen (−1, "Stablemaster", 0x2000). At night (file 0xA7AAE)
   only $URBAN01 card 1, no time.
-- **News and rumors** (file 0xA6E40): every member gains an eighth of its
-  maximum endurance; a wanted party is found by the guards (card 4, a
-  fight) if random(100) is over −10 − reputation; else two hours pass and
-  the rumors are shown. Not reproduced (no rumors yet), nor residence,
-  storage and the party's composition.
+- **News and rumors** (file 0xA6E40, 0xA78B7 at night): every member
+  gains an eighth of its maximum endurance; at −40 or less the guards
+  come (card 4, then state 1, the challenge) if random(100) is over −10
+  − reputation (file 0xA6F26); else two hours, and the news (state 0x66,
+  "News and rumors" below), back to the inn after (DS:E7D8). Not
+  reproduced: the party's composition.
+
+## News and rumors
+
+State 0x66 ($CITYN00, 195D:0000 of overlay 0x45, segment 195D at file
+0xE3A70; overlay 0x45 has 1838 at 0xE2820): reached from the inn (two
+hours), the square (file 0x9DB66, an hour; a wanted check before, on
+DS:584A, as the streets': not reproduced) and the slum (0xAB15A, city
+size / 2 hours); "have learned what you can" (0xE3EF6) goes back
+(DS:E7D8). Its options: the notices (state 0x6D), elsewhere in the
+Empire (0x6E), the situation here (0xAE), special jobs (0x67), politics
+(0xAE, offered with an event of kind 2 here, 0E76:3470). Almost all
+their content comes from the game's events. **verified** (code)
+
+- **Events** (0E76:360C(kind, a, location), file 0x5AEBC): a search of
+  up to 300 events (far pointers at 7E30:1B2C) for one with +0x28 =
+  kind, +0 = a, +0x1C = the location, still valid (0E76:3230). 0E76:
+  3470, 32FE, 3C28 query them too. EVENTS.TMP holds a word (28) and 28
+  records of 48 bytes (2 + 28 · 48 = 1346, its size). Not read yet: no
+  events are kept here, so every event query is false.
+- **The notices** (state 0x6D, $OFFIC00, segment 1910 at file 0xE97C0,
+  overlay 0x47): nobody reading better than 10 (0E76:14A4(12)): by day
+  card 4 (a citizen reads them), at night card 5 and nothing more; then
+  card 1 or 2 by the location's byte +0x14 (1, 2), card 3 with an event
+  of kind 2 here, and card 6 when the city's property 0x21 is even,
+  else card 0 (the curfew); no time; back to the news (DS:E896). Cards
+  7..16 (executions, the Hussites, rewards, mines) come from events.
+- **Elsewhere** (state 0x6E, $AFFAI00, file 0xE9FE4): no menu (card 0
+  and its options are not shown by this code): card 5 with an event of
+  kind 4, 17 with one of kind 0xC; then for the city: card 1 while its
+  location's byte +0x14 has bit 0x80, card 2 while mark 0x42, card 4
+  with an event of kind 2 elsewhere, else card 3 ("nobody has any
+  travellers' tales"); back to the news.
+- **The situation here** (state 0xAE, $SITUA01, file 0x10F96E): cards
+  1, 2 by the location's byte +0x14 (bits 1, 2); then card 9 (bit
+  0x80), 8 (mark 0x42), 3 (an event of kind 2 here), else by property
+  0x21 % 20 (signed): 20 card 4 (never), over 14 card 5, over 9 card 6,
+  over 4 card 7, else card 0; an hour; back to the news. Cards 10..20
+  come from events.
+- **Special jobs** (state 0x67, $SPECI00, file 0xE3F7A): option 0 while
+  property 0x21 % 20 is 0 and not mark 0x65, 1 and 2 with an event of
+  kind 2 here (0E76:360C(2, 0, location)), 3..8 hidden; the employers'
+  names are 1367:0DB4(number + 12, ...) and (number + 22, ...).
+- Reproduced in `CityVisit`: the menu, the notices, "elsewhere" and the
+  situation as with no events and a location in its first state (card
+  3 of $AFFAI00, the curfew and the gossip by the city's number), the
+  special jobs' menu (the jobs are quests: not implemented).
 
 ## Time and travel
 

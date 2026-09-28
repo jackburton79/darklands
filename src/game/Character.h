@@ -30,6 +30,7 @@ static const int kSkillReligion		= 8;
 static const int kSkillVirtue		= 9;
 static const int kSkillSpeakCommon	= 10;
 static const int kSkillSpeakLatin	= 11;
+static const int kSkillReadWrite	= 12;
 static const int kSkillHealing		= 13;
 static const int kSkillStealth		= 15;
 static const int kSkillStreetwise	= 16;
