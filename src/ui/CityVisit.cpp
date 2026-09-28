@@ -99,6 +99,7 @@ enum option_action {
     ACTION_CHASE_AMBUSH,
     ACTION_CHASE_HIDE,
     ACTION_SAINT,				// invoke one of the card's saints
+    ACTION_SAINT_RESCUE,		// the rescues after a saint's answer
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -267,13 +268,16 @@ struct screen_rules {
         DO_IF(ACTION_PAY_TOLL, kNeedsToll),	/* the toll of $Money1 */ \
         DO_IF(ACTION_CHARM_GUARDS, kNeedsCharm), \
         DO_IF(ACTION_SLIP_IN, kNeedsSlip),	/* sneak in with the crowd */ \
-        TODO, TODO, TODO,					/* potion, saint, attack */ \
+        TODO,								/* potion */ \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
+        TODO,								/* attack */ \
         GO(SCREEN_OUTSIDE)					/* reconsider */ \
     }
 #define WATCH_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine),	/* the fine of $Money1 */ \
         DO(ACTION_RUN),						/* run away */ \
-        TODO, TODO,							/* potion, saint */ \
+        TODO,								/* potion */ \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
         DO(ACTION_FIGHT)					/* attack them */ \
     }
 #define CELL_OPTIONS { \
@@ -290,13 +294,14 @@ struct screen_rules {
 #define COURT_OPTIONS { \
         DO(ACTION_KEEP_SILENT), \
         DO(ACTION_PLEAD_INNOCENT), \
-        TODO,								/* invoke a saint */ \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
         DO(ACTION_CONFESS_GUILT) \
     }
 #define WATCH_CAUGHT_OPTIONS { \
         DO_IF(ACTION_PAY_FINE, kNeedsFine), \
         HIDE,								/* no running again */ \
-        TODO, TODO, \
+        TODO, \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
         DO(ACTION_FIGHT) \
     }
 
@@ -741,12 +746,14 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         DO_IF(ACTION_HAIL_WATCH, kNeedsHail),	// rely on your fame
         DO_IF(ACTION_TALK_TO_WATCH, kNeedsTalk),	// talk your way inside
         DO_IF(ACTION_BRIBE_WATCH, kNeedsNightBribe),	// $Money1
-        TODO, TODO,							// potion, saint
+        TODO,								// potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
         DO(ACTION_FALL_BACK)
     } },
     { "CITYG00", 0, NULL, {
         HIDE, HIDE, HIDE,
-        TODO, TODO,
+        TODO,
+        DO_IF(ACTION_SAINT, kNeedsSaint),
         DO(ACTION_FALL_BACK)
     } },
     // "Holy Sacraments!... ushered into the city by a worshipful gateman"
@@ -767,7 +774,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         DO_IF(ACTION_BRIBE_WALL, kNeedsWallBribe),	// $Money1 at a door
         { ACTION_ROPE, 0, kNeedsRope, 0 },	// $ChosenOneName and a rope
         { ACTION_CLIMB, 0, kNeedsNoRope, 0 },	// everybody, no rope
-        TODO, TODO,							// potion, saint
+        TODO,								// potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
         GO(SCREEN_OUTSIDE)					// fall back
     } },
     // "You finish your examination at night... wait until dawn"
@@ -784,7 +792,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         { ACTION_ROPE, 0, kNeedsRope, 0 },
         { ACTION_CLIMB, 0, kNeedsClimb, 0 },
         DO_IF(ACTION_GRATE, kNeedsGrate),	// force a sewer grate
-        TODO, TODO,							// potion, saint
+        TODO,								// potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
         GO(SCREEN_OUTSIDE)					// fall back
     } },
     // "It's broad daylight when you finish... wait until dark"
@@ -804,7 +813,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         DO(ACTION_CHALLENGE_RUN),			// run down a side street
         DO(ACTION_GUARDS_TALK),				// talk your way out
         DO_IF(ACTION_GUARDS_BRIBE, kNeedsGuardsBribe),	// $Money1
-        TODO, TODO,							// potion, saint
+        TODO,								// potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
         WAIT(SCREEN_CHALLENGE_ARRESTED, 3 * 60)	// surrender (file 0x91E44)
     } },
     // "You defeat the guards utterly.", "...you flee down the street."
@@ -857,7 +867,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "EXECU01", 0, NULL, {
         DO(ACTION_SUBMIT),					// refuse to struggle
         DO(ACTION_BREAK_ROPES),
-        TODO								// pray for deliverance
+        DO_IF(ACTION_SAINT, kNeedsSaint)	// pray for deliverance
     } },
     { "EXECU01", 1, NULL, { GO(SCREEN_EXECUTION) } },	// the next one
     { "EXECU01", 6, NULL, { DO(ACTION_EXECUTION_FIGHT) } },
@@ -908,6 +918,38 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "DUNGE00", 20, NULL, { GO(SCREEN_SIDE_STREET) } },
     { "DUNGE00", 21, NULL, { GO(SCREEN_SQUARE) } },
     { "DUNGE00", 23, NULL, { DO(ACTION_BACK_TO_CELL) } },
+    // the guards' saints (file 0x91C62)
+    { "CHALL00", 15, NULL, { DO(ACTION_GUARDS_FIGHT) } },
+    { "CHALL00", 16, NULL, { LEAVE } },	// "far from noisome, dangerous $PlaceName"
+    { "CHALL00", 17, NULL, { DO(ACTION_CHALLENGE_RETURN) } },
+    { "CHALL00", 18, NULL, { GO(SCREEN_SIDE_STREET) } },
+    // the gates' and walls' saints (files 0x92D40, 0x93B24, 0x9A392,
+    // 0x9B0C4)
+    { "CITYG01", 10, NULL, { GO(SCREEN_MAIN_STREET) } },
+    { "CITYG01", 12, NULL, { GO(SCREEN_DAY_GATE) } },
+    { "CITYG00", 10, NULL, { GO(SCREEN_MAIN_STREET) } },
+    { "CITYG00", 11, NULL, { DO(ACTION_BACK_TO_GATE) } },
+    { "CITYW00", 9, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW00", 10, NULL, { GO(SCREEN_DAY_WALL) } },
+    { "CITYW01", 8, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW01", 9, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "CITYW01", 10, NULL, { DO(ACTION_BACK_TO_WALL) } },
+    // the watch's saints (file 0xBF81E): "Night, what night?", and the
+    // watch again without the saint
+    { "NIGHT00", 6, NULL, { DO(ACTION_WATCH_RETURN) } },
+    { "NIGHT00", 13, NULL, {
+        DO_IF(ACTION_PAY_FINE, kNeedsFine),
+        DO(ACTION_RUN),
+        TODO,								// potion
+        HIDE,								// the saint again (0xEE7C = 2)
+        DO(ACTION_FIGHT)
+    } },
+    // the magistrate's (file 0xFB978) and the execution's (0xFC6B2)
+    { "MAGIS00", 2, NULL, { GO(SCREEN_UNPLEADED) } },
+    { "MAGIS00", 3, NULL, { GO(SCREEN_MAGISTRATE) } },
+    { "EXECU01", 2, NULL, { DO(ACTION_SAINT_RESCUE) } },
+    { "EXECU01", 3, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { "EXECU01", 4, NULL, { DO(ACTION_RESCUE) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1257,6 +1299,26 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1350,6 +1412,7 @@ CityVisit::CityVisit(GameData& data)
     fTortures(0),
     fMagistrateComing(false),
     fChoosingSaint(false),
+    fRescueSaint(-1),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -1696,6 +1759,9 @@ CityVisit::Choose(int option)
         case ACTION_SAINT:
             _ShowSaints();
             return true;
+        case ACTION_SAINT_RESCUE:
+            _Show(_Rescue(fRescueSaint));
+            return true;
         case ACTION_CALL_PRIEST:
             // file 0x991CA: three hours; the cell and the tunnel are kept
             if (fClock != NULL)
@@ -1982,7 +2048,8 @@ CityVisit::_Show(int screen, bool withScene)
     }
     if (screen == SCREEN_NIGHT_WATCH || screen == SCREEN_NIGHT_WATCH_MARKET
             || screen == SCREEN_NIGHT_WATCH_AGAIN
-            || screen == SCREEN_NIGHT_WATCH_CAUGHT)
+            || screen == SCREEN_NIGHT_WATCH_CAUGHT
+            || screen == SCREEN_WATCH_UNANSWERED)
         fVariables["Money1"] = MoneyText(_Fine());
     // before the walls: the card of the city's rule (file 0x942E0), and
     // what the party expects there
@@ -2022,12 +2089,14 @@ CityVisit::_Show(int screen, bool withScene)
             || screen == SCREEN_OUTSIDE_FREE
             || (screen == SCREEN_DAY_WALL && previous != SCREEN_DAY_WALL_FALL
                 && previous != SCREEN_DAY_WALL_HELP
-                && previous != SCREEN_DAY_WALL_SLIP_ALONE)
+                && previous != SCREEN_DAY_WALL_SLIP_ALONE
+                && previous != SCREEN_DAY_WALL_UNANSWERED)
             || (screen == SCREEN_NIGHT_WALL
                 && previous != SCREEN_NIGHT_WALL_FALL
                 && previous != SCREEN_NIGHT_WALL_HELP
                 && previous != SCREEN_NIGHT_WALL_SLIP_ALONE
-                && previous != SCREEN_SEWER_STUCK))
+                && previous != SCREEN_SEWER_STUCK
+                && previous != SCREEN_NIGHT_WALL_UNANSWERED))
         fWallFailed = false;
     // the banks are cold to a party with a bad local reputation
     if (screen == SCREEN_FUGGER && _Reputation() < 0)
@@ -4209,19 +4278,22 @@ CityVisit::_CourtFine()
 }
 
 
-// The rescues (file 0xFC196 with -1), each tried in turn, then an hour:
-// the ruler's pardon if random(100) is at most the reputation / 10 (card
-// 7, the reputation set to -9, the square); the abbot if at most the
-// best Virtue + Religion + Charisma + Speak Latin / 10 (card 8, the
-// church; 0E76:360C(2, 0, location), not decoded, taken as true); the
-// bankers if at most the florins in the purse (card 9, five more hours,
-// the reputation -9, the square); the mob if at most |reputation / 5|
-// (card 10, a weapon each by the best weapon skill, the fight). Two
-// more, on DS:9082 (a city ruler's quest, state 0x84), are not
-// reproduced. Else a member is beheaded (card 1) and the execution goes
-// on.
+// The rescues (1838:0CF6(saint), file 0xFC196; -1 without a saint),
+// each tried in turn with random(n), n = 50 for St. Jude (0x50), else
+// 100: the ruler's pardon if at most the reputation / 10 (card 7, the
+// reputation set to -9, the square); the abbot if at most the best
+// Virtue + Religion + Charisma + Speak Latin / 10 (card 8, the church;
+// 0E76:360C(2, 0, location), not decoded, taken as true); the bankers if
+// at most the florins in the purse (card 9, five more hours, the
+// reputation -9, the square); the mob if at most |reputation / 5| (card
+// 10, a weapon each by the best weapon skill, the fight). Two more, on
+// DS:9082 (the city ruler's quest, state 0x84), are not reproduced. If
+// none comes, a saint's answer decides (St. Alcuin: the pardon or the
+// abbot; St. John Nepomuk: the pardon; St. Jude: any of the six, the
+// quest not implemented); without one a member is beheaded (card 1)
+// and the execution goes on. An hour passes first.
 int
-CityVisit::_Rescue()
+CityVisit::_Rescue(int saint)
 {
     if (fParty == NULL || fParty->members.empty())
         return SCREEN_EXECUTION;
@@ -4233,37 +4305,60 @@ CityVisit::_Rescue()
             + member.attributes[ATTRIBUTE_CHARISMA]
             + member.skills[kSkillSpeakLatin]);
     }
+    const uint32 n = saint == 80 ? 50 : 100;
+    int rescue = 6;
+    if (int(fRandom() % n) <= reputation / 10)
+        rescue = 0;
+    else if (int(fRandom() % n) <= best / 10)
+        rescue = 1;
+    else if (int(fRandom() % n) <= fParty->cash.florins)
+        rescue = 2;
+    else if (int(fRandom() % n) <= std::abs(reputation / 5))
+        rescue = 3;
+    else if (saint == 5)
+        rescue = int(fRandom() % 2);
+    else if (saint == 78)
+        rescue = 0;
+    else if (saint == 80)
+        rescue = int(fRandom() % 6);
     if (fClock != NULL)
         fClock->AddHours(1);
-    if (int(fRandom() % 100) <= reputation / 10) {
-        if (fReputations != NULL && fCity < int(fReputations->size()))
-            (*fReputations)[fCity] = -9;
-        return SCREEN_PARDONED;
-    }
-    if (int(fRandom() % 100) <= best / 10)
-        return SCREEN_CLAIMED_BY_ABBOT;
-    if (int(fRandom() % 100) <= fParty->cash.florins) {
-        if (fClock != NULL)
-            fClock->AddHours(5);
-        if (fReputations != NULL && fCity < int(fReputations->size()))
-            (*fReputations)[fCity] = -9;
-        return SCREEN_BOUGHT_OFF;
-    }
-    if (int(fRandom() % 100) <= std::abs(reputation / 5)) {
-        // the weapon of the best weapon skill (0E76:01C0, file 0xFC46A):
-        // a falchion (edged, bows, missiles), a mace (impact, flails), a
-        // short spear (polearms, thrown)
-        static const int kWeapons[kWeaponSkillCount]
-            = { 4, 14, 14, 21, 21, 4, 4 };
-        for (character& member : fParty->members) {
-            int skill = 0;
-            for (int s = 1; s < kWeaponSkillCount; s++) {
-                if (member.skills[s] > member.skills[skill])
-                    skill = s;
+    switch (rescue) {
+        case 0:
+            if (fReputations != NULL && fCity < int(fReputations->size()))
+                (*fReputations)[fCity] = -9;
+            return SCREEN_PARDONED;
+        case 1:
+            return SCREEN_CLAIMED_BY_ABBOT;
+        case 2:
+            if (fClock != NULL)
+                fClock->AddHours(5);
+            if (fReputations != NULL && fCity < int(fReputations->size()))
+                (*fReputations)[fCity] = -9;
+            return SCREEN_BOUGHT_OFF;
+        case 3: {
+            // the weapon of the best weapon skill (0E76:01C0, file
+            // 0xFC46A): a falchion (edged, bows, missiles), a mace
+            // (impact, flails), a short spear (polearms, thrown)
+            static const int kWeapons[kWeaponSkillCount]
+                = { 4, 14, 14, 21, 21, 4, 4 };
+            for (character& member : fParty->members) {
+                int skill = 0;
+                for (int s = 1; s < kWeaponSkillCount; s++) {
+                    if (member.skills[s] > member.skills[skill])
+                        skill = s;
+                }
+                _GiveTo(member, kWeapons[skill]);
             }
-            _GiveTo(member, kWeapons[skill]);
+            return SCREEN_MOB;
         }
-        return SCREEN_MOB;
+        case 4:
+        case 5:
+            // the city ruler's quest (state 0x84): not implemented
+            fPreviousScreen = SCREEN_SQUARE;
+            return SCREEN_NOT_IMPLEMENTED;
+        default:
+            break;
     }
     // file 0xFC4CE: a member at random (the next one standing)
     const int victim = int(fRandom() % fParty->members.size());
@@ -4597,6 +4692,28 @@ CityVisit::_SaintsFor(int screen) const
         static const int kCellSaints[4] = { 114, 87, 80, 87 };
         saints = { 14, 35, 108, kCellSaints[screen - SCREEN_CELL] };
     }
+    // the guards (file 0x9163D): Christina, Genevieve, Godfrey, Reinold
+    if (screen == SCREEN_CHALLENGE)
+        saints = { 21, 54, 61, 114 };
+    // the gate by day (file 0x9273D): Lutgardis; at night (0x9357D) and
+    // the wall by day (0x99CAB) Lutgardis, Milburga; the wall at night
+    // (0x9A902) Christina too
+    if (screen == SCREEN_DAY_GATE || screen == SCREEN_DAY_GATE_GUARDED)
+        saints = { 89 };
+    if (screen == SCREEN_NIGHT_GATE || screen == SCREEN_NIGHT_GATE_ALERTED
+            || screen == SCREEN_DAY_WALL)
+        saints = { 89, 97 };
+    if (screen == SCREEN_NIGHT_WALL)
+        saints = { 21, 89, 97 };
+    // the night watch (file 0xBF1D6): Raphael, Finbar, Lucy, Odilia
+    if (screen >= SCREEN_NIGHT_WATCH && screen <= SCREEN_NIGHT_WATCH_CAUGHT)
+        saints = { 111, 49, 87, 100 };
+    // the magistrate (file 0xFB518): Devota, Lawrence; the execution
+    // (0xFBF17): Alcuin, Gregory Thaumaturgus, John Nepomuk, Jude
+    if (screen == SCREEN_MAGISTRATE || screen == SCREEN_MAGISTRATE_AGAIN)
+        saints = { 34, 84 };
+    if (screen == SCREEN_EXECUTION)
+        saints = { 5, 63, 78, 80 };
     return saints;
 }
 
@@ -4720,7 +4837,84 @@ CityVisit::_SaintAnswered(int screen, int index)
         }
         return SCREEN_CELL;				// Lucy again: nothing
     }
-    return fScreen;
+    // with a good reputation (over -10) the answer raises it, else it
+    // lowers it (0E76:19D0 with the signs reversed)
+    const bool liked = _Reputation() > -10;
+    switch (screen) {
+        case SCREEN_CHALLENGE:
+            // file 0x91CC2: an hour; Christina (card 16, +-3..9) takes the
+            // party away from the city; Genevieve, Godfrey (card 17,
+            // +2..6) stop the guards; Reinold (card 18, +-2..6) walks up
+            // a wall to the side streets
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            if (index == 0) {
+                _ChangeReputation(liked ? 3 : -9, liked ? 9 : -3);
+                return SCREEN_CHRISTINA_LIFTS;
+            }
+            if (index <= 2) {
+                _ChangeReputation(2, 6);
+                return SCREEN_GUARDS_AT_PEACE;
+            }
+            _ChangeReputation(liked ? 2 : -6, liked ? 6 : -2);
+            return SCREEN_REINOLD_WALKS;
+        case SCREEN_DAY_GATE:
+        case SCREEN_DAY_GATE_GUARDED:
+            // file 0x92D62: card 10, +4..12 (-3..9), the main street
+            _ChangeReputation(liked ? 4 : -9, liked ? 12 : -3);
+            return SCREEN_GATE_LIFTED;
+        case SCREEN_NIGHT_GATE:
+        case SCREEN_NIGHT_GATE_ALERTED:
+            // file 0x93B46: card 10, +-2..6, the main street
+            _ChangeReputation(liked ? 2 : -6, liked ? 6 : -2);
+            return SCREEN_NIGHT_GATE_LIFTED;
+        case SCREEN_DAY_WALL:
+            // file 0x9A3C0: card 9, +1..4, the side streets
+            _ChangeReputation(1, 4);
+            return SCREEN_DAY_WALL_LIFTED;
+        case SCREEN_NIGHT_WALL:
+            // file 0x9B0ED: card 8 (Christina) or 9, an hour, the side
+            // streets
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return index == 0 ? SCREEN_NIGHT_WALL_CHRISTINA
+                : SCREEN_NIGHT_WALL_LIFTED;
+        case SCREEN_NIGHT_WATCH:
+        case SCREEN_NIGHT_WATCH_MARKET:
+        case SCREEN_NIGHT_WATCH_AGAIN:
+        case SCREEN_NIGHT_WATCH_CAUGHT:
+            // file 0xBF844: an hour, +5..10, card 6, on as after the fine
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _ChangeReputation(5, 10);
+            return SCREEN_WATCH_SUNLIGHT;
+        case SCREEN_MAGISTRATE:
+        case SCREEN_MAGISTRATE_AGAIN:
+            // file 0xFB9A1: card 2, the torture (every member loses
+            // random(20) Endurance, the leader keeps 1), 12 hours, card 4
+            // (free, the square)
+            if (fParty != NULL) {
+                for (character& member : fParty->members) {
+                    AddToAttribute(member, ATTRIBUTE_ENDURANCE,
+                        -int(fRandom() % 20));
+                }
+            }
+            if (fClock != NULL)
+                fClock->AddHours(12);
+            return SCREEN_COURT_SAINT;
+        case SCREEN_EXECUTION:
+            // file 0xFC6DB: Gregory (card 3) brings a storm, three hours,
+            // the side streets; the others (card 2) help the rescues
+            if (index == 1) {
+                if (fClock != NULL)
+                    fClock->AddHours(3);
+                return SCREEN_STORM;
+            }
+            fRescueSaint = _SaintsFor(screen)[size_t(index)];
+            return SCREEN_EXECUTION_SAINT;
+        default:
+            return screen;
+    }
 }
 
 
@@ -4733,7 +4927,36 @@ CityVisit::_SaintIgnored(int screen)
             fClock->AddHours(6);
         return SCREEN_NO_ANSWER;
     }
-    return screen;
+    switch (screen) {
+        case SCREEN_CHALLENGE:
+            return SCREEN_CHALLENGE_UNANSWERED;		// card 15, the fight
+        case SCREEN_DAY_GATE:
+        case SCREEN_DAY_GATE_GUARDED:
+            return SCREEN_GATE_UNANSWERED;			// card 12
+        case SCREEN_NIGHT_GATE:
+        case SCREEN_NIGHT_GATE_ALERTED:
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_NIGHT_GATE_UNANSWERED;	// card 11, an hour
+        case SCREEN_DAY_WALL:
+            return SCREEN_DAY_WALL_UNANSWERED;		// card 10
+        case SCREEN_NIGHT_WALL:
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_NIGHT_WALL_UNANSWERED;	// card 10, an hour
+        case SCREEN_NIGHT_WATCH:
+        case SCREEN_NIGHT_WATCH_MARKET:
+        case SCREEN_NIGHT_WATCH_AGAIN:
+        case SCREEN_NIGHT_WATCH_CAUGHT:
+            return SCREEN_WATCH_UNANSWERED;			// card 13
+        case SCREEN_MAGISTRATE:
+        case SCREEN_MAGISTRATE_AGAIN:
+            return SCREEN_COURT_UNANSWERED;			// card 3
+        case SCREEN_EXECUTION:
+            return SCREEN_EXECUTION_UNANSWERED;		// card 4, the rescues
+        default:
+            return screen;
+    }
 }
 
 

@@ -382,8 +382,8 @@ coming from the map the party stands before the walls. **verified**
     an hour, the main street; else mark 0x0B for 12 hours, a lesson of
     mode 0, and card 5 back before the walls, or for the wanted an hour
     and state 1;
-  - potion (file 0x92BCC), saint (0x92D40), attack (0x92E1C): not
-    decoded; *reconsider* (0x93052): before the walls, no time.
+  - potion (file 0x92BCC), attack (0x92E1C): not decoded; saint
+    (0x92D40): see "Saints"; *reconsider* (0x93052): before the walls, no time.
   09C0:20F3 (1462:00BA), which also stops the befriending, is not
   decoded (taken as false).
 - **The gate at night** (state 3, $CITYG00, file 0x93448; the actions
@@ -407,7 +407,8 @@ coming from the map the party stands before the walls. **verified**
     hours, card 2, a lesson of mode 0, an hour, the gate;
   - *bribe* (file 0x93948): card 3 with a reputation of −10 or less;
     else paid, card 5, an hour, the side streets;
-  - potion (file 0x939EC), saint (0x93B24): not decoded; *fall back*
+  - potion (file 0x939EC): not decoded; saint (0x93B24): see "Saints";
+    *fall back*
     (0x93BF2): card 12 of one of two decks at random, an hour, before
     the walls.
 - **The wall by day** (state 0xE, $CITYW00, file 0x99AEC; actions
@@ -431,7 +432,8 @@ coming from the map the party stands before the walls. **verified**
     is at most that roll falls (card 12 with his name, a fall, a lesson
     of mode 2), the others a lesson of mode 5 and card 13 each (back down
     to help), an hour, both climbs gone;
-  - potion (file 0x9A272), saint (0x9A392): not decoded; *fall back*
+  - potion (file 0x9A272): not decoded; saint (0x9A392): see "Saints";
+    *fall back*
     (0x9A476): before the walls, no time.
 - **A fall** (1462:026A(member, 0, 1, 10), the training overlay at file
   0x809A0): Strength loses random(10 · Strength / 40 + 1) − 1, at least
@@ -450,10 +452,11 @@ coming from the map the party stands before the walls. **verified**
     reputation falls by 2..4 (0E76:19D0(−2, −4)), size / 3 hours, the
     side streets; else 0E76:2D5C(member, location, 0, 0x10, 3, 99, ...)
     (a mark 0x10; its length is not decoded), card 5, an hour, the wall;
-  - potion (0x9AFAE), saint (0x9B0C4): not decoded; *fall back*
+  - potion (0x9AFAE): not decoded; saint (0x9B0C4): see "Saints";
+    *fall back*
     (0x9B1D6): before the walls, no time.
 - Reproduced in `CityVisit`: before the walls, the waits, the gates and
-  the walls but for their potion, saint and attack options, and the
+  the walls but for their potion and attack options, and the
   guards' challenge below. Not
   reproduced: the lessons of modes 0, 2, 5 (TrainSkill() has mode 1),
   the cards of every fallen and climber after a failed climb (one of
@@ -492,13 +495,14 @@ coming from the map the party stands before the walls. **verified**
     and a division by 12); **if random(100) < c** the guards refuse
     (card 10, the fight), else card 9, an hour, back. Neither takes the
     money. Both look like slips of the original, reproduced as they are;
-  - potion (0x91AC2), saint (0x91C62): not decoded; *surrender* (file
+  - potion (0x91AC2): not decoded; saint (0x91C62): see "Saints";
+    *surrender* (file
     0x91E44): card 4, three hours, state 0xD.
   Reproduced in `CityVisit` from the day gate's failures, with
   BattleView: a won battle is result 0, a retreat (Esc) result 2, a
   lost one result 4; result 1 has no BattleView counterpart. Card 7
   names the weapon in the leader's hand (*inferred*), cards 5 or 6
-  without one. Not reproduced: potions, saints, the lesson of mode 0.
+  without one. Not reproduced: potions, the lesson of mode 0.
 
 ## The dungeon, the magistrate and the execution
 
@@ -582,7 +586,7 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     one ($Money1); with that many florins in the purse, 24 hours and
     card 7, else three hours, card 8 and a flogging; the square. The
     purse is not touched in either case (as the code has it).
-  - saint (file 0xFB978): not reproduced.
+  - saint (file 0xFB978): see "Saints".
 - **The execution** (state 0x8D, $EXECU01, file 0xFBEA8):
   - *refuse to struggle* (file 0xFC57A) is 1838:0CF6(−1) (file 0xFC196),
     the rescues, each tried with random(100) (random(50) for argument
@@ -607,9 +611,14 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
     0..2: 0E76:23E2, card 12, 0E76:2C4E(...), an hour, the chase; 3, 4:
     card 13, three hours, the execution again. Then mark 0x11 for 240
     hours (480 at −75 or less; 0E76:2930).
-  - saint (file 0xFC6B2): not reproduced.
+  - saint (file 0xFC6B2): see "Saints"; the rescues take the saint
+    who answered as their argument (random(50) for St. Jude, 0x50) and
+    when none comes it decides: St. Alcuin (5) the pardon or the abbot
+    (random(2)), St. John Nepomuk (0x4E) the pardon, St. Jude any of
+    the six (random(6)); cases 4 and 5 of the switch (file 0xFC339,
+    table at 0xFC33E) are the city ruler's quest, state 0x84.
 - Reproduced in `CityVisit`, from the arrests (the gate's challenge,
-  the night watch, the chase). Not reproduced: saints, potions, the
+  the night watch, the chase). Not reproduced: potions, the
   lessons of mode 0, s (taken as 0), the rescues on DS:9082, card 18.
 - **The priest** (state 0x83, $DUNGE01, 1901:000C of overlay 0x4C,
   segment 1901 at file 0xF6750; the handler at file 0xF675C, actions
@@ -680,6 +689,37 @@ RTLink thunks) gives the handlers: state 0xD at 1852:0006 of overlay
   cell; nothing in it already), St. Jude (card 21, the reputation
   +2..+7, the square); three hours; no answer, card 23 and three hours
   more.
+- **The other cards' saints** (their lists: file offsets of the
+  `mov word [0xEE4B], ...`; the functions; "±a..b": 0E76:19D0 with
+  +a..+b while the reputation is over −10, −a..−b else):
+  - the guards' challenge (0x9163D: Christina, Genevieve, Godfrey,
+    Reinold; 0x91C62): an hour; Christina card 16, ±3..9, state 0xC
+    (away from the city: back to the map here); Genevieve, Godfrey card
+    17 ($NamedOneName), +2..6, back where the party was; Reinold card
+    18, ±2..6, the side streets; no answer: card 15 and the fight;
+  - the gate by day (0x9273D: Lutgardis; 0x92D40): card 10 (card 11 for
+    a second saint, never listed), ±4..12 (−3..−9), the main street; no
+    answer card 12, the gate. At night (0x9357D: Lutgardis, Milburga;
+    0x93B24): card 10, ±2..6, the main street; no answer card 11, an
+    hour, the gate by the hour;
+  - the wall by day (0x99CAB: Lutgardis, Milburga; 0x9A392): card 9,
+    +1..4, the side streets; no answer card 10, the wall. At night
+    (0x9A902: Christina, Lutgardis, Milburga; 0x9B0C4): card 8
+    (Christina) or 9, an hour, the side streets; no answer card 10, an
+    hour, the wall by the hour;
+  - the night watch (0xBF1D6: Raphael, Finbar, Lucy, Odilia; 0xBF81E):
+    an hour, +5..10, card 6, on as after the fine (DS:E7D8); no answer
+    card 13 in place of the watch's card (DS:8E04), its saint option
+    gone (DS:EE7C = 2);
+  - the magistrate (0xFB518: Devota, Lawrence; 0xFB978): card 2, every
+    member loses random(20) Endurance (the leader keeps 1), 12 hours,
+    card 4 and the square; no answer card 3;
+  - the execution (0xFBF17: Alcuin, Gregory Thaumaturgus, John Nepomuk,
+    Jude; 0xFC6B2): Gregory card 3, three hours, the side streets; the
+    others card 2 and the rescues (above); no answer card 4 and the
+    rescues without a saint;
+  - the market at night (0xA0DAD: Christina, Dismas, Gregory, Jude;
+    0xA1410): the offices (state 0x101), not reproduced.
 
 ## The chase
 

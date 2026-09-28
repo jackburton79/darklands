@@ -231,6 +231,26 @@ public:
         SCREEN_REINOLD_CLIMB,	// (Jude), no answer (23)
         SCREEN_EARTHQUAKE,
         SCREEN_NO_ANSWER,
+        SCREEN_CHALLENGE_UNANSWERED,	// the guards' saints: $CHALL00 cards
+        SCREEN_CHRISTINA_LIFTS,	// 15 (no answer), 16 (Christina), 17,
+        SCREEN_GUARDS_AT_PEACE,	// 18 (Reinold)
+        SCREEN_REINOLD_WALKS,
+        SCREEN_GATE_LIFTED,		// the gates' and walls' saints: $CITYG01
+        SCREEN_GATE_UNANSWERED,	// 10, 12; $CITYG00 10, 11; $CITYW00 9,
+        SCREEN_NIGHT_GATE_LIFTED,	// 10; $CITYW01 8 (Christina), 9, 10
+        SCREEN_NIGHT_GATE_UNANSWERED,
+        SCREEN_DAY_WALL_LIFTED,
+        SCREEN_DAY_WALL_UNANSWERED,
+        SCREEN_NIGHT_WALL_CHRISTINA,
+        SCREEN_NIGHT_WALL_LIFTED,
+        SCREEN_NIGHT_WALL_UNANSWERED,
+        SCREEN_WATCH_SUNLIGHT,	// the watch's saints: $NIGHT00 6, 13
+        SCREEN_WATCH_UNANSWERED,
+        SCREEN_COURT_SAINT,		// the magistrate's: $MAGIS00 2, 3
+        SCREEN_COURT_UNANSWERED,
+        SCREEN_EXECUTION_SAINT,	// the execution's: $EXECU01 2, 3
+        SCREEN_STORM,			// (Gregory), 4
+        SCREEN_EXECUTION_UNANSWERED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -405,7 +425,7 @@ private:
     int				_KeepSilent();
     int				_Plead(bool guilty);
     int				_CourtFine();
-    int				_Rescue();
+    int				_Rescue(int saint = -1);
     int				_BreakRopes();
     void			_FightAtExecution();
     int				_ResolveJailBattle(int outcome);
@@ -509,6 +529,7 @@ private:
     // the saint list shown in place of a card: (member, index in the
     // card's saints)
     bool			fChoosingSaint;
+    int				fRescueSaint;	// the saint who answered at the block
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from
