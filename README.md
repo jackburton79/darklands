@@ -13,52 +13,51 @@ The goal is twofold:
 
 ## Status
 
-**Very early in development.** So far, the project can:
+**Playable, but far from complete.** The party can already live in the
+Holy Roman Empire of 1400: walk its cities, travel between them, trade,
+pray, get into trouble with the watch and take on a first quest, all
+with the rules decoded from the original executable. There is no
+character creation yet, no sound, and battles are shown provisionally
+from above.
 
-- Open the game's `.CAT` catalog (archive) files and list their contents
-- Decode the game's custom `.PIC` image format, display the images and
-  export them as BMP files
-- Decode the enemy palette file (`ENEMYPAL.DAT`)
-- Parse the world map (`DARKLAND.MAP`) and render it to a BMP file with
-  the game's own map tiles and palette, with the city names written in
-  the game's font
-- List the map locations (`DARKLAND.LOC`): cities, castles, villages,
-  caves... with their map coordinates
-- List the cities (`DARKLAND.CTY`) with their rulers, neighboring
-  cities, ports and named places
-- Read the game's menu cards (`MSGFILES`), the text of nearly every
-  menu and encounter in the game, and show them as the game does: frame,
-  illuminated capital, text, options to choose
-- Read the characters (`CHARACTR.TMP`), the saved games (`.SAV`) and
-  the item list (`DARKLAND.LST`): the party, its equipment, its money,
-  where it is
-- Show the party and character information screens (F6, F1..F5 or a
-  click on a character box): fame, time, wealth, a small map;
-  attributes, skills, equipment and the character's figure
-- Play the first steps, with the Quickstart party or from a saved game,
-  shown in the sidebar as in the game: the party starts at the inn of a city, walks
-  between the inn, the main street, the side streets and the city gate,
-  leaves for the world map, travels and arrives at other cities. The
-  city's places can be visited (square, fortress, market, churches,
-  cathedral, monastery, university, town hall, barracks, guilds, slum,
-  docks, a grove to wait in); the guilds' shops and the market's
-  merchants buy and sell
-  with the game's own rules for stock and prices, decoded from the
-  executable; in a city church the party can hear Mass, confess and
-  donate, gaining divine favor by the game's own rules; at the inn it
-  can sleep (for the game's price) and buy horses; living in the slum
-  may bring thieves, and around a city's feast a man with three walnut
-  shells waits in the square and the market; what happens in the other
-  places is not implemented yet.
-  Time
-  passes (traveling, sleeping at the inn) and the city shows its night
-  cards after Compline. The
-  other places (market, churches, guilds...) and the options' effects
-  (meals, money, fights...) are not implemented yet
-- Explore the world map: scrolling, city names, each city's details
+What works so far:
 
-Everything else — city screens, sound, text, the game itself — is not
-implemented yet. See the roadmap below.
+- **Cities**: the party arrives before the walls, passes the gate (or
+  climbs the walls, by day or at night) and walks between the streets
+  and the city's places: the inn, the square, the market, the churches,
+  the cathedral, the monastery, the guilds, the banks, the physician,
+  the alchemist, the slum, the docks, a grove. Every card is the game's
+  own, with its text, picture and options, by day and by night.
+- **Trade**: the guilds' shops, the market's merchants, the pawnshop,
+  the stables, the physician and the alchemist buy and sell, with the
+  game's rules for stock, quality and prices; the inn keeps the party's
+  items.
+- **The inn and the church**: meals and nights at the game's price,
+  taking up residence (relax, regain strength, pray, work, study with a
+  teacher), Mass, confession, donations, the monks' prayers; the saints
+  answer (or not) by the game's rules.
+- **Trouble**: curfew and the night watch, wanted parties, guards,
+  chases through the streets, the dungeon, the magistrate and the
+  executioner; thieves in the slum; a shell game at the city's feast.
+- **The world**: the map with the game's tiles, travel with the game's
+  terrain costs and time, news and rumors drawn from the game's events.
+- **A quest**: the banks hire the party against a robber knight; his
+  tower can be besieged or the knight challenged, fought and slain, and
+  the reward collected (the audience and the inside of the tower are
+  not implemented yet).
+- **Battles** (provisional, seen from above): the party and the enemies
+  on the game's battlefield maps, with their sprites; the game's melee
+  rules, wounds, deaths and loot.
+- **The party**: the Quickstart characters or a saved game, the
+  information screens (F1..F6), the party recovering as time passes;
+  **saving** (Ctrl+S) in the original's format.
+- **Tools** for the data: browse and export the images (`.PIC`,
+  `.CAT`), render the world map, dump the locations, cities, enemies,
+  saints, events and cards (see Running below).
+
+Not implemented yet: character creation, the game's own battle
+screen, sound, the other quests, and many places' options (they say
+"not implemented" when chosen). See the roadmap below.
 
 ## Screenshots
 
@@ -88,8 +87,8 @@ implemented yet. See the roadmap below.
       ICITY.000`); the game's own drawing is not decoded yet
 - [x] Command-line map export at full resolution (`--map`)
 - [x] Interactive world map viewer: scrolling, city names, city details
-- [x] Party travel on the map (pathfinding, no travel time yet) and a
-      city menu
+- [x] Party travel on the map (pathfinding) to the cities and the
+      other places
 - [x] Parse the menu cards (`MSGFILES`, `--messages`)
 - [ ] Decode more resource types (sound archives, ...)
 - [x] Show a menu card with its options (`--card`)
@@ -117,10 +116,19 @@ implemented yet. See the roadmap below.
       components
 - [x] The market at night (sneaking, bribing) and the night watch
       (fines, running away)
+- [x] Arriving at a city: the walls, the gate by day and at night
+- [x] The watch, the guards, chases, the dungeon, the magistrate and
+      the execution
+- [x] The saints: calling upon them where the game allows it
+- [x] News and rumors, from the game's events
+- [x] The robber knight quest: the banks' task, the tower, the reward
+- [x] Random encounters in the city: thieves in the slum, the shell
+      game
+- [x] The monastery: prayers, the library and the abbess (asking)
 - [ ] What happens in the other places (training, audiences...), the
-      other merchants
+      other quests
 - [ ] Sound playback
-- [ ] Character creation, combat, the actual game loop
+- [ ] Character creation, the game's own battle screen
 
 ## Building
 
