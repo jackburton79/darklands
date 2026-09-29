@@ -626,7 +626,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     } },
     // "...signs with pictures portray the various guilds and crafts."
     { "MILCR00", 0, NULL, {
-        TODO,								// Soldier's Road
+        // Soldier's Road (file 0xA217E): the arms outfitter, two hours
+        { ACTION_TRADE, MERCHANT_ARMS_OUTFITTER, kAlways, 120 },
         GO_IF(SCREEN_BLACKSMITH, kNeedsShop + SHOP_BLACKSMITH),
         GO_IF(SCREEN_SWORDSMITH, kNeedsShop + SHOP_SWORDSMITH),
         GO_IF(SCREEN_ARMORER, kNeedsShop + SHOP_ARMORER),
@@ -1405,7 +1406,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     // "Walking along the dark streets, you peer down each one..."
     { "MILCR00", 1, NULL, {
-        TODO,
+        { ACTION_TRADE, MERCHANT_ARMS_OUTFITTER, kAlways, 120 },
         GO_IF(SCREEN_BLACKSMITH, kNeedsShop + SHOP_BLACKSMITH),
         GO_IF(SCREEN_SWORDSMITH, kNeedsShop + SHOP_SWORDSMITH),
         GO_IF(SCREEN_ARMORER, kNeedsShop + SHOP_ARMORER),

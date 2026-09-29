@@ -89,8 +89,9 @@ All in segment 18E7 (file base 0x65C30); see `TradeView.cpp`.
   0x040000FF, Bowyer 0x083C0030 or 0x040000FF, Clothmaker 0x04000000,
   Artificier 0x0000800E, Physician, herbalist, University, merchant
   0x400, Alchemist 0x800, Foreign Trader 0x003F843F, Pawnshop
-  0x2C3EC3FF, stables 0x2000, castle 0x202D, monk 0x0400040C. Which call
-  is which place is *inferred*: each guild shop is opened twice (by day
+  0x2C3EC3FF, stables 0x2000, castle 0x202D, monk 0x0400040C (the Arms
+  Outfitter: Soldier's Road, **verified**). Which call is which place is
+  otherwise *inferred*: each guild shop is opened twice (by day
   and at night, presumably) with 0x040000FF, the bowyer with
   0x083C0030; a block of calls with the narrower masks is elsewhere.
 - **Stock**, 18E7:3948 (item): the item's flags must share a bit with
@@ -1100,6 +1101,16 @@ $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
 - Going to a guild (e.g. the tinkers, file 0xA47A2) takes an hour (one
   more if 1367:072A says it is night), unless a random(100) over a chance
   brings an encounter (state 0x3C; not reproduced).
+- **Soldier's Road** (the arms-making guilds' first option, state 0x17,
+  file 0xA217E): card 1 or 2 of $MILCR00 (by the city's property 0x21
+  odd or even, 150B:03B0(card, 1): variants of the crafts' own card,
+  not reproduced), the trade screen as the "Arms Outfitter" (0E76:21AA(1,
+  "Arms Outfitter", 0x040000FF): the goods merchant's quality, the
+  arms and armor), two hours, back to the crafts. **verified** (code)
+  The street's own cards, $SOLDI00 and $SOLDI01 (states 0x4D and 0x4E,
+  segment 190C of overlay 0x3F at file 0xCD790: the trade, then the
+  crafts; the leader's secrets are placeholders; "leave" goes to state
+  4, before the walls), are never entered: no code sets those states.
 - **The guild shops**: every guild's "buy and sell" opens the trade
   screen, then one hour passes and the guild's card is shown again (the
   swordsmith at file 0xCED6A, 0xD0833 at night; the same for the
