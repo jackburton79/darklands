@@ -40,6 +40,8 @@ static const int kOptionsLeft		= 95;
 static const int kSpendTop			= 172;
 static const int kLeaveTop			= 181;
 static const int kLineHeight		= 8;
+static const int kTutorsLeft		= 246;	// the teachers (file 0x6F27A)
+static const int kTutorsWidth		= 72;
 
 static const uint8 kMessageColor	= 15;	// white
 static const uint8 kMemberColor		= 14;	// yellow
@@ -52,6 +54,14 @@ static const uint8 kCrimsonColor	= 4;	// the letter to type
 static const char* kMenu[ResidenceView::ACTIVITY_COUNT] = {
     "Just Relax", "Regain Strength", "Pray for divine favor", "Alchemy work",
     "Earn a little money", "Guard the camp", "Train or study"
+};
+// The skills' names (290E:2137)
+static const char* kSkillNames[kSkillCount] = {
+    "Edged Wpns", "Impact Wpns", "Flail Wpns", "Polearm Wpns",
+    "Thrown Wpns", "Bow Weapons", "Missile Device", "Alchemy",
+    "Religious Trng", "Virtue", "Speak Common", "Speak Latin",
+    "Read & Write", "Healing", "Artifice", "Stealth", "Streetwise",
+    "Riding", "Woodwise"
 };
 static const char kMenuKeys[ResidenceView::ACTIVITY_COUNT] = {
     'j', 'r', 'p', 'a', 'e', 'g', 't'
@@ -83,7 +93,8 @@ ResidenceView::ResidenceView(GameData& data)
     fCity(-1),
     fReputation(0),
     fInnPrice(0),
-    fTutor(NULL),
+    fTutor(0),
+    fTutorList(false),
     fMember(0),
     fDays(0),
     fAmbushSafe(-1),
@@ -125,14 +136,17 @@ ResidenceView::SetParty(party* members)
 
 void
 ResidenceView::SetPlace(int cityIndex, int reputation, uint32 innPrice,
-    const city_tutor* tutor)
+    const std::vector<city_tutor>& tutors)
 {
     fCity = cityIndex;
     fReputation = reputation;
     fInnPrice = innPrice;
-    fTutor = tutor;
+    fTutors = tutors;
+    fTutor = 0;
+    fTutorList = false;
     const size_t count = fParty != NULL ? fParty->members.size() : 0;
     fActivities.assign(count, ACTIVITY_RELAX);
+    fTutorOf.assign(count, 0);
     fValues.assign(count, 0);
     fJobs.assign(count, std::string());
     fMember = 0;
@@ -253,8 +267,11 @@ ResidenceView::Available(activity what) const
         case ACTIVITY_EARN:
             return fCity >= 0;
         case ACTIVITY_TRAIN:
-            return fTutor != NULL && (fClock == NULL
-                || fClock->HourStamp() < fTutor->until);
+            for (size_t i = 0; i < fTutors.size(); i++) {
+                if (_TutorAvailable(int(i)))
+                    return true;
+            }
+            return false;
         default:
             return false;
     }
@@ -269,6 +286,13 @@ ResidenceView::Choose(activity what)
     fActivities[fMember] = what;
     if (what == ACTIVITY_EARN)
         _FindJob(fMember);
+    if (what == ACTIVITY_TRAIN) {
+        // the teacher chosen, else the first one still here
+        int tutor = fTutor;
+        for (size_t i = 0; !_TutorAvailable(tutor) && i < fTutors.size(); i++)
+            tutor = int(i);
+        fTutorOf[fMember] = tutor;
+    }
     _UpdateValues();
     return true;
 }
@@ -306,8 +330,9 @@ ResidenceView::NetCost() const
     for (size_t i = 0; i < fActivities.size(); i++) {
         if (fActivities[i] == ACTIVITY_EARN)
             cost -= fValues[i];
-        else if (fActivities[i] == ACTIVITY_TRAIN && fTutor != NULL)
-            cost += int32(fTutor->fee);
+        else if (fActivities[i] == ACTIVITY_TRAIN
+                && _TutorAvailable(fTutorOf[i]))
+            cost += int32(fTutors[size_t(fTutorOf[i])].fee);
     }
     return cost;
 }
@@ -363,11 +388,12 @@ ResidenceView::SpendDay()
                 break;
             case ACTIVITY_TRAIN:
                 // the game trains even when it cannot pay the fee
-                if (fTutor != NULL) {
+                if (_TutorAvailable(fTutorOf[i])) {
+                    const city_tutor& tutor = fTutors[size_t(fTutorOf[i])];
                     const uint32 purse = TotalPfennigs(fParty->cash);
-                    if (purse >= fTutor->fee)
-                        fParty->cash = MoneyFromPfennigs(purse - fTutor->fee);
-                    TrainSkill(member, fTutor->skill, fTutor->level * 20 / 100,
+                    if (purse >= tutor.fee)
+                        fParty->cash = MoneyFromPfennigs(purse - tutor.fee);
+                    TrainSkill(member, tutor.skill, tutor.level * 20 / 100,
                         random);
                 }
                 break;
@@ -387,11 +413,10 @@ ResidenceView::SpendDay()
         if (hours < 9)
             hours += 24;
         fClock->AddHours(uint32(hours));
-        if (fTutor != NULL && fClock->HourStamp() >= fTutor->until) {
-            for (activity& what : fActivities) {
-                if (what == ACTIVITY_TRAIN)
-                    what = ACTIVITY_RELAX;
-            }
+        for (size_t i = 0; i < fActivities.size(); i++) {
+            if (fActivities[i] == ACTIVITY_TRAIN
+                    && !_TutorAvailable(fTutorOf[i]))
+                fActivities[i] = ACTIVITY_RELAX;
         }
     }
     fDays++;
@@ -406,6 +431,50 @@ ResidenceView::MouseMoved(const GFX::point& point)
     fMouse = point;
     fCursorVisible = point.x >= 0 && point.y >= 0 && point.x < 320
         && point.y < 200;
+    // the teachers' list opens on "Train or study" and stays while the
+    // mouse is on it
+    const int menu = _MenuAt(point);
+    if (menu == ACTIVITY_TRAIN && !fTutors.empty())
+        fTutorList = true;
+    else if (_TutorAt(point) < 0 && menu >= 0)
+        fTutorList = false;
+}
+
+
+void
+ResidenceView::SelectTutor(int tutor)
+{
+    if (tutor >= 0 && tutor < int(fTutors.size()))
+        fTutor = tutor;
+}
+
+
+int
+ResidenceView::TutorOf(int member) const
+{
+    return member >= 0 && member < int(fTutorOf.size()) ? fTutorOf[member] : 0;
+}
+
+
+// A line of the teachers' list (file 0x6F27A: x 245..317, from y 48, 9
+// high), or -1
+int
+ResidenceView::_TutorAt(const GFX::point& point) const
+{
+    if (!fTutorList || point.x < kTutorsLeft - 1
+            || point.x >= kTutorsLeft + kTutorsWidth || point.y < kMenuTop)
+        return -1;
+    const int row = (point.y - kMenuTop) / kMenuHeight;
+    return row < int(fTutors.size()) ? row : -1;
+}
+
+
+// Still teaching (its offer lasts 168 hours)
+bool
+ResidenceView::_TutorAvailable(int tutor) const
+{
+    return tutor >= 0 && tutor < int(fTutors.size())
+        && (fClock == NULL || fClock->HourStamp() < fTutors[size_t(tutor)].until);
 }
 
 
@@ -426,6 +495,13 @@ ResidenceView::Clicked(const GFX::point& point)
             SelectMember(member);
             return true;
         }
+    }
+    const int tutor = _TutorAt(point);
+    if (tutor >= 0) {
+        // file 0x6F365: the teacher chosen, the list closed
+        SelectTutor(tutor);
+        fTutorList = false;
+        return true;
     }
     const int menu = _MenuAt(point);
     if (menu >= 0) {
@@ -494,8 +570,13 @@ ResidenceView::Draw()
                     fValues[i], fJobs[i].c_str());
                 break;
             case ACTIVITY_TRAIN:
-                snprintf(text, sizeof(text), "Train or Study (%upfs)",
-                    fTutor != NULL ? fTutor->fee : 0);
+                // the teacher's fee (file 0x6FC2F); the skill is ours
+                if (_TutorAvailable(fTutorOf[i])) {
+                    const city_tutor& tutor = fTutors[size_t(fTutorOf[i])];
+                    snprintf(text, sizeof(text), "%s (%upfs)",
+                        kSkillNames[tutor.skill], tutor.fee);
+                } else
+                    snprintf(text, sizeof(text), "Train or Study");
                 break;
             default:
                 snprintf(text, sizeof(text), "Relaxes");
@@ -514,6 +595,19 @@ ResidenceView::Draw()
             ? kCrimsonColor : color);
         _DrawText(name.substr(1), kMenuLeft
             + fFont->StringWidth(name.substr(0, 1)) + 1, y, color);
+    }
+
+    // the teachers (file 0x70DB4), over the menu while its last line is
+    // pointed at (file 0x6F520); the one chosen highlighted
+    if (fTutorList) {
+        for (size_t i = 0; i < fTutors.size(); i++) {
+            const int y = kMenuTop + int(i) * kMenuHeight;
+            fBuffer->FillRect(GFX::rect(kTutorsLeft, y - 1, kTutorsWidth,
+                kMenuHeight), 0);
+            _DrawText(kSkillNames[fTutors[i].skill], kTutorsLeft + 2, y,
+                int(i) == fTutor ? kSelectedColor : _TutorAvailable(int(i))
+                    ? kAvailableColor : kUnavailableColor);
+        }
     }
 
     _DrawText("You decide to...", kDecideLeft, kDecideTop, kMessageColor);

@@ -64,10 +64,16 @@ public:
     // (not owned; NULL: none), as in the game (file 0x6FF0A).
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
     // The inn: its city, the party's local reputation there, the price
-    // of a day (the inn's meal and night) and the city's teacher (NULL:
-    // none). Every member starts relaxing.
+    // of a day (the inn's meal and night) and the city's teachers (the
+    // physician's, the monastery's). Every member starts relaxing.
     void			SetPlace(int cityIndex, int reputation, uint32 innPrice,
-                        const city_tutor* tutor);
+                        const std::vector<city_tutor>& tutors
+                            = std::vector<city_tutor>());
+    // The teacher that "Train or study" gives the selected member (file
+    // 0x6F29B: the list shown by the menu's line, DS:89FA)
+    void			SelectTutor(int tutor);
+    int				Tutor() const			{ return fTutor; }
+    int				TutorOf(int member) const;
     // Living in the slum (DARKLAND.EXE, file 0x6FDBE): before each day,
     // if random(100) is at least `safe`, thieves come and the party
     // leaves (Interrupted()); -1, as SetPlace() leaves it: never.
@@ -119,6 +125,8 @@ private:
     void			_UpdateValues();
     void			_FindJob(int member);
     int				_MenuAt(const GFX::point& point) const;
+    int				_TutorAt(const GFX::point& point) const;
+    bool			_TutorAvailable(int tutor) const;
     void			_DrawText(const std::string& utf8, int x, int y,
                         uint8 color, int maxWidth = 320);
     int				_DrawWrapped(const std::string& utf8, int x, int y,
@@ -139,7 +147,10 @@ private:
     int				fCity;
     int				fReputation;
     uint32			fInnPrice;
-    const city_tutor* fTutor;
+    std::vector<city_tutor> fTutors;
+    int				fTutor;			// the one chosen in the list
+    std::vector<int> fTutorOf;		// by member
+    bool			fTutorList;		// shown (DS:8A32)
     int				fMember;
     std::vector<activity> fActivities;	// by member
     std::vector<int> fValues;

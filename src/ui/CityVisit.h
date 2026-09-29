@@ -372,6 +372,8 @@ public:
         SCREEN_ABBESS_REFUSED,
         SCREEN_ABBESS_PHYSICIAN,
         SCREEN_MONASTERY_NO_SANCTUARY,
+        SCREEN_MONKS_TUTORS,	// the Master of Novices teaches (8), or
+        SCREEN_MONKS_NO_TUTORS,	// the abbot forbids it (6)
         SCREEN_MONASTERY_NIGHT_REFUSED,	// $CITYM01: "come back in the
         SCREEN_MONKS_NIGHT_PRAYED,	// morning" (1), prayers (2) or not
         SCREEN_MONKS_NIGHT_UNMOVED,	// (3), the abbess sent for (5) or not
@@ -703,6 +705,12 @@ private:
     bool			_FeastNear() const;
     int				_PlayShells(int shell);
     int				_Grove(int option);
+    // The city's teachers still here (0E76:3878(0x28, location)), a new
+    // one (0E76:2C4E) unless one of its skill is
+    bool			_HasTutors() const;
+    void			_AddTutor(const city_tutor& tutor);
+    int				_TutoringChance();
+    int				_AskTutoring();
     // The monastery (states 0x36, 0x38)
     bool			_InMonastery(int screen) const;
     int				_EnterMonastery();
@@ -741,10 +749,11 @@ private:
     std::map<int, uint32> fTreatedUntil;	// in hours, see HourStamp()
     std::map<int, uint32> fNoStudentsUntil;
 public:
-    // The teachers found, by city (see city_tutor)
-    const std::map<int, city_tutor>& Tutors() const	{ return fTutors; }
+    // The teachers found, by city (see city_tutor): persons of kind 0x28
+    const std::map<int, std::vector<city_tutor> >& Tutors() const
+                        { return fTutors; }
 private:
-    std::map<int, city_tutor> fTutors;
+    std::map<int, std::vector<city_tutor> > fTutors;
     ResidenceView	fResidence;
     bool			fPendingResidence;
     bool			fPendingCache;

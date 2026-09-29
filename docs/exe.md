@@ -1045,7 +1045,11 @@ at the inn, 1 in the wilderness, 2 and 3 other camps). **verified**
   its maximum: gain (Religion + Virtue) / 12 + 1); alchemy (3, making
   potions: not decoded); earn money (4, in a city); guard the camp (5, in
   the wilderness); train or study (6, when the location has a person of
-  kind 0x28). The menu (file 0x7001C) is drawn light green (10) where
+  kind 0x28). With the mouse on "Train or study" (file 0x6F520) the
+  teachers are listed over the menu (file 0x70DB4: their skills'
+  names, x 245..317 from y 48, 9 high, DS:8A32); a click chooses one
+  (DS:89FA, file 0x6F365), whose skill the member then studies at its
+  fee (DS:89FE, the text "%dpfs", file 0x6FC03). The menu (file 0x7001C) is drawn light green (10) where
   the activity makes sense, green (2) elsewhere.
 - **Jobs** (file 0x70A0E): the 31 records of 18 bytes at DS:3ACE (name
   index into 290E:219B, city flags mask, a mask that makes the job never
@@ -1479,10 +1483,15 @@ are never loaded (no "$Monas" string in the executable). **verified**
   - *prayers* (file 0xB9B3A): card 2, random(2) + 1 hours, the price,
     each member's divine favor + Religion / 9 + 1 (0E76:0A72), card 3,
     mark 0x30 for 168 hours;
-  - *tutoring* (file 0xB9C86): card 4, two hours; with the chance
-    (file 0xB9E22) three teachers for 168 hours (events of category
-    0x28: Religion at 50, Latin and reading at 25) and card 8, else
-    mark 0x33 for 55 hours and card 6 (not decoded further);
+  - *tutoring* (file 0xB9C86): card 4, two hours; the chance (file
+    0xB9E22) is the average Virtue + the reputation + the fame / 50, or
+    the best Virtue + the best Charisma if higher (1367:0084, a max;
+    then the most charismatic is $ChosenOneName), within 1..99: three
+    teachers for 168 hours (0E76:2C4E, category 0x28, level 50 at
+    +0x20, the fee at +0x1E: Religion 50 pfennigs a day, Speak Latin and
+    Read & Write 25) and card 8, whose $Money1 is the city size + the
+    purse / 150, within 12..180, / 12 groschen (not what they charge);
+    else mark 0x33 for 55 hours and card 6;
   - *the library* (file 0xB9EA6): the chance (file 0xBA00C) is
     0E76:179C(11, 12), which walks the members for the highest maximum
     Intelligence + Charisma against twice the Intelligence kept so far
@@ -1514,9 +1523,8 @@ are never loaded (no "$Monas" string in the executable). **verified**
     hours, card 6, the churches.
   - *sanctuary* (file 0xBC12C): mark 0x35 for 8 hours, card 8, the
     churches; the monks' problems and the abbot (hidden): card 7.
-- Reproduced in `CityVisit`: all of the above but the tutoring, the
-  library's reading (state 0x39), the abbess (state 0xB4) and the
-  abbot.
+- Reproduced in `CityVisit`: all of the above but the library's reading
+  (state 0x39), the abbess (state 0xB4) and the abbot.
 
 ## Reputation
 

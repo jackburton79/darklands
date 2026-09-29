@@ -149,6 +149,7 @@ enum option_action {
     ACTION_GROVE,				// target: the option (3: after the nap)
     ACTION_MONKS_PRAY,			// the monastery
     ACTION_MONKS_LIBRARY,
+    ACTION_MONKS_TUTORING,
     ACTION_MONKS_HEALING,
     ACTION_MONASTERY_ANSWER,	// after card 4: fMonkAnswer
     ACTION_MONASTERY_BACK,		// its card again
@@ -256,6 +257,9 @@ static const int kNeedsGroschen		= -41;
 static const int kNeedsMonksPrayers	= -42;
 static const int kNeedsLibrary		= -43;
 static const int kNeedsAbbess		= -44;
+// tutoring: not while the city has teachers (0E76:3878(0x28)) or after a
+// refusal (mark 0x33)
+static const int kNeedsTutoring		= -47;
 // a bank's reward for a robber knight (0E76:3404(3, patron, location))
 static const int kNeedsFuggerReward	= -45;
 static const int kNeedsMediciReward	= -46;
@@ -281,6 +285,7 @@ static const int kMarkShellGame		= 0x2F;	// the shell game man met
 static const int kMarkMonksPrayed	= 0x30;	// the monastery (file 0xB9835)
 static const int kMarkAbbess		= 0x31;
 static const int kMarkMonastery		= 0x32;	// been here lately
+static const int kMarkMonksNoTutors	= 0x33;
 static const int kMarkLibrary		= 0x34;
 static const int kMarkMonksBothered	= 0x35;	// at night
 
@@ -407,7 +412,7 @@ struct screen_rules {
 // The monastery by day (file 0xB9802: the options shown)
 #define MONASTERY_OPTIONS { \
         DO_IF(ACTION_MONKS_PRAY, kNeedsMonksPrayers),	/* $Money1 for prayers */ \
-        TODO,								/* tutoring */ \
+        DO_IF(ACTION_MONKS_TUTORING, kNeedsTutoring),	/* tutoring */ \
         DO_IF(ACTION_MONKS_LIBRARY, kNeedsLibrary),	/* the saints' books */ \
         DO_IF(ACTION_MONKS_HEALING, kNeedsAbbess),	/* healing */ \
         GO(SCREEN_MONASTERY_NO_SANCTUARY), \
@@ -1274,6 +1279,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYM00", 10, NULL, { GO(SCREEN_CHURCHES) } },
     { "CITYM00", 11, NULL, { GO(SCREEN_CHURCHES) } },
     { "CITYM00", 12, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM00", 8, NULL, { DO(ACTION_MONASTERY_BACK) } },	// teachers
+    { "CITYM00", 6, NULL, { DO(ACTION_MONASTERY_BACK) } },	// none
     { "CITYM01", 1, NULL, { GO(SCREEN_CHURCHES) } },
     { "CITYM01", 2, NULL, { GO(SCREEN_CHURCHES) } },
     { "CITYM01", 3, NULL, { GO(SCREEN_CHURCHES) } },
@@ -1781,6 +1788,8 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1995,7 +2004,7 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             // file 0xAB4EE: the camp of the slum (0E76:222A(3)), a
             // pfennig a day (file 0x70926), the thieves before each day
             fResidence.SetClock(fClock);
-            fResidence.SetPlace(fCity, _Reputation(), 1, NULL);
+            fResidence.SetPlace(fCity, _Reputation(), 1, fTutors[fCity]);
             fResidence.SetAmbush(std::max(25, std::min(95,
                 _BestSkill(kSkillStreetwise) + 25)));
             fResidence.Run(window);
@@ -2004,11 +2013,9 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
         } else if (fPendingResidence) {
             // DARKLAND.EXE, file 0xA709A: the residence, then the inn;
             // a day costs the inn's price
-            std::map<int, city_tutor>::const_iterator tutor
-                = fTutors.find(fCity);
             fResidence.SetClock(fClock);
             fResidence.SetPlace(fCity, _Reputation(), InnPrice(),
-                tutor != fTutors.end() ? &tutor->second : NULL);
+                fTutors[fCity]);
             fResidence.Run(window);
             fPendingResidence = false;
             _Show(SCREEN_INN, false);
@@ -2422,6 +2429,9 @@ CityVisit::Choose(int option)
         case ACTION_MONKS_PRAY:
             _Show(_MonksPrayers());
             return true;
+        case ACTION_MONKS_TUTORING:
+            _Show(_AskTutoring());
+            return true;
         case ACTION_MONKS_LIBRARY:
             _Show(_AskLibrary());
             return true;
@@ -2692,7 +2702,7 @@ CityVisit::_Show(int screen, bool withScene)
     // arriving at the monastery
     if (screen == SCREEN_MONASTERY && !_InMonastery(previous))
         screen = _EnterMonastery();
-    if (_InMonastery(screen))
+    if (screen == SCREEN_MONASTERY || screen == SCREEN_MONASTERY_AGAIN)
         fVariables["Money1"] = MoneyText(_MonksPrice());
     // the shell game man, by day, around the city's feast, once a day
     // (the square, file 0x9D6EC; the market, 0x9F676)
@@ -2950,6 +2960,8 @@ CityVisit::_HiddenOptions(int screen) const
         } else if (rule.needs == kNeedsMonksPrayers) {
             hide = _Marked(kMarkMonksPrayed) || fParty == NULL
                 || TotalPfennigs(fParty->cash) < _MonksPrice();
+        } else if (rule.needs == kNeedsTutoring) {
+            hide = _HasTutors() || _Marked(kMarkMonksNoTutors);
         } else if (rule.needs == kNeedsLibrary) {
             hide = _Marked(kMarkLibrary);
         } else if (rule.needs == kNeedsAbbess) {
@@ -3856,6 +3868,94 @@ CityVisit::_AskLibrary()
 }
 
 
+bool
+CityVisit::_HasTutors() const
+{
+    const std::map<int, std::vector<city_tutor> >::const_iterator tutors
+        = fTutors.find(fCity);
+    const uint32 now = fClock != NULL ? fClock->HourStamp() : 0;
+    if (tutors == fTutors.end())
+        return false;
+    for (const city_tutor& tutor : tutors->second) {
+        if (now < tutor.until)
+            return true;
+    }
+    return false;
+}
+
+
+void
+CityVisit::_AddTutor(const city_tutor& tutor)
+{
+    std::vector<city_tutor>& tutors = fTutors[fCity];
+    const uint32 now = fClock != NULL ? fClock->HourStamp() : 0;
+    for (city_tutor& other : tutors) {
+        if (other.skill == tutor.skill) {
+            if (other.until <= now)
+                other = tutor;
+            return;
+        }
+    }
+    tutors.push_back(tutor);
+}
+
+
+// The monks' tutoring (file 0xB9E22): the average Virtue + the
+// reputation + the fame / 50, or the best Virtue + the best Charisma if
+// higher (then $ChosenOneName, the most charismatic), within 1..99
+int
+CityVisit::_TutoringChance()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 1;
+    int virtue = 0;
+    int charming = 0;
+    for (size_t i = 0; i < fParty->members.size(); i++) {
+        virtue += fParty->members[i].skills[kSkillVirtue];
+        if (fParty->members[i].attributes[ATTRIBUTE_CHARISMA]
+                > fParty->members[size_t(charming)].attributes[ATTRIBUTE_CHARISMA])
+            charming = int(i);
+    }
+    const int party = virtue / int(fParty->members.size()) + _Reputation()
+        + fParty->fame / 50;
+    const int best = _BestVirtue()
+        + fParty->members[size_t(charming)].attributes[ATTRIBUTE_CHARISMA];
+    if (best > party)
+        _SetChosen(charming);
+    return std::max(1, std::min(99, std::max(party, best)));
+}
+
+
+// Tutoring (file 0xB9C86): card 4, two hours; if random(100) is at most
+// the chance, three teachers for 168 hours (0E76:2C4E: Religion for 50
+// pfennigs a day, Speak Latin and Read & Write for 25, all at level 50)
+// and card 8, whose $Money1 (city size + the purse / 150, within
+// 12..180, / 12 groschen a day) is not what they charge; else no asking
+// for 55 hours (mark 0x33), card 6
+int
+CityVisit::_AskTutoring()
+{
+    const int chance = _TutoringChance();
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    const uint32 now = fClock != NULL ? fClock->HourStamp() : 0;
+    if (int(fRandom() % 100) <= chance) {
+        const uint32 purse = fParty != NULL ? TotalPfennigs(fParty->cash) : 0;
+        const int groschen = std::max(12, std::min(180,
+            int(_City().size) + int(purse / 150))) / 12;
+        fVariables["Money1"] = MoneyText(uint32(groschen) * 12);
+        _AddTutor(city_tutor{ kSkillReligion, 50, 50, now + 168 });
+        _AddTutor(city_tutor{ kSkillSpeakLatin, 50, 25, now + 168 });
+        _AddTutor(city_tutor{ kSkillReadWrite, 50, 25, now + 168 });
+        fMonkAnswer = SCREEN_MONKS_TUTORS;
+    } else {
+        _Mark(kMarkMonksNoTutors, 55);
+        fMonkAnswer = SCREEN_MONKS_NO_TUTORS;
+    }
+    return SCREEN_MONKS_INQUIRE;
+}
+
+
 // The grove (states 0x21, 0x22). By day (file 0xAA50A): an hour, card
 // 1; a bell, card 2; until nightfall, 1367:086A(18) + 1 hours, card 3,
 // then card 4 with $Number1 the hours when they are 8 or more. At night
@@ -4387,9 +4487,7 @@ CityVisit::_Students()
         fVariables["Money1"] = MoneyText(fee);
         // the teacher the game makes charges 60 pfennigs a day, not the
         // fee the card shows, with a level of 50 (0E76:2C4E's arguments)
-        if (fTutors.find(fCity) == fTutors.end()
-                || fTutors[fCity].until <= now)
-            fTutors[fCity] = city_tutor{ kSkillHealing, 50, 60, now + 168 };
+        _AddTutor(city_tutor{ kSkillHealing, 50, 60, now + 168 });
         return SCREEN_PHYSICIAN_TUTOR;
     }
     fVariables["Number1"] = std::to_string(fRandom() % 4 + 1);
