@@ -159,7 +159,7 @@ pkgman install libsdl2_devel zlib_devel
 ## Running
 
 You must supply your own copy of the original game data — this repository
-contains none. *Darklands* is available for purchase on GOG.com.
+contains none. *Darklands* is available for purchase on GOG.com or Steam.
 
 Point the program at the game's data directory (the one containing
 `DARKLAND.MAP`, `DARKLAND.LOC`, ... and the `PICS` subdirectory) with
