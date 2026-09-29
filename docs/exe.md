@@ -1387,6 +1387,65 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
   shows card 4 and goes to state 0x81 (not decoded); leaving goes to the
   churches (0x13).
 
+## The monastery
+
+The monastery by day is state 0x36 ($CITYM00, 192F:0002 of overlay 0x39,
+segment 1838 at file 0xB8840: file 0xB97B2), at night state 0x38
+($CITYM01, overlay 0x3A, file 0xBBAAC). The decks $MONAS00 and $MONAS01
+are never loaded (no "$Monas" string in the executable). **verified**
+(code)
+
+- **Arriving by day** (file 0xB9825): with a reputation of −40 or less,
+  or the best Virtue (0E76:14A4(9)) + the fame / 20 at most 15, card 1
+  and the churches (state 0x13); else card 5 while mark 0x32 runs, or
+  card 0 and mark 0x32 for 12 hours. $Money1 is 5 groschen a member
+  (DS:A67E · 60 pfennigs). Offered: prayers (not while mark 0x30, nor
+  with a purse short of $Money1), tutoring (not while marks 0x28, 0x33),
+  the library (not while mark 0x34), healing (not while mark 0x31),
+  sanctuary, leaving; the monks' problems, the abbot and "a quiet
+  place to pray" are not.
+  - *prayers* (file 0xB9B3A): card 2, random(2) + 1 hours, the price,
+    each member's divine favor + Religion / 9 + 1 (0E76:0A72), card 3,
+    mark 0x30 for 168 hours;
+  - *tutoring* (file 0xB9C86): card 4, two hours; with the chance
+    (file 0xB9E22) three teachers for 168 hours (events of category
+    0x28: Religion at 50, Latin and reading at 25) and card 8, else
+    mark 0x33 for 55 hours and card 6 (not decoded further);
+  - *the library* (file 0xB9EA6): the chance (file 0xBA00C) is
+    0E76:179C(11, 12), which walks the members for the highest maximum
+    Intelligence + Charisma against twice the Intelligence kept so far
+    and gives that (the fields 11, 12 of its table: Latin and reading
+    seem meant), + the reputation / 2 when negative, + 25 after
+    prayers (mark 0x30), within 0..99, 100 from 75 up. Success: card 4,
+    an hour, mark 0x34 for 1440 hours, state 0x39 ($LEARN00?) and then
+    the churches; failure: an hour, mark 0x34 for 720 hours, card 4 and
+    card 7 ("too busy": no prayers paid for) or card 16;
+  - *healing* (file 0xBA074): card 4, an hour; the chance (file 0xBA1C6)
+    is the average Virtue + 20 when a member's Strength is at most 90 %
+    of its maximum, else 0; success: the abbess (state 0xB4); else card
+    10 (nobody hurt enough) or 11, and the churches;
+  - *sanctuary*: card 12, the churches; *the abbot* (hidden): with
+    unrest here, card 9 and the politics (state 0x6F).
+- **At night** (file 0xBBB13): card 1 ("come back in the morning") and
+  the churches with a reputation of −40 or less, or, as the code has
+  it, a best Virtue + fame / 20 of 20 or more. Offered: prayers (as by
+  day), "we perish!" (not while mark 0x31), sanctuary, going elsewhere.
+  - *prayers* (file 0xBBD8E): the chance is the reputation / 2 + the
+    leader's Virtue / 4 + his Charisma / 2, within 0..99 (file
+    0xBBED4): the price, card 2, divine favor + Religion / 10 + 1, mark
+    0x30 for 168 hours; else card 3, and the reputation − 1 while mark
+    0x35 runs, else mark 0x35 for 8 hours. Then the churches.
+  - *"we perish!"* (file 0xBBFDA): card 4 (a monk calling the party
+    scoundrels: not reproduced), an hour; the chance (file 0xBC0A6) is
+    the average Virtue + 10 when a member's Strength is at most 80 % of
+    its maximum, else 0: card 5 and the abbess; else mark 0x35 for 8
+    hours, card 6, the churches.
+  - *sanctuary* (file 0xBC12C): mark 0x35 for 8 hours, card 8, the
+    churches; the monks' problems and the abbot (hidden): card 7.
+- Reproduced in `CityVisit`: all of the above but the tutoring, the
+  library's reading (state 0x39), the abbess (state 0xB4) and the
+  abbot.
+
 ## Reputation
 
 0E76:1B12 turns a reputation into the index of its word, in the list

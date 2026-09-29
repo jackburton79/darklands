@@ -147,6 +147,15 @@ enum option_action {
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
     ACTION_GROVE,				// target: the option (3: after the nap)
+    ACTION_MONKS_PRAY,			// the monastery
+    ACTION_MONKS_LIBRARY,
+    ACTION_MONKS_HEALING,
+    ACTION_MONASTERY_ANSWER,	// after card 4: fMonkAnswer
+    ACTION_MONASTERY_BACK,		// its card again
+    ACTION_MONKS_NIGHT_PRAY,
+    ACTION_MONKS_NIGHT_HELP,
+    ACTION_MONKS_NIGHT_SANCTUARY,
+    ACTION_ABBESS,				// state 0xB4: not implemented
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -239,6 +248,11 @@ static const int kNeedsTowerAllies	= -40;
 // the shell game's "pay him and play": more than a groschen in the purse
 // (file 0x110D02)
 static const int kNeedsGroschen		= -41;
+// the monastery: the prayers (not while mark 0x30, if the purse can pay),
+// the library (not while mark 0x34), the abbess (not while mark 0x31)
+static const int kNeedsMonksPrayers	= -42;
+static const int kNeedsLibrary		= -43;
+static const int kNeedsAbbess		= -44;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -258,6 +272,11 @@ static const int kMarkSneakFailed	= 0x1A;
 static const int kMarkWatchMet		= 0x40;
 static const int kMarkTowerAsked	= 0x26;	// the tower's options taken
 static const int kMarkShellGame		= 0x2F;	// the shell game man met
+static const int kMarkMonksPrayed	= 0x30;	// the monastery (file 0xB9835)
+static const int kMarkAbbess		= 0x31;
+static const int kMarkMonastery		= 0x32;	// been here lately
+static const int kMarkLibrary		= 0x34;
+static const int kMarkMonksBothered	= 0x35;	// at night
 
 // The game's day for some places (1367:072A): hour 5 to 18; the extra
 // hour to reach a guild then (file 0xA47A5)
@@ -378,6 +397,16 @@ struct screen_rules {
         DO_IF(ACTION_SAINT, kNeedsSaint),	/* a saint */ \
         DO_IF(ACTION_TOWER_STORM, kNeedsTowerAllies),	/* storm it */ \
         LEAVE								/* go away (state 0xC) */ \
+    }
+// The monastery by day (file 0xB9802: the options shown)
+#define MONASTERY_OPTIONS { \
+        DO_IF(ACTION_MONKS_PRAY, kNeedsMonksPrayers),	/* $Money1 for prayers */ \
+        TODO,								/* tutoring */ \
+        DO_IF(ACTION_MONKS_LIBRARY, kNeedsLibrary),	/* the saints' books */ \
+        DO_IF(ACTION_MONKS_HEALING, kNeedsAbbess),	/* healing */ \
+        GO(SCREEN_MONASTERY_NO_SANCTUARY), \
+        HIDE, HIDE, HIDE,					/* problems, abbot, prayer */ \
+        GO(SCREEN_CHURCHES)					/* leave */ \
     }
 // The shell game (file 0x110CFB): pay and play, or walk away; the
 // shuffled shells' cards offer only the three shells
@@ -538,12 +567,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
-    // "Now you are before the city's monastery."
-    { "MONAS00", 0, NULL, {
-        TODO, TODO,							// study, prayers
-        TODO, TODO, TODO, TODO,				// placeholders
-        GO(SCREEN_CHURCHES)					// leave the monastery
-    } },
+    // "An elderly, clear-eyed monk bows and asks your business." (state
+    // 0x36, file 0xB97B2; the cards $MONAS00, $MONAS01 are never used)
+    { "CITYM00", 0, NULL, MONASTERY_OPTIONS },
     // "At the $university... the snobbish staff prefers to speak Latin"
     { "UNIVE00", 0, NULL, {
         TODO, TODO, TODO, TODO, TODO,		// saints, formulae, stone...
@@ -1225,6 +1251,23 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYG06", 2, NULL, { GO(SCREEN_GROVE) } },
     { "CITYG06", 3, NULL, { GO(SCREEN_GROVE_MORNING) } },
     { "CITYG06", 5, NULL, { GO(SCREEN_GROVE) } },
+    // the monastery's answers (file 0xB9B3A...)
+    { "CITYM00", 5, NULL, MONASTERY_OPTIONS },
+    { "CITYM00", 1, NULL, { GO(SCREEN_CHURCHES) } },	// refused
+    { "CITYM00", 2, NULL, { GO(SCREEN_MONKS_PRAYED) } },
+    { "CITYM00", 3, NULL, { DO(ACTION_MONASTERY_BACK) } },
+    { "CITYM00", 4, NULL, { DO(ACTION_MONASTERY_ANSWER) } },
+    { "CITYM00", 7, NULL, { DO(ACTION_MONASTERY_BACK) } },
+    { "CITYM00", 16, NULL, { DO(ACTION_MONASTERY_BACK) } },
+    { "CITYM00", 10, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM00", 11, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM00", 12, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM01", 1, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM01", 2, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM01", 3, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM01", 5, NULL, { DO(ACTION_ABBESS) } },
+    { "CITYM01", 6, NULL, { GO(SCREEN_CHURCHES) } },
+    { "CITYM01", 8, NULL, { GO(SCREEN_CHURCHES) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1322,11 +1365,16 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         TODO_IF(kNeedsBadReputation),		// seek sanctuary
         GO(SCREEN_CHURCHES)					// leave the church
     } },
-    // "It is dark at the monastery."
-    { "MONAS01", 0, "XNMONK.PIC", {
-        TODO,								// prayers
-        TODO, TODO, TODO, TODO,				// placeholders
-        GO(SCREEN_CHURCHES)					// leave the monastery
+    // "At night the monastery is mostly dark..." (state 0x38, file
+    // 0xBBAAC)
+    { "CITYM01", 0, "XNMONK.PIC", {
+        DO_IF(ACTION_MONKS_NIGHT_PRAY, kNeedsMonksPrayers),
+        HIDE, HIDE,
+        DO_IF(ACTION_MONKS_NIGHT_HELP, kNeedsAbbess),	// "we perish!"
+        DO(ACTION_MONKS_NIGHT_SANCTUARY),
+        HIDE, HIDE,							// a problem, the abbot
+        HIDE,								// sneak in (not offered)
+        GO(SCREEN_CHURCHES)					// go elsewhere
     } },
     { NULL, 0, NULL, {} },					// university
     // "The $councilHall doors are locked..."
@@ -1695,6 +1743,22 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1714,6 +1778,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
 #undef WATCH_CAUGHT_OPTIONS
 #undef TOWER_OPTIONS
 #undef SHELL_OPTIONS
+#undef MONASTERY_OPTIONS
 #undef SHELLS
 #undef CELL_OPTIONS
 #undef COURT_OPTIONS
@@ -1805,6 +1870,8 @@ CityVisit::CityVisit(GameData& data)
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
+    fMonastery(SCREEN_MONASTERY),
+    fMonkAnswer(SCREEN_MONASTERY),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -2329,6 +2396,38 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_PICK:
             _Show(_PlayShells(rule.target));
             return true;
+        case ACTION_MONKS_PRAY:
+            _Show(_MonksPrayers());
+            return true;
+        case ACTION_MONKS_LIBRARY:
+            _Show(_AskLibrary());
+            return true;
+        case ACTION_MONKS_HEALING:
+            _Show(_AskAbbess());
+            return true;
+        case ACTION_MONASTERY_ANSWER:
+            if (fMonkAnswer == SCREEN_NOT_IMPLEMENTED)
+                fPreviousScreen = SCREEN_CHURCHES;	// DS:E7D8 = 0x13
+            _Show(fMonkAnswer);
+            return true;
+        case ACTION_MONASTERY_BACK:
+            _Show(fMonastery);
+            return true;
+        case ACTION_MONKS_NIGHT_PRAY:
+            _Show(_NightPrayers());
+            return true;
+        case ACTION_MONKS_NIGHT_HELP:
+            _Show(_NightHelp());
+            return true;
+        case ACTION_MONKS_NIGHT_SANCTUARY:
+            // file 0xBC12C: mark 0x35 for 8 hours, card 8
+            _Mark(kMarkMonksBothered, 8);
+            _Show(SCREEN_MONKS_NIGHT_NO_SANCTUARY);
+            return true;
+        case ACTION_ABBESS:
+            fPreviousScreen = SCREEN_CHURCHES;	// DS:E7D8 = 0x13
+            _Show(SCREEN_NOT_IMPLEMENTED);
+            return true;
         case ACTION_GROVE:
             _Show(_Grove(rule.target));
             return true;
@@ -2558,6 +2657,11 @@ CityVisit::_Show(int screen, bool withScene)
         fVariables["CurrentBell"] = fClock->BellName();
         fVariables["MonthName"] = fClock->MonthName();
     }
+    // arriving at the monastery
+    if (screen == SCREEN_MONASTERY && !_InMonastery(previous))
+        screen = _EnterMonastery();
+    if (_InMonastery(screen))
+        fVariables["Money1"] = MoneyText(_MonksPrice());
     // the shell game man, by day, around the city's feast, once a day
     // (the square, file 0x9D6EC; the market, 0x9F676)
     if ((screen == SCREEN_SQUARE || screen == SCREEN_MARKET)
@@ -2810,6 +2914,13 @@ CityVisit::_HiddenOptions(int screen) const
             hide = !_SaintKnown(screen);
         } else if (rule.needs == kNeedsTowerWelcome) {
             hide = _Marked(kMarkTowerAsked);
+        } else if (rule.needs == kNeedsMonksPrayers) {
+            hide = _Marked(kMarkMonksPrayed) || fParty == NULL
+                || TotalPfennigs(fParty->cash) < _MonksPrice();
+        } else if (rule.needs == kNeedsLibrary) {
+            hide = _Marked(kMarkLibrary);
+        } else if (rule.needs == kNeedsAbbess) {
+            hide = _Marked(kMarkAbbess);
         } else if (rule.needs == kNeedsGroschen) {
             hide = fParty == NULL || TotalPfennigs(fParty->cash) <= 12;
         } else if (rule.needs == kNeedsTowerAllies) {
@@ -3469,6 +3580,243 @@ CityVisit::_FeastNear() const
     for (int m = 0; m < int(fClock->Month()) && m < 12; m++)
         start += kMonthDays[m];
     return std::abs(int(_City().feastDay) - start) <= 14;
+}
+
+
+bool
+CityVisit::_InMonastery(int screen) const
+{
+    return screen == SCREEN_MONASTERY || (screen >= SCREEN_MONASTERY_AGAIN
+        && screen <= SCREEN_MONKS_NIGHT_NO_SANCTUARY);
+}
+
+
+// The best Virtue (0E76:14A4(9))
+int
+CityVisit::_BestVirtue() const
+{
+    return _BestSkill(kSkillVirtue);
+}
+
+
+// Arriving (file 0xB9825 by day, 0xBBB13 at night): with a reputation of
+// -40 or less, or the best Virtue + the fame / 20 at most 15, card 1 and
+// the churches; else card 5 if the party came lately (mark 0x32), or
+// card 0 and the mark for 12 hours. At night the monks send away the
+// same bad reputation, and also a best Virtue + fame / 20 of 20 or more
+// (as the game has it: "come back in the morning", card 1).
+int
+CityVisit::_EnterMonastery()
+{
+    const int fame = fParty != NULL ? fParty->fame : 0;
+    const int standing = _BestVirtue() + fame / 20;
+    if (fNight) {
+        fMonastery = _Reputation() <= -40 || standing >= 20
+            ? SCREEN_MONASTERY_NIGHT_REFUSED : SCREEN_MONASTERY;
+        return fMonastery;
+    }
+    if (_Reputation() <= -40 || standing <= 15)
+        return SCREEN_MONASTERY_REFUSED;
+    if (_Marked(kMarkMonastery))
+        fMonastery = SCREEN_MONASTERY_AGAIN;
+    else {
+        _Mark(kMarkMonastery, 12);
+        fMonastery = SCREEN_MONASTERY;
+    }
+    return fMonastery;
+}
+
+
+// $Money1: 5 groschen a member (DS:A67E · 60 pfennigs)
+uint32
+CityVisit::_MonksPrice() const
+{
+    return fParty != NULL ? uint32(fParty->members.size()) * 60 : 0;
+}
+
+
+// Prayers by day (file 0xB9B3A): card 2, random(2) + 1 hours, the price,
+// each member's divine favor up by Religion / 9 + 1 (0E76:0A72), card 3,
+// no more prayers for 168 hours (mark 0x30)
+int
+CityVisit::_MonksPrayers()
+{
+    if (fClock != NULL)
+        fClock->AddHours(fRandom() % 2 + 1);
+    if (fParty != NULL) {
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+            - std::min(TotalPfennigs(fParty->cash), _MonksPrice()));
+        for (character& member : fParty->members) {
+            AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
+                member.skills[kSkillReligion] / 9 + 1);
+        }
+    }
+    _Mark(kMarkMonksPrayed, 168);
+    return SCREEN_MONKS_MASS;
+}
+
+
+// At night (file 0xBBED4): the reputation / 2 + the leader's Virtue / 4
+// + his Charisma / 2, within 0..99
+int
+CityVisit::_NightPrayersChance() const
+{
+    if (fParty == NULL || fParty->members.empty())
+        return 0;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = _Reputation() / 2 + leader.skills[kSkillVirtue] / 4
+        + leader.attributes[ATTRIBUTE_CHARISMA] / 2;
+    return std::max(0, std::min(99, chance));
+}
+
+
+// Prayers at night (file 0xBBD8E): if random(100) is at most the chance,
+// the price, card 2 (the leader), divine favor up by Religion / 10 + 1,
+// mark 0x30 for 168 hours; else card 3, and the reputation down by 1 if
+// the monks were bothered lately (mark 0x35), else the mark for 8 hours.
+// Then the churches.
+int
+CityVisit::_NightPrayers()
+{
+    if (int(fRandom() % 100) > _NightPrayersChance()) {
+        if (_Marked(kMarkMonksBothered)) {
+            if (fReputations != NULL && fCity >= 0
+                    && fCity < int(fReputations->size()))
+                (*fReputations)[size_t(fCity)] = int16(std::max(-99,
+                    (*fReputations)[size_t(fCity)] - 1));
+        } else
+            _Mark(kMarkMonksBothered, 8);
+        return SCREEN_MONKS_NIGHT_UNMOVED;
+    }
+    if (fParty != NULL) {
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+            - std::min(TotalPfennigs(fParty->cash), _MonksPrice()));
+        for (character& member : fParty->members) {
+            AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
+                member.skills[kSkillReligion] / 10 + 1);
+        }
+        _SetChosen(fParty->leader);
+    }
+    _Mark(kMarkMonksPrayed, 168);
+    return SCREEN_MONKS_NIGHT_PRAYED;
+}
+
+
+// Someone's Strength at most `percent` % of its maximum (wounds)
+bool
+CityVisit::_Wounded(int percent) const
+{
+    for (size_t i = 0; fParty != NULL && i < fParty->members.size(); i++) {
+        const character& member = fParty->members[i];
+        if (member.maxAttributes[ATTRIBUTE_STRENGTH] * percent / 100
+                >= member.attributes[ATTRIBUTE_STRENGTH])
+            return true;
+    }
+    return false;
+}
+
+
+// The abbess (file 0xBA1C6 by day, 0xBC0A6 at night): the average Virtue
+// + a bonus if someone is wounded (Strength at most 90 %, 80 % at night
+// of its maximum), else 0
+int
+CityVisit::_AbbessChance(int bonus, int percent) const
+{
+    if (fParty == NULL || fParty->members.empty() || !_Wounded(percent))
+        return 0;
+    int virtue = 0;
+    for (const character& member : fParty->members)
+        virtue += member.skills[kSkillVirtue];
+    return std::max(0, std::min(99,
+        virtue / int(fParty->members.size()) + bonus));
+}
+
+
+// Healing by day (file 0xBA074): card 4, an hour; if random(100) is at
+// most the chance, the abbess (state 0xB4, not implemented); else card 10
+// (nobody hurt enough) or 11, then the churches
+int
+CityVisit::_AskAbbess()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (int(fRandom() % 100) <= _AbbessChance(20, 90))
+        fMonkAnswer = SCREEN_NOT_IMPLEMENTED;
+    else
+        fMonkAnswer = _Wounded(90) ? SCREEN_ABBESS_PHYSICIAN
+            : SCREEN_ABBESS_REFUSED;
+    return SCREEN_MONKS_INQUIRE;
+}
+
+
+// "Please help us, we perish!" (file 0xBBFDA): an hour; if random(100)
+// is at most the chance, card 5 and the abbess; else mark 0x35 for 8
+// hours, card 6. (The game shows its card 4 first, a monk slamming the
+// door on "scoundrels": not reproduced.)
+int
+CityVisit::_NightHelp()
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (int(fRandom() % 100) <= _AbbessChance(10, 80))
+        return SCREEN_MONKS_NIGHT_ABBESS;
+    _Mark(kMarkMonksBothered, 8);
+    return SCREEN_MONKS_NIGHT_NO_HELP;
+}
+
+
+// The library (file 0xBA00C): 0E76:179C(11, 12) walks the members for
+// the highest maximum Intelligence + Charisma (the fields 0x0B, 0x0C of
+// its table: not Latin and reading, as it seems meant), comparing with
+// twice the Intelligence kept so far, and gives that; + the reputation
+// / 2 when under 0, + 25 after prayers (mark 0x30), within 0..99, 100
+// from 75 up. The member found is $ChosenOneName.
+int
+CityVisit::_LibraryChance()
+{
+    int best = 0;
+    int chosen = fParty != NULL ? fParty->leader : 0;
+    for (size_t i = 0; fParty != NULL && i < fParty->members.size(); i++) {
+        const character& member = fParty->members[i];
+        const int sum = member.maxAttributes[ATTRIBUTE_INTELLIGENCE]
+            + member.maxAttributes[ATTRIBUTE_CHARISMA];
+        if (sum > best) {
+            best = (member.maxAttributes[ATTRIBUTE_INTELLIGENCE] * 2) & 0xFF;
+            chosen = int(i);
+        }
+    }
+    _SetChosen(chosen);
+    int chance = best;
+    if (_Reputation() < 0)
+        chance += _Reputation() / 2;
+    if (_Marked(kMarkMonksPrayed))
+        chance += 25;
+    chance = std::max(0, std::min(99, chance));
+    return chance >= 75 ? 100 : chance;
+}
+
+
+// The library (file 0xB9EA6): if random(100) is at most the chance, card
+// 4, an hour, no more asking for 1440 hours (mark 0x34), the library
+// (state 0x39, not implemented); else an hour, mark 0x34 for 720 hours,
+// and card 4 and 7 ("too busy": no prayers were paid for, mark 0x30) or
+// card 16
+int
+CityVisit::_AskLibrary()
+{
+    const int chance = _LibraryChance();
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (int(fRandom() % 100) <= chance) {
+        _Mark(kMarkLibrary, 1440);
+        fMonkAnswer = SCREEN_NOT_IMPLEMENTED;
+        return SCREEN_MONKS_INQUIRE;
+    }
+    _Mark(kMarkLibrary, 720);
+    if (_Marked(kMarkMonksPrayed))
+        return SCREEN_LIBRARY_CLOSED;
+    fMonkAnswer = SCREEN_MONKS_BUSY;
+    return SCREEN_MONKS_INQUIRE;
 }
 
 

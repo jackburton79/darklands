@@ -51,7 +51,7 @@ public:
         SCREEN_CHURCHES,		// the religious quarter: $CHURC00/01.MSG
         SCREEN_CATHEDRAL,		// $CATHE00.MSG, $CATHE01.MSG
         SCREEN_CHURCH,			// $CITYC00.MSG, $CITYC01.MSG
-        SCREEN_MONASTERY,		// $MONAS00.MSG, $MONAS01.MSG
+        SCREEN_MONASTERY,		// $CITYM00.MSG, $CITYM01.MSG
         SCREEN_UNIVERSITY,		// $UNIVE00.MSG
         SCREEN_TOWN_HALL,		// $COUNC00.MSG, $COUNC01.MSG
         SCREEN_BARRACKS,		// $CITYB00.MSG
@@ -362,6 +362,22 @@ public:
         SCREEN_GROVE_DOZE,		// night under the bushes (3), the
         SCREEN_GROVE_CAMP,		// morning (5)
         SCREEN_GROVE_MORNING,
+        SCREEN_MONASTERY_AGAIN,	// $CITYM00: "other requests?" (5), the
+        SCREEN_MONASTERY_REFUSED,	// gate slammed (1), the monks' Mass (2,
+        SCREEN_MONKS_MASS,		// 3), the monk inquires (4), too busy
+        SCREEN_MONKS_PRAYED,	// (7), the library closed (16), the
+        SCREEN_MONKS_INQUIRE,	// abbess refuses (10, 11), no sanctuary
+        SCREEN_MONKS_BUSY,		// (12)
+        SCREEN_LIBRARY_CLOSED,
+        SCREEN_ABBESS_REFUSED,
+        SCREEN_ABBESS_PHYSICIAN,
+        SCREEN_MONASTERY_NO_SANCTUARY,
+        SCREEN_MONASTERY_NIGHT_REFUSED,	// $CITYM01: "come back in the
+        SCREEN_MONKS_NIGHT_PRAYED,	// morning" (1), prayers (2) or not
+        SCREEN_MONKS_NIGHT_UNMOVED,	// (3), the abbess sent for (5) or not
+        SCREEN_MONKS_NIGHT_ABBESS,	// (6), no sanctuary (8)
+        SCREEN_MONKS_NIGHT_NO_HELP,
+        SCREEN_MONKS_NIGHT_NO_SANCTUARY,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -681,6 +697,20 @@ private:
     bool			_FeastNear() const;
     int				_PlayShells(int shell);
     int				_Grove(int option);
+    // The monastery (states 0x36, 0x38)
+    bool			_InMonastery(int screen) const;
+    int				_EnterMonastery();
+    uint32			_MonksPrice() const;
+    int				_BestVirtue() const;
+    int				_MonksPrayers();
+    int				_NightPrayersChance() const;
+    int				_NightPrayers();
+    bool			_Wounded(int percent) const;
+    int				_AbbessChance(int bonus, int percent) const;
+    int				_AskAbbess();
+    int				_NightHelp();
+    int				_LibraryChance();
+    int				_AskLibrary();
 
     GameData&		fData;
     CardView		fView;
@@ -766,6 +796,8 @@ private:
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall
+    int				fMonastery;		// its card shown on arrival
+    int				fMonkAnswer;	// the screen after "the monk inquires"
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from
