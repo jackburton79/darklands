@@ -298,9 +298,11 @@ one for n hours, 0E76:2A32 adds hours to it).
   handlers at 0xA455A...): outside the game's day, the watch stops the
   party (state 0x3C, returning to the crafts, DS:E7D8 = 0x1A) if
   random(100) is over clamp(1, 99, the party's average Stealth
-  (0E76:1600) + the best Streetwise − 1462:0000(15, 1, 5)); that hazard
-  is clamp(1, a, random(a − 1)) with a = 15, raised by the location's
-  state (+0x14 = 1: · 5 / 4, 2: · 6 / 4) and marks 0x12, 0x13 (· 6 / 5).
+  (0E76:1600) + the best Streetwise − 1462:0000(15, 1, 5)). That
+  hazard, 1462:0000(a, b, low) of overlay 0x27 (file 0x809A0; b is not
+  used), is clamp(low, a, random(a − low)), a raised by the location's
+  state (property 0x20, its byte +0x14: 1 · 5 / 4, 2 · 6 / 4) and by each
+  of marks 0x13 and 0x12 (· 6 / 5): 5..9 here. **verified** (code)
   The tinkers' and clothmakers' streets cost their extra night hour
   first. About 35 handlers use this check (the guilds at night, the
   jewelers, other places): only the crafts' are reproduced.
@@ -1190,8 +1192,25 @@ grove after a wait may show the other card than the game.
 The grove's options 3..7 (file 0xAA654.., "...3".."...7" on the cards)
 are placeholders, hidden as on the other cards (the day's 5..7 would go
 to state 0x62).
-The bandits some players remember are the camp's, on the map (see
-"Camping in the wilderness").
+
+- **The way to the grove**: the risk is on the way there, in the
+  streets' handlers. Each street draws a hazard h on arrival
+  (1462:0000, see "Walking at night"; 0 when it does not apply), and
+  its grove option fails if random(100) >= 100 − h:
+  - the main street by day (file 0x956CC, h = 1462:0000(35, 3, 20) in
+    DS:57B0) and the side streets by day (file 0x96BCF, h(15, 2, 2) in
+    DS:57C8), only for a wanted party (09C0:20F3 = 1462:00BA: mark
+    0x11, a local reputation of −75 or less, or of −10 or less with
+    mark 0x13): the guards' challenge (state 1);
+  - the main street at night (file 0x96296, h(14, 1, 4) in DS:57BC)
+    and the side streets at night (file 0x974B6, an hour first, h(8, 1,
+    1) in DS:57D4): the watch (state 0x3C, card 1), returning to the
+    grove (DS:E7D8 = 0x21/0x22);
+  - the crafts' streets (file 0x9F43C): no risk.
+  None of them leads to the thieves (state 0x24 is set only in the slum
+  and in the thieves' own code), so the "bandits" of the grove are the
+  watch or the guards. **verified** (code). Reproduced in `CityVisit`
+  (the hazard is drawn when the option is taken).
 
 - **The slum** (state 0x23, segment 19A2 of overlay 0x34 at file
   0xAAEC0; the options through a switch at file 0xAB07A): *rest* (file
@@ -1377,8 +1396,8 @@ their content comes from the game's events. **verified** (code)
 ## Camping in the wilderness
 
 The bandits and the soldiers who find a camp ($CampB00, $CampJ00) come
-from the camp screen on the map, not from a city: the grove has no
-encounter (see "Encounters in the city"). **verified** (code); not
+from the camp screen on the map, not from a city (for the grove, see
+"Encounters in the city"). **verified** (code); not
 reproduced.
 
 - **The danger** of a camp: the map (file 0x5E9C5) calls 0x9C0:1FF9
