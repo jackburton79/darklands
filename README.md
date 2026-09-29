@@ -61,11 +61,10 @@ screen, sound, the other quests, and many places' options (they say
 
 ## Screenshots
 
-- [The main street of a city](screenshots/city-main-street.png)
-- [A grove outside a city](screenshots/city-grove.png)
-- [The character screen](screenshots/character-screen.png)
-- [A battle](screenshots/battle.png): the provisional view of a
-  battlefield map (`--battle`), the party facing four skeletons
+- ![The main street of a city](screenshots/city-main-street.png) 
+- ![A grove outside a city](screenshots/city-grove.png)
+- ![The character screen](screenshots/character-screen.png)
+- ![A battle](screenshots/battle.png)
 
 ## Roadmap
 
