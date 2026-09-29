@@ -1187,6 +1187,11 @@ with $Number1 the hours, then the grove by day). **verified** (code)
 Reproduced in `CityVisit`; the game's day there is 5..18 (1367:072A),
 the city's night cards follow `GameTime::IsNight()` (21..6), so the
 grove after a wait may show the other card than the game.
+The grove's options 3..7 (file 0xAA654.., "...3".."...7" on the cards)
+are placeholders, hidden as on the other cards (the day's 5..7 would go
+to state 0x62).
+The bandits some players remember are the camp's, on the map (see
+"Camping in the wilderness").
 
 - **The slum** (state 0x23, segment 19A2 of overlay 0x34 at file
   0xAAEC0; the options through a switch at file 0xAB07A): *rest* (file
@@ -1368,6 +1373,43 @@ their content comes from the game's events. **verified** (code)
   land, $RAUBI02); else a random encounter (file 0x5E1DB: the dragon's
   and other events', then by the terrain, DS:D843). **verified**
   (code); the encounters are not reproduced.
+
+## Camping in the wilderness
+
+The bandits and the soldiers who find a camp ($CampB00, $CampJ00) come
+from the camp screen on the map, not from a city: the grove has no
+encounter (see "Encounters in the city"). **verified** (code); not
+reproduced.
+
+- **The danger** of a camp: the map (file 0x5E9C5) calls 0x9C0:1FF9
+  with a base computed at file 0x6005E: 3 · [DS:A67E],
+  plus a term from the nearest map cell of kind 0x1D within 5 cells
+  (its distance − 6), plus the party's terrain (kinds 4, 5, 0x0F, 0x13:
+  −1; 0x10, 0x14: −2; 0x11, 0x15: −3; 0x16: −5; 0x17: −6; 0x18: +1; 8,
+  9: +2). *inferred*: what DS:A67E and kind 0x1D are.
+- The camp starts (file 0x6F090) with the base in DS:8A36 and the
+  danger DS:8A34 at 0 (or 0E76:39F0(0x61) while an event of category
+  0x61 runs; 0 while one of category 0x60 does).
+- **Each day** (file 0x70C10): with an event of category 0x60 running,
+  the danger is 0. Else d = the base, less, for each member present
+  (status 1) guarding the camp (activity 5): 3, 2 or 1 by Woodwise
+  (70, 30), 2 or 1 by Stealth (70, 30), and 1 if Edged, Flail, Polearm,
+  Thrown, Bow or Missile device is 30 or more (not Impact); d clamped to
+  1..15 is added to DS:8A34. (The 128-byte records at DS:9C55: skill n
+  is at +0x6B + n, 0E76:01A0.)
+- **Before each day** (the S key, file 0x6FDFC), in the wilderness (type
+  1): if random(50) + random(50) <= DS:8A34 the camp ends: DS:E7D8 is
+  the guard (the lowest slot present with activity 5), else −1, mark
+  0x5F for 2 hours (0E76:2930), and 0x11B.
+- **The encounter**: back on the map, while mark 0x5F runs the step
+  returns 1000 (file 0x5E9D2), and the encounter (file 0x5E1E5) is
+  state 0x169 ($CampJ00, the soldiers) if random(2) is 0, else 0x16A
+  ($CampB00, the bandits, file 0x17B89C). From the texts (*inferred*):
+  card 0 when a guard saw them ($ChosenOneName; ignore, leave, a saint,
+  ambush), card 1 when no one guarded (the fight at once); then the
+  saint answered (2) or not (6), the ambush laid (3) or botched (4),
+  the fight won (7), the escape (8, 10) or the defeat (9). The states' own code (overlay
+  at file 0x17AF90..) is not decoded.
 
 ## The church
 
