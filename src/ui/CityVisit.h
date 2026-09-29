@@ -378,6 +378,10 @@ public:
         SCREEN_MONKS_NIGHT_ABBESS,	// (6), no sanctuary (8)
         SCREEN_MONKS_NIGHT_NO_HELP,
         SCREEN_MONKS_NIGHT_NO_SANCTUARY,
+        SCREEN_FUGGER_REWARD,	// $FUGGE00, $MEDIC00 card 7: the reward
+        SCREEN_MEDICI_REWARD,	// paid
+        SCREEN_ROBBER_AVENGED,	// $RAUBI01: the banker avenged (5), the
+        SCREEN_ROBBER_REASON,	// light of reason (8)
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -681,6 +685,8 @@ private:
     void			_KnightSlain();
     int				_TowerInside(int state);
     void			_ClaimRewards(int kind, int place);
+    int				_BankReward(int patron);
+    int				_PatronThanks();
     // The slum's lodging, the thieves (state 0x24) and the shell game
     // (state 0xB2)
     int				_SlumLodging();
@@ -798,6 +804,7 @@ private:
     int				fGroveHours;	// the nap until nightfall
     int				fMonastery;		// its card shown on arrival
     int				fMonkAnswer;	// the screen after "the monk inquires"
+    int				fThanksReturn;	// the patron's screen after $RAUBI01
     std::vector<std::pair<int, int> > fSaintChoices;
     std::unique_ptr<ExeData> fExe;	// the saints' rules
     int				fChallengeReturn;	// where the party came from

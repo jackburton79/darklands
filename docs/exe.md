@@ -755,11 +755,30 @@ patron gives them. **verified** (code) unless marked.
   there was any, the events of kind 3 here of categories 8 and 28 are
   gone (0E76:3D92), the one just made too. Then mark 0x27 for 800
   hours; the castle's flag 4 (+0x14) and state 0x157.
+- **The banks' reward** (the fourth option, offered with a reward due:
+  0E76:3404(3, patron, location); the Fuggers at file 0xC4940, the
+  Medici at 0xC692E): the bank's standing + 5 (DS:4BB6, 4BB8); with
+  +0x2E 0, twice the city's size in florins (1367:0130), $Money1, card 7,
+  DS:E7D8 the bank (0x43, 0x45), an event of category 7 and subject the
+  patron for 72 hours (no new task meanwhile), state 0x91; with an item
+  (+0x2E, its code), card 8 names it ($NamedTwoName) and nothing more
+  happens (the item is not given, the reward stays). A reward of the
+  other task (kind 10): the city's size in florins, card 7, state
+  0x152. Without a reward: the standing − 3, card 9, the market.
+- **The patron's thanks** (state 0x91, $RAUBI01, 1870:000C of overlay
+  0x50 at file 0xFEB8C): the reward (0E76:3B62(36, −1, location, DS:E896
+  the patron, 3, −1)) names the patron (1367:0DB4(its +0x1E)) and the
+  knight (1367:0DB4(its +0x2C + 1100, 0, 1)) and is deleted; the card by
+  DS:E7D8: the square and the places 0x19, 0x1B, 0x1C card 0 with the
+  reputation + 40..50, the market card 2, the Hanse (0x47) card 6 or 7,
+  the alchemist (0x59) card 4, 0x3F card 3, else (the banks) card 5 one
+  time in four (random(4) = 0), else 8; then back to DS:E7D8.
 - Reproduced in `CityVisit`: the banks' tasks, the robber knight's
   offer, the tower's options, battles and the knight's end (at the
-  middle difficulty). Not reproduced: the other task (state 0x151), the
-  other patrons, the companions, the alchemy, the audience (0x95),
-  inside the tower (0x94), the ruin (0x157), the rewards' collection.
+  middle difficulty), the banks' reward and thanks. Not reproduced: the
+  other task (state 0x151), the other patrons, the companions, the
+  alchemy, the audience (0x95), inside the tower (0x94), the ruin
+  (0x157), the banks' standing.
 
 ## Leaving the city
 

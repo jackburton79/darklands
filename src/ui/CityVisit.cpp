@@ -156,6 +156,9 @@ enum option_action {
     ACTION_MONKS_NIGHT_HELP,
     ACTION_MONKS_NIGHT_SANCTUARY,
     ACTION_ABBESS,				// state 0xB4: not implemented
+    ACTION_BANK_REWARD,			// target: the patron
+    ACTION_PATRON_THANKS,		// state 0x91
+    ACTION_THANKS_RETURN,
     ACTION_CALL_PRIEST,			// the priest in the dungeon
     ACTION_PRIEST_CONFESSION,
     ACTION_PRIEST_HELP,
@@ -253,6 +256,9 @@ static const int kNeedsGroschen		= -41;
 static const int kNeedsMonksPrayers	= -42;
 static const int kNeedsLibrary		= -43;
 static const int kNeedsAbbess		= -44;
+// a bank's reward for a robber knight (0E76:3404(3, patron, location))
+static const int kNeedsFuggerReward	= -45;
+static const int kNeedsMediciReward	= -46;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
@@ -742,23 +748,26 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "URBAN00", 5, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     { "URBAN00", 6, NULL, { { ACTION_CACHE, 0, kAlways, 60, CityVisit::SCREEN_INN } } },
     // The banks (DARKLAND.EXE, file 0xC41E7 and 0xC6253): letters of
-    // credit; the tasks, rewards and politics are not implemented
+    // credit, the tasks against robber knights and their rewards; the
+    // other tasks and politics are not implemented
 #define FUGGER_TASKS { ACTION_BANK_TASKS, 8, kNeedsFuggerTasks, 0 }
 #define MEDICI_TASKS { ACTION_BANK_TASKS, 6, kNeedsMediciTasks, 0 }
-#define BANK_OPTIONS(redeemed, deposit, tasks) { \
+#define FUGGER_REWARD { ACTION_BANK_REWARD, 8, kNeedsFuggerReward, 0 }
+#define MEDICI_REWARD { ACTION_BANK_REWARD, 6, kNeedsMediciReward, 0 }
+#define BANK_OPTIONS(redeemed, deposit, tasks, reward) { \
         { ACTION_REDEEM, CityVisit::redeemed, kNeedsBankNotes, 0 }, \
         GO_IF(deposit, kNeedsFlorins),		/* a letter of credit */ \
         tasks,								/* special tasks */ \
-        HIDE,								/* a reward */ \
+        reward,								/* a reward */ \
         TODO,								/* politics */ \
         HIDE,								/* "unused" */ \
         GO(SCREEN_MARKET), \
         GO(SCREEN_SIDE_STREET) \
     }
     { "FUGGE00", 0, NULL, BANK_OPTIONS(SCREEN_FUGGER_REDEEMED,
-        SCREEN_FUGGER_DEPOSIT, FUGGER_TASKS) },
+        SCREEN_FUGGER_DEPOSIT, FUGGER_TASKS, FUGGER_REWARD) },
     { "MEDIC00", 0, NULL, BANK_OPTIONS(SCREEN_MEDICI_REDEEMED,
-        SCREEN_MEDICI_DEPOSIT, MEDICI_TASKS) },
+        SCREEN_MEDICI_DEPOSIT, MEDICI_TASKS, MEDICI_REWARD) },
     // "In the rich, wood-paneled offices of the Hanseatic League..."
     { "HANSE00", 0, NULL, {
         TODO, TODO, TODO, TODO, TODO,		// tasks, rewards, politics
@@ -770,9 +779,9 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     // "...the guards grip their weapons and watch you carefully": the
     // same, with no tasks (a reputation under 0)
     { "FUGGE00", 2, NULL, BANK_OPTIONS(SCREEN_FUGGER_REDEEMED,
-        SCREEN_FUGGER_DEPOSIT, HIDE) },
+        SCREEN_FUGGER_DEPOSIT, HIDE, FUGGER_REWARD) },
     { "MEDIC00", 2, NULL, BANK_OPTIONS(SCREEN_MEDICI_REDEEMED,
-        SCREEN_MEDICI_DEPOSIT, HIDE) },
+        SCREEN_MEDICI_DEPOSIT, HIDE, MEDICI_REWARD) },
     // "...counts out from the purse the full amount, $Money1. Then he
     // deducts $Money2 from the pile."
     { "FUGGE00", 6, NULL, { GO(SCREEN_FUGGER) } },
@@ -782,6 +791,8 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "FUGGE00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_FUGGER, kAlways, 0 } } },
     { "MEDIC00", 3, NULL, { { ACTION_DEPOSIT, CityVisit::SCREEN_MEDICI, kAlways, 0 } } },
 #undef BANK_OPTIONS
+#undef FUGGER_REWARD
+#undef MEDICI_REWARD
     // "Among various guilds and merchant townhouses, you find the home of
     // $NamedOneName, a respected physician..." (file 0xA2E6A)
     { "PHYSI00", 0, NULL, {
@@ -1269,6 +1280,12 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
     { "CITYM01", 5, NULL, { DO(ACTION_ABBESS) } },
     { "CITYM01", 6, NULL, { GO(SCREEN_CHURCHES) } },
     { "CITYM01", 8, NULL, { GO(SCREEN_CHURCHES) } },
+    // the banks' reward (file 0xC4940, 0xC692E), then the patron's thanks
+    // (state 0x91, file 0xFEB8C)
+    { "FUGGE00", 7, NULL, { DO(ACTION_PATRON_THANKS) } },
+    { "MEDIC00", 7, NULL, { DO(ACTION_PATRON_THANKS) } },
+    { "RAUBI01", 5, NULL, { DO(ACTION_THANKS_RETURN) } },
+    { "RAUBI01", 8, NULL, { DO(ACTION_THANKS_RETURN) } },
     // not a game card: see the constructor
     { NULL, 0, NULL, {
         TODO								// go back (handled by Choose())
@@ -1760,6 +1777,10 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
+    { NULL, 0, NULL, {} },
     { NULL, 0, NULL, {} }					// not implemented
 };
 
@@ -1873,6 +1894,7 @@ CityVisit::CityVisit(GameData& data)
     fGroveHours(0),
     fMonastery(SCREEN_MONASTERY),
     fMonkAnswer(SCREEN_MONASTERY),
+    fThanksReturn(SCREEN_FUGGER),
     fChallengeReturn(SCREEN_OUTSIDE),
     fChallengeReputation(0),
     fPartyLost(false),
@@ -2425,6 +2447,15 @@ CityVisit::Choose(int option)
             _Mark(kMarkMonksBothered, 8);
             _Show(SCREEN_MONKS_NIGHT_NO_SANCTUARY);
             return true;
+        case ACTION_BANK_REWARD:
+            _Show(_BankReward(rule.target));
+            return true;
+        case ACTION_PATRON_THANKS:
+            _Show(_PatronThanks());
+            return true;
+        case ACTION_THANKS_RETURN:
+            _Show(fThanksReturn);
+            return true;
         case ACTION_ABBESS:
             fPreviousScreen = SCREEN_CHURCHES;	// DS:E7D8 = 0x13
             _Show(SCREEN_NOT_IMPLEMENTED);
@@ -2695,10 +2726,11 @@ CityVisit::_Show(int screen, bool withScene)
     // the master banker and the League's master: the city's number + 8
     // (the Fuggers, file 0xC4280), + 6 (the Medici, file 0xC62E9), + 7
     // (the Hanse, file 0xC7BBF)
-    if (screen >= SCREEN_FUGGER && screen <= SCREEN_MEDICI_DEPOSIT) {
+    if ((screen >= SCREEN_FUGGER && screen <= SCREEN_MEDICI_DEPOSIT)
+            || screen == SCREEN_FUGGER_REWARD || screen == SCREEN_MEDICI_REWARD) {
         const bool fugger = screen == SCREEN_FUGGER
             || screen == SCREEN_FUGGER_COLD || screen == SCREEN_FUGGER_REDEEMED
-            || screen == SCREEN_FUGGER_DEPOSIT;
+            || screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_FUGGER_REWARD;
         const uint16 number = _City().peopleSeed;
         fVariables["NamedOneName"] = _PersonName(uint16(number
             + (fugger ? 8 : screen == SCREEN_HANSE ? 7 : 6)));
@@ -2922,6 +2954,9 @@ CityVisit::_HiddenOptions(int screen) const
             hide = _Marked(kMarkLibrary);
         } else if (rule.needs == kNeedsAbbess) {
             hide = _Marked(kMarkAbbess);
+        } else if (rule.needs == kNeedsFuggerReward
+                || rule.needs == kNeedsMediciReward) {
+            hide = !_RewardDue(3, rule.needs == kNeedsFuggerReward ? 8 : 6);
         } else if (rule.needs == kNeedsGroschen) {
             hide = fParty == NULL || TotalPfennigs(fParty->cash) <= 12;
         } else if (rule.needs == kNeedsTowerAllies) {
@@ -7412,6 +7447,48 @@ CityVisit::_PatronQuest(int kind, int patron) const
             return true;
     }
     return false;
+}
+
+
+// A bank's reward for a robber knight (file 0xC4940, the Fuggers;
+// 0xC692E, the Medici): twice the city's size in florins (1367:0130),
+// $Money1, card 7, no tasks for 72 hours (an event of category 7,
+// 0E76:2C4E(-2, location, 0x5F, 7, patron, 0, 0, 72, 0, 0)), then the
+// patron's thanks (state 0x91). The bank's standing (DS:4BB6, 4BB8: +5)
+// is not kept; a reward in goods (+0x2E) is not paid by the game.
+int
+CityVisit::_BankReward(int patron)
+{
+    fThanksReturn = patron == 6 ? SCREEN_MEDICI : SCREEN_FUGGER;
+    fQuestPatron = patron;
+    const uint32 florins = uint32(_City().size) * 2;
+    if (fParty != NULL) {
+        fParty->cash = MoneyFromPfennigs(TotalPfennigs(fParty->cash)
+            + florins * 240);
+    }
+    fVariables["Money1"] = MoneyText(florins * 240);
+    _AddEvent(-2, int16(fCity), 0x5F, 7, int16(patron), 0, 0, 72, 0, 0);
+    return patron == 6 ? SCREEN_MEDICI_REWARD : SCREEN_FUGGER_REWARD;
+}
+
+
+// The patron's thanks (state 0x91, file 0xFEB8C): the reward (0E76:3B62(
+// 36, -1, location, patron, 3, -1)) names the patron ($NamedOneName,
+// 1367:0DB4(its +0x1E)) and the knight ($NamedTwoName, 1367:0DB4(its
+// castle + 1100)), and is gone (0E76:30FE). The card goes by the
+// patron's place (DS:E7D8): at a bank card 5 one time in four, else 8.
+// Then back to the patron.
+int
+CityVisit::_PatronThanks()
+{
+    const int reward = _FindEvent(0x24, -1, fCity, fQuestPatron, 3, -1);
+    if (reward >= 0) {
+        const world_event e = (*fEvents)[size_t(reward)];
+        fVariables["NamedOneName"] = _PersonName(uint16(e.unknown1E));
+        fVariables["NamedTwoName"] = _PersonName(uint16(e.unknown2C + 1100));
+        fEvents->erase(fEvents->begin() + reward);
+    }
+    return fRandom() % 4 == 0 ? SCREEN_ROBBER_AVENGED : SCREEN_ROBBER_REASON;
 }
 
 
