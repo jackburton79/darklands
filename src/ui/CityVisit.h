@@ -504,6 +504,9 @@ private:
     uint32			_Fine() const;
     int				_SneakChance() const;
     int				_NightWalkChance();
+    int				_Hazard(int high, int low);
+    bool			_Wanted() const;
+    int				_ToGrove();
     int				_Slowest() const;
     int				_Sneak();
     int				_BribeGuards();

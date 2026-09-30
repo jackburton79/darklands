@@ -166,8 +166,9 @@ enum option_action {
     ACTION_PRIEST_GOOD_WORD,
     ACTION_AFTER_GOOD_WORD,		// the magistrate, or the cell
     ACTION_FROM_PRIEST,
-    ACTION_NIGHT_WALK			// ACTION_GO, but the watch may stop the
+    ACTION_NIGHT_WALK,			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
+    ACTION_TO_GROVE				// the streets' way to the grove
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -482,7 +483,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO_IF(SCREEN_INN, CITY_INN),
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_SIDE_STREET),
-        GO(SCREEN_GROVE),
+        DO(ACTION_TO_GROVE),
         GO(SCREEN_GATE)
     } },
     // "The side streets of $PlaceName are full of people..."
@@ -494,7 +495,7 @@ static const screen_rules kScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_CHURCHES),
         GO(SCREEN_DISTRICT),				// crafts district, inns...
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
-        GO(SCREEN_GROVE),
+        DO(ACTION_TO_GROVE),
         GO(SCREEN_OTHER),
         GO(SCREEN_INNER_WALL)				// the city walls (file 0x96D18)
     } },
@@ -1326,7 +1327,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO_IF(SCREEN_INN, CITY_INN),
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
         GO(SCREEN_SIDE_STREET),
-        GO(SCREEN_GROVE),					// a small grove
+        DO(ACTION_TO_GROVE),				// a small grove
         GO(SCREEN_GATE)
     } },
     // "Tiny gleams from occasional windows..." (another order)
@@ -1338,7 +1339,7 @@ static const screen_rules kNightScreens[CityVisit::SCREEN_COUNT] = {
         GO(SCREEN_CHURCHES),
         GO(SCREEN_DISTRICT),				// crafts district, inns...
         GO_IF(SCREEN_DOCKS, kNeedsHarbor),
-        GO(SCREEN_GROVE),					// a dark grove
+        DO(ACTION_TO_GROVE),				// a dark grove
         GO(SCREEN_OTHER),
         WAIT(SCREEN_STUMBLING, 60)			// the city wall (file 0x975FE)
     } },
@@ -2164,6 +2165,9 @@ CityVisit::Choose(int option)
             _Show(rule.target);
             return true;
         }
+        case ACTION_TO_GROVE:
+            _Show(_ToGrove());
+            return true;
         case ACTION_SNEAK:
             _Show(_Sneak());
             return true;
@@ -7770,9 +7774,8 @@ CityVisit::_SetChosen(int member)
 
 
 // Walking at night unseen (file 0xA4596): the party's average Stealth
-// (0E76:1600) + the best Streetwise - a hazard, within 1..99; the hazard
-// (1462:0000(15, 1, 5)) is random(14) within 1..15, more where the
-// location's state or marks say so (not kept here)
+// (0E76:1600) + the best Streetwise - the hazard 1462:0000(15, 1, 5),
+// within 1..99
 int
 CityVisit::_NightWalkChance()
 {
@@ -7782,7 +7785,68 @@ CityVisit::_NightWalkChance()
     for (const character& member : fParty->members)
         stealth += member.skills[kSkillStealth];
     stealth /= int(fParty->members.size());
-    const int hazard = std::max(1, std::min(int(fRandom() % 14), 15));
     return std::max(1, std::min(stealth + _BestSkill(kSkillStreetwise)
-        - hazard, 99));
+        - _Hazard(15, 5), 99));
+}
+
+
+// A hazard (1462:0000 of overlay 0x27, file 0x809A0; its second argument
+// is not used): `high` raised by the city's state (1: 5 / 4, 2: 6 / 4)
+// and by each of marks 0x13 and 0x12 (6 / 5), then random(high - low)
+// within low..high
+int
+CityVisit::_Hazard(int high, int low)
+{
+    const uint8 state = _CityState();
+    if (state == 1)
+        high = high * 5 / 4;
+    else if (state == 2)
+        high = high * 6 / 4;
+    if (_Marked(kMarkGateFought))
+        high = high * 6 / 5;
+    if (_Marked(kMarkAlert))
+        high = high * 6 / 5;
+    const int value = high > low ? int(fRandom() % uint32(high - low)) : 0;
+    return std::max(low, std::min(value, high));
+}
+
+
+// A party the guards are after (1462:00BA of overlay 0x27, 09C0:20F3):
+// wanted (mark 0x11), a reputation of -75 or less, or of -10 or less
+// after a fight at the gate (mark 0x13)
+bool
+CityVisit::_Wanted() const
+{
+    const int reputation = _Reputation();
+    return _Marked(kMarkWanted) || reputation <= -75
+        || (_Marked(kMarkGateFought) && reputation <= -10);
+}
+
+
+// The way to the grove from the streets (file 0x956CC and 0x96BCF by
+// day, 0x96296 and 0x974B6 at night): with h a hazard drawn for the
+// street, the way fails if random(100) >= 100 - h. By day only a wanted
+// party runs a risk (main street h(35, 20), side streets h(15, 2)): the
+// guards' challenge. At night (main street h(14, 4); side streets an
+// hour first, then h(8, 1)) the watch stops the party, card 1, and
+// paying its fine leads to the grove. The crafts' way has no risk.
+int
+CityVisit::_ToGrove()
+{
+    const bool mainStreet = fScreen == SCREEN_MAIN_STREET;
+    int hazard = 0;
+    if (!fNight) {
+        if (_Wanted())
+            hazard = mainStreet ? _Hazard(35, 20) : _Hazard(15, 2);
+    } else {
+        if (!mainStreet && fClock != NULL)
+            fClock->AddHours(1);
+        hazard = mainStreet ? _Hazard(14, 4) : _Hazard(8, 1);
+    }
+    if (hazard == 0 || int(fRandom() % 100) < 100 - hazard)
+        return SCREEN_GROVE;
+    if (!fNight)
+        return _Challenge();
+    fWatchReturn = SCREEN_GROVE;
+    return SCREEN_NIGHT_WATCH_MARKET;
 }
