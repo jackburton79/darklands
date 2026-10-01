@@ -264,7 +264,8 @@ TradeView::SetMerchant(merchant_kind kind, uint32 seed)
 void
 TradeView::Run(GameWindow& window)
 {
-    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME });
+    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME,
+        MENU_MARCHING_ORDER });
     bool dirty = true;
     for (;;) {
         if (dirty) {

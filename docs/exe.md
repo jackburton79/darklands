@@ -1039,6 +1039,25 @@ patron gives them. **verified** (code) unless marked.
   99, 0, 32, 0, 0), mark 0x14 for 32 hours, and the watch (0x3C), which
   returns to 0x19. **verified** (code). The slum from the business
   district takes no hours and has no chance, day or night (0x9F49C).
+  The prison's state 0x11E (also the town hall's prisoner options) is
+  1901:000A of overlay 0x4C: file 0xF675A, a single `retf`: the game has
+  no code for visiting a prisoner there, so it stays "not implemented".
+- **The boats** (state 0x1F, $DOCKS00, file 0xA7DE6; options through a
+  switch at file 0xA831C): the city record's words +0x4A, +0x4C, +0x4E and
+  +0x50 are up to four destinations (−1: none), each shown as dim (a boat
+  that leaves later in the week) or on (today): with the city's flags
+  (property 0x20) bit 1 on, a boat leaves today when (the city's seed + the
+  day of the month + its number) % 4 = 0 and the fares are doubled
+  (1367:0290); with bit 2, one boat at random and the fares times four;
+  else % 3 = 0. The card: 1 with bit 1; with bit 2 card 4 while mark 0x39
+  runs, else card 6 (empty piers) when (seed + day) % 3 = 0, else card 2
+  (the officer, who sells passage with the 0x5935 / 0x5942 files...); else
+  0. An hour first. Boarding (file 0xA83E4): a wanted party may be caught
+  (state 1); too poor, card 7 (with mounts) or 8, an hour; else the fare is
+  paid, random(3) + 1 hours (card 9, $Number1), the party is at the
+  destination (DS:907E), 48..95 more hours pass (random(48) + 48) and the
+  voyage begins (state 0x5A, overlay 0x42, with the decks $BALTI00/01,
+  $RIVER00...): not reproduced.
 - **The docks at night** (state 0x20, $Docks01, file 0xA9820; its options
   are the handlers of a table at file 0xA99F2): option 0 (the boats) goes
   to the docks' day state 0x1F; options 3 and 4 the main and side streets
@@ -1826,10 +1845,15 @@ mouse button held down, or F10, shows it; it has four pull-down menus,
   nothing to choose. The Save is "faded" where saving is prohibited
   (battles: *inferred*; the string "Battlefield save rules are in effect"
   is at file 0x192536).
+- **Change Marching Order** (09C0:183D = 1EF8:051C of overlay 0x16, file
+  0x51050; the function at file 0x5156C, **verified**): for each place
+  but the last it asks "Select %Fs" (a string of a table loaded at run
+  time, DS:7DF2:0267 + 4 · place: not found) and the player picks, by the
+  mouse or F1..F5, one of the members left; the last takes the last
+  place; the order is written at DS:9064.
 - **Not decoded**: the drawing (the colors, the exact size of the bar and
   of the menus are measured on the screenshot of manual p. 17, *inferred*)
-  and what the handlers do (Change Marching Order is not implemented: how
-  the order is asked is unknown).
+  and what most handlers do.
 - **Implemented** (`MenuBar`, `GameSettings`): the right button (the world
   map's city details are on the middle button now), F10 and the Alt
   shortcuts in the cards, the map, the trade and the residence screens
@@ -1838,7 +1862,9 @@ mouse button held down, or F10, shows it; it has four pull-down menus,
   *inferred*), Difficulty (written to the saved game, byte 0x96; the
   fame of a task uses it, 1462:1E06), Show Changes, Music and Sound FX (only
   kept: the game has neither the messages nor the sound), Pause (waits
-  for a key), Quit. Party Info opens the F6 screen. In a battle Resume
+  for a key), Quit. Change Marching Order asks who goes first, second... (the prompts are
+  made up; not in a battle or at a merchant); Party Info opens the F6
+  screen. In a battle Resume
   and Halt work (and H); the other orders of the menu are dim, as the
   battle has no such orders yet.
 

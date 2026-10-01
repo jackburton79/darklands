@@ -163,7 +163,8 @@ ResidenceView::SetPlace(int cityIndex, int reputation, uint32 innPrice,
 void
 ResidenceView::Run(GameWindow& window)
 {
-    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME });
+    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME,
+        MENU_MARCHING_ORDER });
     bool dirty = true;
     for (;;) {
         if (dirty) {

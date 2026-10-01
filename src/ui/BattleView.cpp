@@ -581,6 +581,7 @@ struct BattleMenu {
         bar->SetEnabled(MENU_SAVE_GAME, false);
         bar->SetEnabled(MENU_LOAD_GAME, false);
         bar->SetEnabled(MENU_PARTY_INFO, false);
+        bar->SetEnabled(MENU_MARCHING_ORDER, false);
     }
 
     ~BattleMenu()
@@ -590,6 +591,7 @@ struct BattleMenu {
         bar->SetEnabled(MENU_SAVE_GAME, true);
         bar->SetEnabled(MENU_LOAD_GAME, true);
         bar->SetEnabled(MENU_PARTY_INFO, true);
+        bar->SetEnabled(MENU_MARCHING_ORDER, true);
         bar->SetEnabled(MENU_RESUME, false);
         bar->SetEnabled(MENU_HALT, false);
     }

@@ -150,8 +150,6 @@ MenuBar::MenuBar(GameData& data)
     }
     for (int i = 0; i < 3; i++)
         fEnabled[MENU_DIFFICULTY_BASIC + i] = true;
-    // not decoded: how the party's marching order is changed
-    fEnabled[MENU_MARCHING_ORDER] = false;
     fEnabled[MENU_NONE] = true;
 
     int left = kLeft + kFirstTitle;

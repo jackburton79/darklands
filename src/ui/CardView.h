@@ -82,11 +82,13 @@ public:
 
     // Runs until an option is chosen: returns its number, or -1 if the
     // user quit, or kSaveRequested for Ctrl+S or the menu's Save Game,
-    // kLoadRequested for its Load Saved Game. A card without options is
+    // kLoadRequested for its Load Saved Game, kOrderRequested for
+    // Change Marching Order. A card without options is
     // left with a click or a key (as option 0). The first version opens
     // its own window.
     static const int kSaveRequested = -2;
     static const int kLoadRequested = -3;
+    static const int kOrderRequested = -4;
     int				Run();
     int				Run(GameWindow& window);
 

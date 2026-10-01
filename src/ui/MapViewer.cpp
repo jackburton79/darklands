@@ -267,6 +267,10 @@ MapViewer::_MenuEvent(GameWindow& window, const SDL_Event& event,
             if (fLoadHandler && fLoadHandler(window))
                 loading = true;
             break;
+        case MENU_MARCHING_ORDER:
+            if (fOrderHandler)
+                fOrderHandler(window);
+            break;
         case MENU_QUIT:
             quitting = true;
             break;

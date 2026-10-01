@@ -172,6 +172,13 @@ Game::Run()
         position = fPosition;
         return true;
     };
+    const std::function<void(GameWindow&)> order = [&](GameWindow& where) {
+        _OrderDialog(where);
+        visit.SetParty(&fParty);
+        info.SetParty(&fParty);
+    };
+    visit.SetOrderHandler(order);
+    map.SetOrderHandler(order);
     visit.SetLoadHandler(load);
     map.SetLoadHandler(load);
 
@@ -334,4 +341,61 @@ Game::_LoadDialog(GameWindow& window)
         return false;
     }
     return true;
+}
+
+
+// Change Marching Order (the overlay at file 0x51050, 1EF8:051C): for each
+// place in turn, from the first, the player picks one of the members left;
+// the last one takes the last place. The leader stays the same member.
+// The game's prompts ("Select ...") come from a table loaded at run time:
+// these are made up.
+void
+Game::_OrderDialog(GameWindow& window)
+{
+    if (fParty.members.size() < 2)
+        return;
+    static const char* kPlaces[5] = { "first", "second", "third", "fourth",
+        "fifth" };
+    std::vector<size_t> left;
+    for (size_t i = 0; i < fParty.members.size(); i++)
+        left.push_back(i);
+    std::vector<size_t> order;
+    CardView view(fData);
+    view.SetParty(&fParty);
+    while (left.size() > 1) {
+        msg_card card = { 10, 10, 0, 240, 0, "" };
+        card.text = Font::ToGameCharset(std::string("Select the ")
+            + kPlaces[order.size()] + " character.\n");
+        card.text += char(MSG_CODE_PARAGRAPH);
+        card.text += char(MSG_CODE_PARAGRAPH);
+        for (size_t i : left) {
+            card.text += char(MSG_CODE_OPTION);
+            card.text += "...";
+            card.text += char(MSG_CODE_OPTION_TEXT);
+            card.text += Font::ToGameCharset(fParty.members[i].shortName)
+                + "\n";
+        }
+        view.SetCard(card, card_variables());
+        const int choice = view.Run(window);
+        if (choice < 0 || choice >= int(left.size()))
+            return;				// Esc: nothing changes
+        order.push_back(left[size_t(choice)]);
+        left.erase(left.begin() + choice);
+    }
+    order.push_back(left[0]);
+
+    party changed = fParty;
+    changed.members.clear();
+    changed.images.clear();
+    changed.colors.clear();
+    for (size_t i = 0; i < order.size(); i++) {
+        changed.members.push_back(fParty.members[order[i]]);
+        if (order[i] < fParty.images.size())
+            changed.images.push_back(fParty.images[order[i]]);
+        if (order[i] < fParty.colors.size())
+            changed.colors.push_back(fParty.colors[order[i]]);
+        if (int(order[i]) == fParty.leader)
+            changed.leader = int(i);
+    }
+    fParty = changed;
 }

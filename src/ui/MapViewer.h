@@ -58,6 +58,11 @@ public:
     void			SetLoadHandler(
                         const std::function<bool(GameWindow&)>& handler)
                         { fLoadHandler = handler; }
+    // Called by Run() for the menu's Change Marching Order (not set:
+    // nothing happens)
+    void			SetOrderHandler(
+                        const std::function<void(GameWindow&)>& handler)
+                        { fOrderHandler = handler; }
     // Called by Run() for Ctrl+S (not set: nothing happens)
     void			SetSaveHandler(
                         const std::function<void(GameWindow&)>& handler)
@@ -123,6 +128,7 @@ private:
     MenuBar*		fMenu;
     std::function<void(GameWindow&)> fSaveHandler;
     std::function<bool(GameWindow&)> fLoadHandler;
+    std::function<void(GameWindow&)> fOrderHandler;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

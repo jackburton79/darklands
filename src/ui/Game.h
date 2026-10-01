@@ -57,6 +57,8 @@ private:
     // The menu's Load Saved Game: lists the saved games, loads the one
     // chosen; false if none was
     bool			_LoadDialog(GameWindow& window);
+    // The menu's Change Marching Order: asks who goes first, second...
+    void			_OrderDialog(GameWindow& window);
     // Ctrl+S: asks for the comment ("Save Game Comment:", file 0x74CD6),
     // saves and says where
     void			_SaveDialog(GameWindow& window, int location,

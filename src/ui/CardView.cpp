@@ -380,6 +380,9 @@ CardView::_MenuEvent(GameWindow& window, const SDL_Event& event, int& result)
         case MENU_LOAD_GAME:
             result = kLoadRequested;
             break;
+        case MENU_MARCHING_ORDER:
+            result = kOrderRequested;
+            break;
         case MENU_QUIT:
             result = -1;
             break;

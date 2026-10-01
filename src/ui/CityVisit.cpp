@@ -186,6 +186,12 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
                 fSaveHandler(window);
             continue;
         }
+        if (option == CardView::kOrderRequested) {
+            if (fOrderHandler)
+                fOrderHandler(window);
+            _Show(fScreen, false);
+            continue;
+        }
         if (option == CardView::kLoadRequested) {
             if (fLoadHandler && fLoadHandler(window))
                 return LOAD_GAME;
