@@ -167,6 +167,9 @@ InfoView::InfoView(GameData& data)
     fPosition{ 0, 0 },
     fPage(kPartyPage),
     fScrollOpen(false),
+    fDragging(false),
+    fDragItem(-1),
+    fDragAll(false),
     fMouse(0, 0),
     fCursorVisible(false)
 {
@@ -186,6 +189,8 @@ InfoView::InfoView(GameData& data)
         fScrolls[i] = _LoadPicture(kScrollNames[i], &fCharacterPalette);
     for (int i = 0; i < 5; i++)
         fTop[i] = fCursor[i] = 0;
+    fHand = _LoadPicture("HANDICON.PIC", &fCharacterPalette);
+    fGrip = _LoadPicture("HANDICN2.PIC", &fCharacterPalette);
 
     fBuffer = new Bitmap(320, 200, 8);
 }
@@ -249,6 +254,13 @@ InfoView::Run(GameWindow& window, int page)
                     event.motion.y));
                 dirty = true;
                 break;
+            case SDL_MOUSEBUTTONDOWN:
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    Pressed(GameWindow::ToScreen(event.button.x,
+                        event.button.y), (SDL_GetModState() & KMOD_SHIFT) != 0);
+                    dirty = true;
+                }
+                break;
             case SDL_MOUSEBUTTONUP:
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     if (!Clicked(GameWindow::ToScreen(event.button.x,
@@ -275,8 +287,10 @@ InfoView::Show(int page)
     if (page != kPartyPage && (fParty == NULL || page < 0
             || page >= int(fParty->members.size())))
         page = kPartyPage;
-    if (page != fPage)
+    if (page != fPage) {
         fScrollOpen = false;
+        fDragging = false;
+    }
     fPage = page;
 }
 
@@ -296,6 +310,10 @@ InfoView::Clicked(const GFX::point& point)
     MouseMoved(point);
     if (fPage == kPartyPage)
         return false;
+    if (fDragging) {
+        _Drop(point);
+        return true;
+    }
     const int member = fSidebar->MemberAt(point);
     if (member == fPage)
         return false;
@@ -310,17 +328,71 @@ InfoView::Clicked(const GFX::point& point)
         return true;
     }
     if (fScrollOpen && fParty != NULL) {
-        // a row of the scroll
-        const int row = (point.y - kScrollTop - kScrollTextTop) / kScrollRowHeight;
-        if (point.x >= kScrollLeft && point.x < kScrollLeft + kScrollWidth
-                && point.y >= kScrollTop + kScrollTextTop && row >= 0
-                && row < kScrollRows) {
-            const int index = fTop[fPage] + row;
-            if (index < int(fParty->members[size_t(fPage)].items.size()))
-                SetScrollCursor(index);
-        }
+        const int index = _ScrollRowAt(point);
+        if (index >= 0)
+            SetScrollCursor(index);
     }
     return true;
+}
+
+
+// The item under a point of the scroll, or -1
+int
+InfoView::_ScrollRowAt(const GFX::point& point) const
+{
+    if (!fScrollOpen || fParty == NULL || fPage < 0
+            || fPage >= int(fParty->members.size()))
+        return -1;
+    const int row = (point.y - kScrollTop - kScrollTextTop) / kScrollRowHeight;
+    if (point.x < kScrollLeft || point.x >= kScrollLeft + kScrollWidth
+            || point.y < kScrollTop + kScrollTextTop || row < 0
+            || row >= kScrollRows)
+        return -1;
+    const int index = fTop[fPage] + row;
+    return index < int(fParty->members[size_t(fPage)].items.size())
+        ? index : -1;
+}
+
+
+void
+InfoView::Pressed(const GFX::point& point, bool shift)
+{
+    MouseMoved(point);
+    const int index = _ScrollRowAt(point);
+    if (index < 0)
+        return;
+    SetScrollCursor(index);
+    fDragging = true;
+    fDragItem = index;
+    fDragAll = shift;
+}
+
+
+// The button went up with an item in hand
+void
+InfoView::_Drop(const GFX::point& point)
+{
+    fDragging = false;
+    if (fParty == NULL || fDragItem < 0)
+        return;
+    character& member = fParty->members[size_t(fPage)];
+    const size_t item = size_t(fDragItem);
+    const int target = fSidebar->MemberAt(point);
+    if (target >= 0) {
+        if (target < int(fParty->members.size()))
+            GiveItem(member, item, fParty->members[size_t(target)], fDragAll);
+        _ClampScroll();
+        return;
+    }
+    if (point.x >= kInUseBox.x && point.x < kInUseBox.x + int(kInUseBox.w)
+            && point.y >= kInUseBox.y
+            && point.y < kInUseBox.y + int(kInUseBox.h)) {
+        ReadyItem(member, item, fData.Lists().Items());
+        return;
+    }
+    const int to = _ScrollRowAt(point);
+    if (to >= 0)
+        MoveItem(member, item, size_t(to));
 }
 
 
@@ -479,8 +551,14 @@ InfoView::Draw()
     else
         _DrawCharacterPage();
     if (fCursorVisible) {
-        DrawMouseCursor(fBuffer, fMouse, NearestColor(palette, 0, 0, 0),
-            NearestColor(palette, 255, 255, 255));
+        // over the scroll the cursor is a hand, closed on an item in hand
+        if (!partyPage && fDragging)
+            _DrawPicture(fGrip, fMouse.x - 3, fMouse.y - 3, 0);
+        else if (!partyPage && _ScrollRowAt(fMouse) >= 0)
+            _DrawPicture(fHand, fMouse.x - 3, fMouse.y - 3, 0);
+        else
+            DrawMouseCursor(fBuffer, fMouse, NearestColor(palette, 0, 0, 0),
+                NearestColor(palette, 255, 255, 255));
     }
     return fBuffer;
 }
@@ -509,7 +587,8 @@ InfoView::_DrawPicture(const raw_picture& picture, int x, int y,
         for (int column = 0; column < picture.width; column++) {
             const uint8 pixel = picture.pixels[size_t(row) * picture.width
                 + column];
-            if (pixel != transparent)
+            if (pixel != transparent && x + column >= 0 && y + row >= 0
+                    && x + column < 320 && y + row < 200)
                 fBuffer->PutPixel(x + column, y + row, pixel);
         }
     }

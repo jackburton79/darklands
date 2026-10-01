@@ -59,6 +59,13 @@ public:
     // box", manual p. 22); a click on another box shows that character.
     void			MouseMoved(const GFX::point& point);
     bool			Clicked(const GFX::point& point);
+    // The button goes down: on a row of the equipment scroll it takes
+    // the item, which a release elsewhere moves (DARKLAND.EXE 1462:1E42):
+    // to another row of the scroll (the item goes there), onto the
+    // equipment in use (it is readied) or onto a character's box (it is
+    // given: all of it with Shift, held at the press, else one).
+    void			Pressed(const GFX::point& point, bool shift);
+    bool			IsDragging() const		{ return fDragging; }
     // F1..F5 (`key` 0..4) or F6 (kPartyPage): the same page closes the
     // screen, another one is shown.
     bool			FunctionKey(int page);
@@ -101,6 +108,8 @@ private:
     void			_DrawCharacterPage();
     void			_DrawEquipmentScroll();
     void			_ClampScroll();
+    int				_ScrollRowAt(const GFX::point& point) const;
+    void			_Drop(const GFX::point& point);
     const raw_picture* _Picture(const std::string& name);
 
     GameData&		fData;
@@ -126,6 +135,11 @@ private:
     int				fTop[5];		// first item shown, by member
     int				fCursor[5];		// the highlighted item, by member
     raw_picture		fScrolls[6];	// ARMBRSH8.PIC .. ARMBRS13.PIC
+    raw_picture		fHand;			// HANDICON.PIC: over the scroll
+    raw_picture		fGrip;			// HANDICN2.PIC: dragging an item
+    bool			fDragging;
+    int				fDragItem;
+    bool			fDragAll;
     GFX::point		fMouse;
     bool			fCursorVisible;
 };

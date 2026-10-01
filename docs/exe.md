@@ -473,9 +473,14 @@ segment, **18E7** (file base 0x65C30, the one of the trade). **verified**
   use (18E7:12E8), **D** drops one (18E7:0474), with Shift all
   (18E7:07D4), **1..5** gives one to that member (18E7:0000), with Shift
   all (18E7:007C), **P** drinks a potion (not reproduced), Esc closes
-  the scroll. The mouse drags a row (HANDICON.PIC is the cursor): within
-  the list it moves the item (18E7:10D2), onto the figure it readies
-  it, onto a member's box it gives it (Shift: all) (*not reproduced*).
+  the scroll. The mouse drags a row: pressing selects it (1462:1E42 then
+  waits for the release, with the Shift state of the press); released
+  on another row the item moves there (18E7:10D2), on the equipment in
+  use (record 6, x 196, y 84) it is readied, on a member's box (x < 60,
+  40 pixels each) it is given, one or with Shift all. The cursor is
+  HANDICON.PIC (hotspot 3, 3) over the scroll and HANDICN2.PIC while
+  dragging. Reproduced in `InfoView::Pressed()`; the equipment's own
+  scroll (a click on that board), where a row is a slot, is not.
   The formulae and the saints have their scrolls too (records 10, 11).
 - **What is in use**: five slots, each a type and a quality in the
   record: weapon +0x51 / +0x58, vitals armor +0x4B / +0x4F, limbs armor
