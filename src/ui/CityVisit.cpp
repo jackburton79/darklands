@@ -1076,7 +1076,9 @@ CityVisit::_Show(int screen, bool withScene)
         screen = SCREEN_PHYSICIAN_NIGHT;
     if (screen == SCREEN_PHYSICIAN || screen == SCREEN_PHYSICIAN_SHUT
             || screen == SCREEN_PHYSICIAN_NIGHT) {
-        if (fScreen == SCREEN_CRAFTS)	// a new visit
+        // the offer is off at each entry to the physician's code
+        // (DARKLAND.EXE 1838:0084 clears DS:EE7E)
+        if (!_InPhysician(previous))	// a new visit
             fTreatmentOffered = false;
         _PhysicianSkill();
         // his name: the city's property 0x21 + 800

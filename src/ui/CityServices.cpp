@@ -211,6 +211,16 @@ CityVisit::_DiscussTreatments()
 }
 
 
+// Whether a screen is the physician's (one visit, the cards of his
+// options included)
+bool
+CityVisit::_InPhysician(int screen) const
+{
+    return (screen >= SCREEN_PHYSICIAN && screen <= SCREEN_PHYSICIAN_NO_STUDENTS)
+        || screen == SCREEN_PHYSICIAN_NIGHT || screen == SCREEN_PHYSICIAN_CURSES;
+}
+
+
 // Asking his aid (file 0xA3388): an hour, then his price, and the
 // treatment is offered
 int

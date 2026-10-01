@@ -816,6 +816,7 @@ private:
     int				_AskTutoring();
     // The monastery (states 0x36, 0x38)
     bool			_InMonastery(int screen) const;
+    bool			_InPhysician(int screen) const;
     int				_EnterMonastery();
     uint32			_MonksPrice() const;
     int				_BestVirtue() const;

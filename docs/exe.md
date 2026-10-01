@@ -344,7 +344,10 @@ the options' switch at file 0xA3128). **verified** (code); see
 - **Asking his aid** (file 0xA3388), offered when a member's strength is
   under its maximum: an hour; the price is (skill / 10 + 12) pfennigs per
   wounded member ($Number1, $Money1, card 2); the treatment option is
-  then on.
+  then on. The flag (DS:EE7E) is cleared each time the physician's code
+  is entered (1838:0084), so the offer lasts one visit only; it is set to
+  2 (disabled) at once if a mark of kind 0x36 is still running
+  (1838:00D6). **verified** (code).
 - **The treatment** (file 0xA36C0): card 14 if the purse is short; else
   paid, an hour, each wounded member gains clamp(1, 99, skill / 30)
   strength (random(2) − 2 from an idiot), card 13, and a mark (0E76:2930,
