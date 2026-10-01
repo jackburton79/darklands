@@ -787,7 +787,8 @@ patron gives them. **verified** (code) unless marked.
   time in four (random(4) = 0), else 8; then back to DS:E7D8.
 - Reproduced in `CityVisit`: the banks' tasks, the robber knight's
   offer, the tower's options, battles and the knight's end (at the
-  middle difficulty), the banks' reward and thanks. Not reproduced: the
+  chosen difficulty: the fame of a task is 2/3 at basic and 3/2 at
+  expert), the banks' reward and thanks. Not reproduced: the
   other task (state 0x151), the other patrons, the companions, the
   alchemy, the audience (0x95), inside the tower (0x94), the ruin
   (0x157), the banks' standing.
@@ -1643,7 +1644,7 @@ mouse button held down, or F10, shows it; it has four pull-down menus,
   and the battle. The Game menu works: Save Game (as Ctrl+S), Load Saved
   Game (a card lists the saved games, the newest first, ten at most:
   *inferred*), Difficulty (written to the saved game, byte 0x96; the
-  rewards do not use it yet), Show Changes, Music and Sound FX (only
+  fame of a task uses it, 1462:1E06), Show Changes, Music and Sound FX (only
   kept: the game has neither the messages nor the sound), Pause (waits
   for a key), Quit. Party Info opens the F6 screen. In a battle Resume
   and Halt work (and H); the other orders of the menu are dim, as the

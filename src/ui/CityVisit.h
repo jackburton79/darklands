@@ -20,6 +20,8 @@
 #include "ResidenceView.h"
 #include "TradeView.h"
 
+#include "GameSettings.h"
+
 #include <map>
 #include <memory>
 #include <random>
@@ -409,6 +411,10 @@ public:
     void			SetSeed(uint16 seed)		{ fSeed = seed; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
+    // The Game menu's settings (not owned; NULL: the middle difficulty):
+    // the difficulty changes the fame of a task done
+    void			SetSettings(const game_settings* settings)
+                        { fSettings = settings; }
     // The menu bar (not owned; NULL: none), also in the battles
     void			SetMenuBar(MenuBar* menu);
     // Called by Run() for the menu's Load Saved Game: true if a game was
@@ -748,6 +754,7 @@ private:
     GameTime*		fClock;
     InfoView*		fInfo;
     MenuBar*		fMenu;
+    const game_settings* fSettings;
     std::function<void(GameWindow&)> fSaveHandler;
     std::function<bool(GameWindow&)> fLoadHandler;
     std::vector<int16>* fReputations;

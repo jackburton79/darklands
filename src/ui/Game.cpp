@@ -153,6 +153,7 @@ Game::Run()
     MenuBar menu(fData);
     menu.SetSettings(&fSettings);
     visit.SetMenuBar(&menu);
+    visit.SetSettings(&fSettings);
     map.SetMenuBar(&menu);
     int screen = fScreen;
     map_position position = fPosition;

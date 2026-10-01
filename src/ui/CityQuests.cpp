@@ -265,13 +265,18 @@ CityVisit::_KnightSlain()
 }
 
 
-// The fame for a task of a level (1462:1E06), at the middle difficulty
-// (DS:906A = 1; 0 takes 2/3 of it, 2 3/2)
+// The fame for a task of a level (1462:1E06): the table, then by the
+// difficulty (DS:906A) 2/3 of it at 0 and 3/2 at 2, rounded down
 static int
-FameFor(int level)
+FameFor(int level, int difficulty)
 {
     static const int kFame[5] = { 0, 3, 10, 25, 64 };
-    return level >= 0 && level < 5 ? kFame[level] : 200;
+    const int fame = level >= 0 && level < 5 ? kFame[level] : 200;
+    if (difficulty == DIFFICULTY_BASIC)
+        return fame * 2 / 3;
+    if (difficulty == DIFFICULTY_EXPERT)
+        return fame * 3 / 2;
+    return fame;
 }
 
 
@@ -306,7 +311,8 @@ CityVisit::_ClaimRewards(int kind, int place)
             reputation = int16(reputation + e.unknown2A);
         }
         if (fParty != NULL)
-            fParty->fame = uint16(fParty->fame + FameFor(e.unknown2C));
+            fParty->fame = uint16(fParty->fame + FameFor(e.unknown2C,
+                fSettings != NULL ? fSettings->difficulty : DIFFICULTY_STANDARD));
     }
     if (!any)
         return;

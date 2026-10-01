@@ -69,6 +69,7 @@ CityVisit::CityVisit(GameData& data)
     fClock(NULL),
     fInfo(NULL),
     fMenu(NULL),
+    fSettings(NULL),
     fReputations(NULL),
     fNight(false),
     fCity(-1),
