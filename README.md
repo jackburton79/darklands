@@ -51,7 +51,8 @@ What works so far:
   rules, wounds, deaths and loot.
 - **The party**: the Quickstart characters or a saved game, the
   information screens (F1..F6), the party recovering as time passes;
-  **saving** and loading in the original's format; the game's **menu
+  **saving** and loading in the original's format; the **party selection**
+  screen (`--select`, and at the inn); the game's **menu
   bar** (right mouse button, or F10), with the Game and Party menus.
 - **Tools** for the data: browse and export the images (`.PIC`,
   `.CAT`), render the world map, dump the locations, cities, enemies,
@@ -182,6 +183,7 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ./darklands --data /path/to/DARKLAND
 ./darklands --start Hamburg
 ./darklands --load DKSAVE0.SAV
+./darklands --select            # a new game, the party chosen first
 
 # Browse the images of a catalog (left/right arrow keys)
 ./darklands EINFO.CAT
@@ -269,6 +271,7 @@ src/ui/             Screens and drawing
   City*.cpp         The rest of CityVisit by subject: Church, Services,
                     Gate, Guards, Prison, World, Quests, Encounters
   CardView.*        A menu card on screen: frame, text, options
+  PartySelectView.* The party selection screen: the characters, 8 buttons
   InfoView.*        The party and character information screens
   PartySidebar.*    The character boxes on the left of the screens
   TradeView.*       Buying and selling with a merchant

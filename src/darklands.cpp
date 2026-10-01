@@ -532,6 +532,7 @@ Usage()
     std::cerr << "usage: darklands [--data <dir>] [<command>]\n"
         "  (no command)                  play, from a random city\n"
         "  --start <city>                play, from a city (name or index)\n"
+        "  --select [city]               play a new game, the party chosen first\n"
         "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
         "  <catalog>                     dump a catalog's entries\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP (the\n"
@@ -649,6 +650,17 @@ int main(int argc, char **argv)
                 throw std::runtime_error(std::string("no city ") + argv[arg + 1]);
             Game game(data);
             game.NewGame(city);
+            game.Run();
+            return 0;
+        }
+        if (command == "--select") {
+            // a new game, the party chosen first (manual pp. 11-12)
+            Game game(data);
+            const int city = extra > 0 ? FindCity(data.Cities(), argv[arg + 1]) : -1;
+            if (extra > 0 && city < 0)
+                throw std::runtime_error(std::string("no city ") + argv[arg + 1]);
+            game.NewGame(city);
+            game.SetSelectParty(true);
             game.Run();
             return 0;
         }

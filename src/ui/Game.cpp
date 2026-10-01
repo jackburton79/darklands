@@ -10,6 +10,7 @@
 #include "MapViewer.h"
 #include "MenuBar.h"
 #include "MsgFile.h"
+#include "PartySelectView.h"
 #include "SaveFile.h"
 #include "ScreenSupport.h"
 #include "TextSupport.h"
@@ -30,6 +31,7 @@ static const size_t kLoadListSize	= 10;
 Game::Game(GameData& data)
     :
     fData(data),
+    fSelectParty(false),
     fCity(-1),
     fScreen(CityVisit::SCREEN_START),
     fPosition{ 0, 0 }
@@ -85,6 +87,17 @@ Game::LoadGame(const std::string& fileName)
     if (save.Party().members.empty())
         throw std::runtime_error("Game: no party in " + fileName);
     fTemplate = path;
+    // the characters out of the party wait anywhere (their city is not
+    // known); their pictures are those of the party's first member
+    fRetired.clear();
+    for (const character& who : save.Spare()) {
+        retired_member spare;
+        spare.member = who;
+        spare.image = save.Party().images.empty() ? std::string("F60")
+            : save.Party().images[0];
+        spare.city = -1;
+        fRetired.push_back(spare);
+    }
     fSettings.difficulty = std::max(0, std::min(2, save.Difficulty()));
     fParty = save.Party();
     fTime = save.Date();
@@ -183,6 +196,19 @@ Game::Run()
     map.SetLoadHandler(load);
 
     GameWindow window("Darklands");
+    if (fSelectParty) {
+        PartySelectView select(fData);
+        select.SetInfoView(&info);
+        select.SetRoster(PartySelectView::MakeRoster(fParty, fRetired,
+            PartySelectView::kEverywhere), false);
+        if (select.Run(window) != PartySelectView::RESULT_BEGIN)
+            return;
+        PartySelectView::ApplyRoster(select.Roster(), fParty, fRetired,
+            PartySelectView::kEverywhere);
+        visit.SetParty(&fParty);
+        info.SetParty(&fParty);
+        fSelectParty = false;
+    }
     for (;;) {
         if (cityIndex >= 0) {
             const CityVisit::result result = visit.Run(window, cityIndex,
@@ -232,9 +258,13 @@ Game::Save(const std::string& comment, int location,
         if (::stat((directory + "/" + name).c_str(), &st) != 0)
             break;
     }
+    // the members who retired keep their place in the world
+    std::vector<character> spare;
+    for (const retired_member& who : fRetired)
+        spare.push_back(who.member);
     const saved_game game = { comment, fTime, fSeed, &fParty, location,
         position.x, position.y, state, &fEvents, &fReputations,
-        &fLocationFlags, &fEnterStates, fSettings.difficulty };
+        &fLocationFlags, &fEnterStates, fSettings.difficulty, &spare };
     template_.Write(directory + "/" + name, game, fData.Locations());
     return name;
 }

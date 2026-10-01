@@ -720,7 +720,7 @@ private:
     // 0xB1A98)
     // The party's composition (DARKLAND.EXE, state 0xAA, file 0x10D62E)
     int				_PartyLooking();
-    void			_ShowRecruits();
+    void			_SelectParty(GameWindow& window);
     int				_Retire(int slot);
     // Sanctuary (DARKLAND.EXE, state 0x81, file 0xF5EF0)
     int				_SanctuaryRest(int hour);
@@ -923,8 +923,7 @@ private:
     std::vector<uint16>* fEnterStates;
     std::vector<retired_member>* fRetired;
     int				fPartyReturn;	// where the composition leads back to
-    bool			fChoosingRecruit;
-    std::vector<size_t> fRecruitChoices;	// into fRetired
+    bool			fPendingSelection;	// the party selection screen
     bool			fLordHall;		// the town hall's cards, not the fortress's
     std::vector<int> fLordQueue;	// the screens that follow the one in view
     int				fQuestReturn;	// where the offer leads back to, or -1

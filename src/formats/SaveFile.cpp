@@ -113,6 +113,14 @@ SaveFile::SaveFile(const std::string& fileName)
 
     fParty = MakeParty(fCharacters, &data[kIndicesOffset],
         &data[kImagesOffset], data[kLeaderOffset], &data[kColorsOffset]);
+    // the characters no party slot points to
+    for (size_t i = 0; i < fCharacters.size(); i++) {
+        bool used = false;
+        for (size_t slot = 0; slot < kMaxPartySize; slot++)
+            used = used || WordAt(data, kIndicesOffset + slot * 2) == i;
+        if (!used)
+            fSpare.push_back(fCharacters[i]);
+    }
     fParty.cash = money{ WordAt(data, kMoneyOffset),
         WordAt(data, kMoneyOffset + 2), WordAt(data, kMoneyOffset + 4) };
     fParty.fame = WordAt(data, kFameOffset);
@@ -181,7 +189,8 @@ SaveFile::Write(const std::string& fileName, const saved_game& game,
     const size_t count = members.members.size();
     data[kLeaderOffset] = uint8(members.leader);
     PutWord(data, kMembersOffset, uint16(count));
-    PutWord(data, kCharacterCountOffset, uint16(count));
+    const size_t spare = game.spare != NULL ? game.spare->size() : 0;
+    PutWord(data, kCharacterCountOffset, uint16(count + spare));
     for (size_t slot = 0; slot < kMaxPartySize; slot++) {
         PutWord(data, kIndicesOffset + slot * 2,
             slot < count ? uint16(slot) : 0xFFFF);
@@ -198,10 +207,14 @@ SaveFile::Write(const std::string& fileName, const saved_game& game,
     }
 
     // the characters, the events
-    data.resize(kCharactersOffset + count * kCharacterRecordSize);
+    data.resize(kCharactersOffset + (count + spare) * kCharacterRecordSize);
     for (size_t i = 0; i < count; i++) {
         WriteCharacter(members.members[i],
             &data[kCharactersOffset + i * kCharacterRecordSize]);
+    }
+    for (size_t i = 0; i < spare; i++) {
+        WriteCharacter((*game.spare)[i],
+            &data[kCharactersOffset + (count + i) * kCharacterRecordSize]);
     }
     const size_t events = game.events != NULL ? game.events->size() : 0;
     size_t offset = data.size();

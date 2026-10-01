@@ -37,6 +37,7 @@ public:
 
     // Not owned. The position is where the party is on the world map.
     void			SetParty(const party* members);
+    const party*	Party() const			{ return fParty; }
     void			SetClock(const GameTime* clock)	{ fClock = clock; }
     void			SetPosition(const map_position& position);
     // The party's reputation by location (not owned; NULL: unknown).

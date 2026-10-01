@@ -101,7 +101,7 @@ CityVisit::CityVisit(GameData& data)
     fEnterStates(NULL),
     fRetired(NULL),
     fPartyReturn(SCREEN_INN),
-    fChoosingRecruit(false),
+    fPendingSelection(false),
     fLordHall(false),
     fQuestReturn(-1),
     fQuestPatron(-1),
@@ -203,6 +203,11 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             return LEAVE_CITY;
         if (fParty != NULL && fParty->members.empty())
             return PARTY_LOST;			// all executed
+        if (fPendingSelection) {
+            _SelectParty(window);
+            fPendingSelection = false;
+            _Show(SCREEN_PARTY, false);
+        }
         if (fPendingTrade >= 0) {
             const int reputation = fReputations != NULL
                 && fCity < int(fReputations->size()) ? (*fReputations)[fCity] : 0;
@@ -300,22 +305,6 @@ CityVisit::Choose(int option)
         if (fPreviousScreen < 0)
             return false;				// a place not implemented: away
         _Show(fPreviousScreen, false);
-        return true;
-    }
-    if (fChoosingRecruit) {
-        // the people found: one of them, or none (the last line)
-        fChoosingRecruit = false;
-        if (option >= 0 && option < int(fRecruitChoices.size())
-                && fRetired != NULL && fParty != NULL
-                && fRecruitChoices[size_t(option)] < fRetired->size()) {
-            const retired_member who = (*fRetired)[fRecruitChoices[size_t(option)]];
-            fRetired->erase(fRetired->begin() + long(fRecruitChoices[size_t(option)]));
-            fParty->members.push_back(who.member);
-            fParty->images.push_back(who.image);
-            fParty->colors.push_back(who.colors);
-            SetParty(fParty);
-        }
-        _Show(SCREEN_PARTY);
         return true;
     }
     if (fChoosingSaint) {
@@ -770,7 +759,7 @@ CityVisit::Choose(int option)
             _Show(_PartyLooking());
             return true;
         case ACTION_PARTY_RECRUITS:
-            _ShowRecruits();
+            fPendingSelection = true;
             return true;
         case ACTION_PARTY_RETIRE:
             _Show(_Retire(rule.target));

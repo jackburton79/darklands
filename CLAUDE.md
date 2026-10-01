@@ -134,6 +134,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   (`Handle()`, `Run()`) and act on the command it returns: `CardView`,
   `MapViewer`, `TradeView`, `ResidenceView` and `BattleView` have
   `SetMenuBar()`. `Game` owns it and the settings, and loads games.
+- `PartySelectView`: the party selection screen (CRETSCR3.PIC), used by
+  `Game` (`--select`) and by `CityVisit` at the inn.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

@@ -32,6 +32,7 @@ struct saved_game {
     const std::vector<uint8>* locationFlags;
     const std::vector<uint16>* enterStates;
     int difficulty;					// DS:906A: 0 basic, 1 standard, 2 expert
+    const std::vector<character>* spare;	// the characters not in the party
 };
 
 class SaveFile {
@@ -61,6 +62,9 @@ public:
     const std::vector<world_event>& Events() const	{ return fEvents; }
     // Empty in DEFAULT, the new game template.
     const party&	Party() const				{ return fParty; }
+    // The characters of the world that are not in the party (the records
+    // after the party's; DKSAVE0 has none)
+    const std::vector<character>& Spare() const		{ return fSpare; }
     // DS:A772, the state the game goes on from (0x0C the map, 0x1D the
     // inn...), and the difficulty (DS:906A: 0 basic, 1 standard, 2
     // expert)
@@ -87,6 +91,7 @@ private:
     std::vector<uint16>	fEnterStates;
     std::vector<world_event> fEvents;
     party			fParty;
+    std::vector<character> fSpare;
     uint16			fState;
     int				fDifficulty;
     std::vector<uint8> fBytes;

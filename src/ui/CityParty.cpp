@@ -4,8 +4,7 @@
 #include "CityVisitInternal.h"
 
 #include "Character.h"
-#include "MsgFile.h"
-#include "TextSupport.h"
+#include "PartySelectView.h"
 
 #include <algorithm>
 
@@ -25,42 +24,23 @@ CityVisit::_PartyLooking()
 }
 
 
-// The people found: a line for each member who retired here, and one to
-// leave. If there are none, the game's selection screen is missing
+// The people found (0E76:2246: the party selection screen, the overlay at
+// file 0x7C5F0, with the characters of the world): those who retired in
+// this city, or anywhere, can be added to the party. Whether the game
+// lets more be done in a city is not known: only adding and examining
+// are on here
 void
-CityVisit::_ShowRecruits()
+CityVisit::_SelectParty(GameWindow& window)
 {
-    fRecruitChoices.clear();
-    if (fRetired != NULL) {
-        for (size_t i = 0; i < fRetired->size(); i++) {
-            if ((*fRetired)[i].city == fCity)
-                fRecruitChoices.push_back(i);
-        }
-    }
-    if (fRecruitChoices.empty()) {
-        fPreviousScreen = SCREEN_PARTY;
-        _Show(SCREEN_NOT_IMPLEMENTED);
+    if (fParty == NULL || fRetired == NULL)
         return;
-    }
-    std::string text = "Some of your old companions are still here.\n";
-    text += char(MSG_CODE_PARAGRAPH);
-    text += char(MSG_CODE_PARAGRAPH);
-    for (size_t i = 0; i < fRecruitChoices.size(); i++) {
-        const character& who = (*fRetired)[fRecruitChoices[i]].member;
-        text += char(MSG_CODE_OPTION);
-        text += "...";
-        text += char(MSG_CODE_OPTION_TEXT);
-        text += Font::ToGameCharset("ask " + who.fullName
-            + " to join your party again.") + "\n";
-    }
-    text += char(MSG_CODE_OPTION);
-    text += "...";
-    text += char(MSG_CODE_OPTION_TEXT);
-    text += "look no further.\n";
-    msg_card card = fNotImplementedCard;
-    card.text = text;
-    fView.SetCard(card, fVariables);
-    fChoosingRecruit = true;
+    PartySelectView view(fData);
+    view.SetInfoView(fInfo);
+    view.SetRoster(PartySelectView::MakeRoster(*fParty, *fRetired, fCity), true);
+    if (view.Run(window) == PartySelectView::RESULT_QUIT)
+        return;
+    PartySelectView::ApplyRoster(view.Roster(), *fParty, *fRetired, fCity);
+    SetParty(fParty);
 }
 
 

@@ -34,6 +34,10 @@ public:
     // "DKSAVE0.SAV").
     void			LoadGame(const std::string& fileName);
 
+    // Before the game begins, the party selection screen (manual pp. 11-12)
+    // lets the player choose among the characters.
+    void			SetSelectParty(bool select)	{ fSelectParty = select; }
+
     // Opens the window and plays until the user quits.
     void			Run();
 
@@ -73,6 +77,7 @@ private:
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC
     std::vector<world_event> fEvents;	// the game's events
     std::vector<retired_member> fRetired;	// the members who retired
+    bool			fSelectParty;
     std::vector<uint8> fLocationFlags;	// by location: its state (+0x14)
     std::vector<uint16> fEnterStates;	// by location: its arrival (+0x0C)
     int				fCity;			// the party is in this city, or -1

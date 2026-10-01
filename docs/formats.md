@@ -890,7 +890,9 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
     0xA1    1     party leader: party slot
     0xA4    2     DS:A891: 3 on the map, 0 in a city
     0xEF    2     characters in the party
-    0xF1    2     character count N
+    0xF1    2     character count N (the party's first, then the other
+                  characters of the world: `Game::Save()` writes the
+                  members who retired there)
     0xF3    2·5   party: character indices (as in CHARACTR.TMP)
     0xFD    4·5   party: image codes
     0x111   24·5  party: colors, per slot 8 RGB triplets (6-bit): the

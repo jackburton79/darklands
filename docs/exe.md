@@ -283,81 +283,31 @@ marked.
   character selection screen (not decoded: cards 8 and 9 and PARTY00's
   other texts belong to it and to the followers). Card 8 says the person
   chosen "pawned all useful equipment" and has no cash.
-- **Reproduced** (`CityVisit`): the screen, the retiring, and, in place of
-  the selection screen, a list of the members who retired in this city
-  (*inferred*: the card says they "might be available to rejoin"). They
-  are kept in memory only: a saved game does not hold them, so they are
-  lost when the game is saved and loaded, or closed. New people to hire
-  are not made (without any, "not implemented").
-
-## The cathedral
-
-By day state 0x32 ($CATHE00, file 0xB6A28; the handlers through a switch
-at file 0xB6CF0, the preconditions of each option in a table at DS:EA14,
-base 0xB6A20), at night 0x33 ($CATHE01, file 0xB7960). **verified** (code)
-
-- **The options**: dim until set: the gift needs a purse of 7200
-  pfennigs (30 florins; $Money1 is a third of the purse, 6A1:2D28 is a
-  signed long division); the patron saint (option 3) needs the
-  location's word +0x1A (property 0x26) not 0, and the relic from the
-  canon (4) +0x1C (property 0x25) not 0 and no task of the bishop's: both
-  words are 0 in the game data and the saved games (but one record), so
-  neither is ever offered; giving a relic needs an item of flag 0x1000
-  (0E76:0DD8(−2, 0x1000, 0)); the sanctuary as for the church; the
-  bishop's reward needs one due (kinds 3 or 10, patron 3: never).
-- **Mass** (file 0xB6D74; night 0xB7BA2): by day at bell b = 1367:07EE:
-  bell 2 always, 3 in cities of size 6 or more, 4: 7, 5: 8, 6: 5, 7: 7,
-  never at 1 and 8; at night only at bell 7 from size 7. Each member
-  gains divine favor Religion / 60 + Speak Latin / 40 + 1 (0E76:0A72), the
-  party waits until hour (b + 1) · 3, card 2. Else card 1 names the next
-  Mass (1FB8(0, hour, 3)): 18 (Vespers) by day at bells 3..5 above size 3,
-  1 (Matins) at night at bell 1 from size 8, else 6 (Prime).
-- **A priest** (file 0xB6F34; 0xB7D30): an hour. By day, with unrest here
-  (an event of kind 2: 0E76:3470) and rebels (0E76:3742(2, 0, location))
-  the priests judge whether the party is worth their superior's ear
-  (card 20, state 0x6F) if random(100) is under the chance the game
-  passes, which is the stub's −1 (the table's second entry is the same
-  stub as the Mass's): never, card 21. Else the prelate speaks: card 3,
-  4, 5 by the relics' word and 6, 7, 8 with a chapel, none of which the
-  data have: card 3.
-- **A gift** (file 0xB71DC): a third of the purse; the leader's divine
-  favor + gift / 200 within 0..30 and a lesson in Virtue
-  (09C0:1F63(−1, 9, 7, 10, 0)); an hour; card 9 under 240 pfennigs, 10
-  under 1440, 11 under 3600, else 12.
-- **Giving a relic** (file 0xB768E; 0xB7F20): the reputation + 30
-  (0E76:19D0(location, 30, 30)), every member's divine favor + 99, the
-  relic is left (09C0:203F finds it, 2035 removes it; $NamedOneName is
-  its name, $ChosenOneName the leader), three hours, card 18 (night 10).
-- Not reproduced: the politics (0x6F, $CLERI00), the patron saint, the
-  relic from the canon and the bishop's task, the reward.
-
-## Sanctuary
-
-State 0x81 ($SANCT00, 187B:0000 of overlay 0x4C, file 0xF5EF0; the church's
-day card 8, the night card 4 and the cathedral lead to it; the monastery
-refuses it). The option is offered unless the party is not wanted
-(09C0:20F3) and the local reputation (0E76:199C) is over −10. The card is
-always 0; $NamedOneName is the captain of the guard, 1367:0DB4(the city's
-seed + 0x156). Options (a switch at file 0xF6040). **verified** (code)
-
-- *rest till nightfall* (by day) and *till daybreak* (at night): the hours
-  until 19 or 6 (1367:086A); the other one is then offered.
-- *the captain's word* (0xF62E2): random(3) hours; with the reputation
-  over −10 card 1, over −75 card 2, else card 3.
-- *sneak out* (0xF636C; the chance 0xF641E): the lowest sum of a member's
-  Stealth and Streetwise (0E76:1446(15, 16)), within 10..99, he being
-  $ChosenOneName. random(100) at most it: card 10, two hours, the side
-  streets; else card 9 and an hour.
-- *give yourself up* (0xF6154): with the reputation over −75 card 11 and the
-  dungeon (state 0xD); else a battle (type 0x18, seed location + 0x6F,
-  random(5) + 4 of enemy 3 at variant random(3) + |s| / 4 + 1 and one
-  sergeant, as the guardroom's). Its result (0xF61F3): the reputation
-  −1..−5 (0E76:19D0); 0 or 1 the guards nervous (mark 0x12) for 2000 /
-  size hours, an hour, the churches (0x13); 2 an hour, 0E76:23E2 (not
-  decoded) and the sanctuary again; 3 or 4 three hours and the dungeon.
-  Then mark 0x11 (wanted) for 240 hours if the reputation was −75 or
-  less, else 120.
-- Cards 4..8 and 12 are never shown by this code.
+- **The selection screen** (0E76:2246 = 9C0:1EE1 = 1462:0000 of overlay 0x26;
+  its entry at file 0x7C5F0, the same screen that starts a new world:
+  manual pp. 11-12): CRETSCR3.PIC (the larger CRETSCRN.PIC with eleven
+  buttons is the creation of a character), eight buttons of
+  BUTTNCR1.PIC / BUTTNCR2.PIC (123 x 13, one for the pressed look) at x 68, y
+  44 + 15 · n (the hit test: x 70..200, y 45..165, a button every 15
+  pixels), a list of the characters of the world at the right (x 198..312,
+  y 20..177), the party's names at the left, the highlighted character's
+  name in the top strip. It sets the Save and Load items of the menu bar
+  dim (DS:9920, DS:9934 = 2) while it is up. The buttons' texts are at
+  290E:1E8A.. (a 0xFF and the text without its first letter, the key):
+  "Create a Character", "Examine a Character", "Add to the Party",
+  "Delete from the Party", "Select Character Image", "Kill character",
+  "Begin the Adventure", "Return to Main Menu". **verified** (strings, the
+  geometry); which of them the inn's use turns on is not known.
+- **Reproduced** (`CityVisit`, `PartySelectView`, `Game`): the screen with
+  Examine, Add, Delete (when beginning a game), Kill (likewise), Begin and
+  Return; Create and Select Image show dim. At the inn only Examine, Add and
+  Return are on (*inferred*), the characters being those who retired in the
+  city, or anywhere (members taken out of a new game's party, or a saved
+  game's characters out of the party: the records after the party's, which
+  `SaveFile` now reads and writes). `--select [city]` starts a new game
+  with the screen. New people to hire (made as a character is, with no
+  equipment and no money, card 8) are not: that needs the creation of a
+  character, a life to live through (manual p. 13).
 
 ## Names and random numbers
 
