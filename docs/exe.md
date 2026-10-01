@@ -1200,12 +1200,27 @@ the night watch: the thieves in the slum and the shell game. The grove
 $Number1 the hours when 8 or more) by day; at night an hour, a bell, or
 until 5 in the morning (card 3, 0E76:19D0(location, −1, −1), card 5
 with $Number1 the hours, then the grove by day). **verified** (code)
-Reproduced in `CityVisit`; the game's day there is 5..18 (1367:072A),
-the city's night cards follow `GameTime::IsNight()` (21..6), so the
-grove after a wait may show the other card than the game.
+Reproduced in `CityVisit`; the grove's day is the game's, the hours
+5..18 (1367:072A), as everywhere in the cities.
 The grove's options 3..7 (file 0xAA654.., "...3".."...7" on the cards)
 are placeholders, hidden as on the other cards (the day's 5..7 would go
 to state 0x62).
+
+- **Waiting in the grove** costs no money, draws no encounter and
+  has no exit with a risk: the exits lead straight to the streets. The
+  Darklands wiki ("Scenic Grove") agrees: "waiting around is safe and
+  costs nothing", a risk of "a bandit or night watch encounter when
+  approaching the grove at night, but not when leaving" (the bandits
+  being the watch, see below). It finds no evidence that camping lowers
+  the local reputation, but the code has it: the night camp until
+  morning (not the day's waits) asks 0E76:19D0(location, −1, −1), which
+  lowers it by 1 with a chance of 100 − |reputation| %. What the wiki
+  says of rest also follows from the passing of time (0E76:255A, see
+  "Time and travel"): endurance comes back to its maximum − 4 and no
+  more, strength only at the turn of a day and by chance (the party's
+  best Healing against random(150)); the message of waking "as if you'd
+  had a regular night's sleep" (card 4) shows after 8 hours or more of
+  the day's nap. **verified** (code)
 
 - **The way to the grove**: the risk is on the way there, in the
   streets' handlers. Each street draws a hazard h on arrival
