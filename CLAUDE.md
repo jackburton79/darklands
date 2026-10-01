@@ -120,7 +120,9 @@ include path: include headers by name (`#include "CityFile.h"`).
   SCREEN_OUTSIDE, by the location's enter state.
 - `CardView`: a .MSG card on screen (frame, capital, text, options),
   same structure as `MapViewer`. `PartySidebar`: the character boxes.
-  `InfoView`: the F6 party and F1..F5 character screens, opened from
+  `InfoView`: the F6 party and F1..F5 character screens (the Equipment
+  button's scroll manages the items: `Equipment.*` in `src/game/` has
+  the rules), opened from
   `CardView`, `MapViewer`, `ResidenceView` and `TradeView` (modal
   `Run(window, page)`).
 - `BattleView`: a provisional top view of a battlefield map (cells,

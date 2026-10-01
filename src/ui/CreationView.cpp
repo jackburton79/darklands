@@ -465,11 +465,16 @@ CreationView::_DrawList()
     const ListFile& lists = fData.Lists();
     int line = 0;
     if (formulae) {
-        for (size_t i = 0; i < lists.Formulae().size() && line < 16; i++) {
-            if (fCreation->FormulaCount(int(i)) == 0)
-                continue;
-            _Text(lists.Formulae()[i], 76, 56 + line * 8, fBlack);
-            line++;
+        // a byte per potion: a bit for each of the three authors' versions
+        for (int k = 0; k < 22 && line < 16; k++) {
+            for (int bit = 0; bit < 3 && line < 16; bit++) {
+                const size_t name = size_t(3 * k + bit);
+                if ((fCreation->FormulaCount(k) & (1 << bit)) == 0
+                        || name >= lists.Formulae().size())
+                    continue;
+                _Text(lists.Formulae()[name], 76, 56 + line * 8, fBlack);
+                line++;
+            }
         }
     } else {
         for (size_t i = 0; i < lists.Saints().size() && line < 16; i++) {

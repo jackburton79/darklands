@@ -452,6 +452,52 @@ The life of a new character (manual p. 13), all in one overlay: file
   Quickstart party's: F60, F01), the list of more than 14 occupations
   (the plaque shows 14).
 
+## Equipment
+
+The character pages (F1..F5) are one overlay (file 0x613E0..0x65C30,
+board table at 290E:3559, 36-byte records: the board's rectangle, the
+rectangle and picture of the scroll that unrolls from it, flags, and
+the neighbours the arrows go to); the item functions are the next
+segment, **18E7** (file base 0x65C30, the one of the trade). **verified**
+(code), except where marked.
+
+- **The Equipment button** (record 9, x 196, y 149, 61 x 13) unrolls a
+  scroll at (62, 30) over the figure with the items the character
+  carries: "name 25q (1)" (`%Fs %02dq (%d)`, text at x + 9, y + 9 +
+  8 · row, 14 rows, dark gray, blue on the cursor's row), on ARMBRSH8..13
+  by the number of rows (heights 20, 30, 55, 80, 116, 133; *inferred*:
+  the game unrolls it frame by frame). Per character it keeps the
+  first row shown and the cursor.
+- **Keys** (the handler at 10AE): Up, Down, Page Up and Down (14 rows),
+  Home, End; **A** readies the item (18E7:11B2), **U** takes it out of
+  use (18E7:12E8), **D** drops one (18E7:0474), with Shift all
+  (18E7:07D4), **1..5** gives one to that member (18E7:0000), with Shift
+  all (18E7:007C), **P** drinks a potion (not reproduced), Esc closes
+  the scroll. The mouse drags a row (HANDICON.PIC is the cursor): within
+  the list it moves the item (18E7:10D2), onto the figure it readies
+  it, onto a member's box it gives it (Shift: all) (*not reproduced*).
+  The formulae and the saints have their scrolls too (records 10, 11).
+- **What is in use**: five slots, each a type and a quality in the
+  record: weapon +0x51 / +0x58, vitals armor +0x4B / +0x4F, limbs armor
+  +0x4C / +0x50, shield +0x5C / +0x5B, missile weapon +0x22 / +0x5A.
+  The carried item in use in a slot is the one of that type and
+  quality (18E7:14B6). Readying (18E7:11B2) puts the item in the slot
+  its flags say: flags & 0x0F (edged, impact, polearm, flail) the weapon;
+  flags & 0x30 (thrown, bow) or 0x08000000 (missile devices) the
+  missile weapon; else by item type 67..75 vitals, 76..94 limbs, 95..97
+  shield; other items cannot be used. A weapon and a shield do not
+  exclude one another here. Taking out of use sets the slot to 0xFF.
+  The weight in use, the sum of the five items' weights, at most 500,
+  goes to the record's byte 0x49 (18E7:140A).
+- **The list**: at most 64 entries of code, type, quality, quantity,
+  weight. Adding (18E7:01B4) merges with the entry of the same code,
+  type and quality while the quantity stays under 256, else appends if
+  there is room. Dropping one decrements; at zero the item leaves
+  use and list; dropping all removes it at once. Giving needs the
+  other's list not to be full (even if it could merge).
+- Reproduced in `Equipment.cpp` and `InfoView` (the scroll, the keys and
+  clicks on a row); `character::equipmentQuality` holds the qualities.
+
 ## Names and random numbers
 
 - 06A1:29A4 `srand`, 06A1:29B6 `rand` (Microsoft C: seed = seed ·

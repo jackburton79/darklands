@@ -35,9 +35,10 @@ public:
     explicit		InfoView(GameData& data);	// throws if data is missing
                     ~InfoView();
 
-    // Not owned. The position is where the party is on the world map.
-    void			SetParty(const party* members);
-    const party*	Party() const			{ return fParty; }
+    // Not owned; the character page changes what the members carry and
+    // use. The position is where the party is on the world map.
+    void			SetParty(party* members);
+    party*			Party() const			{ return fParty; }
     void			SetClock(const GameTime* clock)	{ fClock = clock; }
     void			SetPosition(const map_position& position);
     // The party's reputation by location (not owned; NULL: unknown).
@@ -61,6 +62,19 @@ public:
     // F1..F5 (`key` 0..4) or F6 (kPartyPage): the same page closes the
     // screen, another one is shown.
     bool			FunctionKey(int page);
+    // Any other key closes the screen, unless the equipment scroll is
+    // open: then A (ready), U (unready), D (drop one; with Shift all),
+    // 1..5 (give to a member; with Shift all), the arrows and Page Up and
+    // Down, Home and End, and Esc (closes the scroll) are its keys.
+    bool			KeyPressed(int key, bool shift);
+
+    // The equipment scroll of the character page (the Equipment button):
+    // the items the character carries, 14 rows at a time
+    bool			IsScrollOpen() const	{ return fScrollOpen; }
+    void			OpenScroll(bool open);
+    int				ScrollCursor() const;		// index into the items, or -1
+    void			SetScrollCursor(int index);
+    static const int kScrollRows = 14;
 
     // The city shown in the "map information" panel: the one under the
     // mouse on the small map, else the nearest one.
@@ -85,6 +99,8 @@ private:
     int				_NearestCity(const map_position& position) const;
     void			_DrawPartyPage();
     void			_DrawCharacterPage();
+    void			_DrawEquipmentScroll();
+    void			_ClampScroll();
     const raw_picture* _Picture(const std::string& name);
 
     GameData&		fData;
@@ -101,11 +117,15 @@ private:
     // picture if there is none
     std::map<std::string, raw_picture> fFigurePictures;
 
-    const party*	fParty;
+    party*			fParty;
     const GameTime*	fClock;
     const std::vector<int16>* fReputations;
     map_position	fPosition;
     int				fPage;
+    bool			fScrollOpen;
+    int				fTop[5];		// first item shown, by member
+    int				fCursor[5];		// the highlighted item, by member
+    raw_picture		fScrolls[6];	// ARMBRSH8.PIC .. ARMBRS13.PIC
     GFX::point		fMouse;
     bool			fCursorVisible;
 };

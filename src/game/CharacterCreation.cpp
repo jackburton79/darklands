@@ -799,8 +799,10 @@ CharacterCreation::Finish()
         made.attributes[i] = made.maxAttributes[i] = uint8(fAttributes[i]);
     for (int i = 0; i < kSkillCount; i++)
         made.skills[i] = uint8(fSkills[i]);
-    for (int i = 0; i < EQUIPMENT_COUNT; i++)
+    for (int i = 0; i < EQUIPMENT_COUNT; i++) {
         made.equipment[i] = kNoEquipment;
+        made.equipmentQuality[i] = 0;
+    }
     memcpy(made.saints, fSaints, sizeof(made.saints));
     made.items = fItems;
     std::vector<uint8> record(kCharacterRecordSize, 0);

@@ -65,6 +65,9 @@ struct character {
     uint8 maxAttributes[ATTRIBUTE_COUNT];
     uint8 skills[kSkillCount];
     uint8 equipment[EQUIPMENT_COUNT];		// item types, see equipment_slot
+    // the quality of each item in use: the carried item in a slot is the
+    // one of that type and quality (DARKLAND.EXE 18E7:14B6)
+    uint8 equipmentQuality[EQUIPMENT_COUNT];
     uint8 saints[20];			// the saints known, one bit each (0x80 of
                                 // byte 0 is saint 0)
     std::vector<item> items;

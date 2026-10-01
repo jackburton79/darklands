@@ -15,6 +15,10 @@ static const size_t kVitalsOffset		= 0x4B;
 static const size_t kLimbsOffset		= 0x4C;
 static const size_t kWeaponOffset		= 0x51;
 static const size_t kShieldOffset		= 0x5C;
+// the quality of what is in use, by slot
+static const size_t kQualityOffsets[EQUIPMENT_COUNT] = {
+    0x58, 0x4F, 0x50, 0x5B, 0x5A
+};
 static const size_t kFullNameOffset		= 0x25;
 static const size_t kFullNameLength		= 25;
 static const size_t kShortNameOffset	= 0x3E;
@@ -54,6 +58,8 @@ ReadCharacter(const uint8* record)
     c.equipment[EQUIPMENT_LIMBS] = record[kLimbsOffset];
     c.equipment[EQUIPMENT_SHIELD] = record[kShieldOffset];
     c.equipment[EQUIPMENT_MISSILE] = record[kMissileOffset];
+    for (int i = 0; i < EQUIPMENT_COUNT; i++)
+        c.equipmentQuality[i] = record[kQualityOffsets[i]];
     memcpy(c.saints, &record[kSaintsOffset], sizeof(c.saints));
     c.record.assign(record, record + kCharacterRecordSize);
 
@@ -103,6 +109,8 @@ WriteCharacter(const character& c, uint8* record)
     record[kLimbsOffset] = c.equipment[EQUIPMENT_LIMBS];
     record[kShieldOffset] = c.equipment[EQUIPMENT_SHIELD];
     record[kMissileOffset] = c.equipment[EQUIPMENT_MISSILE];
+    for (int i = 0; i < EQUIPMENT_COUNT; i++)
+        record[kQualityOffsets[i]] = c.equipmentQuality[i];
     memcpy(&record[kSaintsOffset], c.saints, sizeof(c.saints));
     record[kItemCountOffset] = uint8(c.items.size());
     record[kItemCountOffset + 1] = 0;

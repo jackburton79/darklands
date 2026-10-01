@@ -50,7 +50,7 @@ What works so far:
   on the game's battlefield maps, with their sprites; the game's melee
   rules, wounds, deaths and loot.
 - **The party**: the Quickstart characters or a saved game, the
-  information screens (F1..F6), the party recovering as time passes;
+  information screens (F1..F6) with the **equipment** scroll (ready, unready, drop, give), the party recovering as time passes;
   **saving** and loading in the original's format; the **party selection**
   screen (`--select`, and at the inn); the **creation of a character**,
   living his life (`--create`, or "Create a Character"); the game's **menu

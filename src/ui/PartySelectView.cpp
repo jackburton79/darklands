@@ -347,10 +347,11 @@ PartySelectView::_Examine(GameWindow* window)
     alone.fame = 0;
     alone.bankNotes = 0;
     alone.philosopherStone = 0;
-    const party* before = fInfo->Party();
+    party* before = fInfo->Party();
     fInfo->SetParty(&alone);
     fInfo->Run(*window, 0);
     fInfo->SetParty(before);
+    fRoster[size_t(fSelected)].member = alone.members[0];
 }
 
 
