@@ -308,16 +308,20 @@ struct option_rule {
 static const int kMaxOptions = 12;
 
 struct screen_rules {
-    const char* deck;			// NULL: see kNightScreens
+    int screen;					// the CityVisit::screen_id of the row
+    const char* deck;			// NULL: the screen has no card
     int card;
     const char* scene;			// picture shown first, or NULL
     option_rule options[kMaxOptions];	// in card order; the rest: not implemented
 };
 
 
-// The tables of city screens, by day and by night (CityScreens.cpp)
-extern const screen_rules kScreens[CityVisit::SCREEN_COUNT];
-extern const screen_rules kNightScreens[CityVisit::SCREEN_COUNT];
+// The rules of a city screen by day, and by night (NULL: the day's apply);
+// the tables, one row for each, are in CityScreens.cpp
+const screen_rules& DayRules(int screen);
+const screen_rules* NightRules(int screen);
+// Throws std::logic_error if a screen has no row, two, or no card
+void CheckScreenTables();
 
 // The octile distance on the map (1462:271A: rows count a third)
 int MapDistance(int x1, int y1, int x2, int y2);

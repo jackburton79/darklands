@@ -34,9 +34,12 @@ MinutesFor(const option_rule& rule, const GameTime& clock)
 static const screen_rules&
 RulesFor(int screen, bool night)
 {
-    if (night && kNightScreens[screen].deck != NULL)
-        return kNightScreens[screen];
-    return kScreens[screen];
+    if (night) {
+        const screen_rules* rules = NightRules(screen);
+        if (rules != NULL)
+            return *rules;
+    }
+    return DayRules(screen);
 }
 
 
@@ -109,16 +112,14 @@ CityVisit::CityVisit(GameData& data)
     fPartyLost(false),
     fWallFailed(false)
 {
-    // every screen has a day card (a miscounted table would leave some
-    // zero-filled), and the decks load: missing files show up right away
+    // every screen has a row and a day card, and the decks load: missing
+    // files show up right away
+    CheckScreenTables();
     for (int i = 0; i < SCREEN_COUNT; i++) {
-        if ((kScreens[i].deck == NULL) != (i == SCREEN_NOT_IMPLEMENTED))
-            throw std::logic_error("CityVisit: screen table out of order");
-    }
-    for (const screen_rules* table : { kScreens, kNightScreens }) {
-        for (int i = 0; i < SCREEN_COUNT; i++) {
-            if (table[i].deck != NULL)
-                fData.Messages(table[i].deck).CardAt(uint32(table[i].card));
+        const screen_rules* rules[2] = { &DayRules(i), NightRules(i) };
+        for (const screen_rules* r : rules) {
+            if (r != NULL && r->deck != NULL)
+                fData.Messages(r->deck).CardAt(uint32(r->card));
         }
     }
 
