@@ -25,9 +25,11 @@ class Font;
 class GameData;
 class GameWindow;
 class InfoView;
+class MenuBar;
 class PartySidebar;
 struct msg_card;
 struct party;
+union SDL_Event;
 
 // Values of the card variables, without the '$': "PlaceName" -> "Köln".
 // UTF-8.
@@ -74,12 +76,17 @@ public:
     // The information screens that F1..F6 and the character boxes open
     // (not owned; NULL: none).
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
+    // The menu bar (right mouse button, F10, the shortcuts): not owned;
+    // NULL: none. Quit ends Run() as Esc does.
+    void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
 
     // Runs until an option is chosen: returns its number, or -1 if the
-    // user quit, or kSaveRequested for Ctrl+S. A card without options is
+    // user quit, or kSaveRequested for Ctrl+S or the menu's Save Game,
+    // kLoadRequested for its Load Saved Game. A card without options is
     // left with a click or a key (as option 0). The first version opens
     // its own window.
     static const int kSaveRequested = -2;
+    static const int kLoadRequested = -3;
     int				Run();
     int				Run(GameWindow& window);
 
@@ -129,6 +136,8 @@ private:
 
     void			_Layout(const msg_card& card, const std::string& text,
                         const std::vector<int>& hidden);
+    bool			_MenuEvent(GameWindow& window, const SDL_Event& event,
+                        int& result);
     int				_OptionAt(const GFX::point& point) const;
     void			_DrawFrame();
     void			_DrawCard();
@@ -139,6 +148,7 @@ private:
     std::unique_ptr<Font>	fFont;
     std::unique_ptr<PartySidebar> fSidebar;
     InfoView*		fInfo;
+    MenuBar*		fMenu;
 
     // Frame pictures, decoded once. The capitals sheet (ILLMCAPS.PIC)
     // also carries the palette range of the card (128..159).

@@ -79,6 +79,7 @@ CityVisit::_RunBattle(GameWindow& window)
 {
     fPendingBattle = false;
     BattleView view(fData);
+    view.SetMenuBar(fMenu);
     {
         std::unique_ptr<Catalog> maps(fData.OpenCatalog("IMAPS.CAT"));
         const std::string name = "ICITY.00" + std::to_string(fRandom() % 4);

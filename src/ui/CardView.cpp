@@ -2,6 +2,7 @@
 
 #include "Bitmap.h"
 #include "InfoView.h"
+#include "MenuBar.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "MsgFile.h"
@@ -20,6 +21,7 @@ const uint16 CardView::kScreenHeight;
 
 // Font of the card text: index into FONTS.FNT (verified on the manual's
 // screenshot: same glyphs and line widths)
+static const int kNoResult			= -100;	// Run() goes on
 static const uint32 kTextFontIndex	= 2;
 
 // Screen layout: the party sidebar on the left, the card on the right.
@@ -153,6 +155,7 @@ CardView::CardView(GameData& data)
     fData(data),
     fBuffer(NULL),
     fInfo(NULL),
+    fMenu(NULL),
     fShowingScene(false),
     fCapital(0),
     fCapitalPosition(0, 0),
@@ -259,6 +262,13 @@ CardView::Run(GameWindow& window)
         if (SDL_WaitEventTimeout(&event, 100) == 0)
             continue;
         int chosen = -1;
+        int menuResult;
+        if (_MenuEvent(window, event, menuResult)) {
+            if (menuResult != kNoResult)
+                return menuResult;
+            dirty = true;
+            continue;
+        }
         switch (event.type) {
             case SDL_QUIT:
                 return -1;
@@ -348,6 +358,42 @@ CardView::Run(GameWindow& window)
         if (chosen >= 0)
             return chosen;
     }
+}
+
+
+// The menu bar's events (the right button, F10, the shortcuts): true if
+// it took the event; `result` is then what Run() returns, or kNoResult
+bool
+CardView::_MenuEvent(GameWindow& window, const SDL_Event& event, int& result)
+{
+    result = kNoResult;
+    if (fMenu == NULL)
+        return false;
+    menu_command command;
+    if (!fMenu->Handle(window, event, [this]() { return Draw(); },
+            !Prompting(), command))
+        return false;
+    switch (command) {
+        case MENU_SAVE_GAME:
+            result = kSaveRequested;
+            break;
+        case MENU_LOAD_GAME:
+            result = kLoadRequested;
+            break;
+        case MENU_QUIT:
+            result = -1;
+            break;
+        case MENU_PARTY_INFO:
+            if (fInfo != NULL)
+                fInfo->Run(window, InfoView::kPartyPage);
+            break;
+        case MENU_PAUSE:
+            MenuBar::Pause(window);
+            break;
+        default:
+            break;
+    }
+    return true;
 }
 
 

@@ -26,6 +26,8 @@ class GameData;
 class GameTime;
 class GameWindow;
 class InfoView;
+class MenuBar;
+union SDL_Event;
 
 class MapViewer {
 public:
@@ -37,8 +39,10 @@ public:
 
     // Runs until the party reaches a place of DARKLAND.LOC (a city, a
     // castle...): returns its index (the party is then in front of it,
-    // CurrentPlace()), or -1 if the user quit.
+    // CurrentPlace()), or -1 if the user quit, or kLoadRequested for the
+    // menu's Load Saved Game.
     // The first version opens its own window.
+    static const int kLoadRequested = -2;
     int				Run();
     int				Run(GameWindow& window);
 
@@ -47,6 +51,13 @@ public:
     void			SetClock(GameTime* clock)	{ fClock = clock; }
     // The information screens that F1..F6 open (not owned; NULL: none).
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
+    // The menu bar (right button, F10, shortcuts; not owned; NULL: none)
+    void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
+    // Called by Run() for the menu's Load Saved Game: true if a game was
+    // loaded (Run() then returns kLoadRequested); not set: nothing happens
+    void			SetLoadHandler(
+                        const std::function<bool(GameWindow&)>& handler)
+                        { fLoadHandler = handler; }
     // Called by Run() for Ctrl+S (not set: nothing happens)
     void			SetSaveHandler(
                         const std::function<void(GameWindow&)>& handler)
@@ -65,8 +76,9 @@ public:
     void			MouseLeft();
     // Left click: travel there (reaching the place, if there is one).
     void			Clicked(const GFX::point& point);
-    // Right click: the info panel of the city under the mouse.
-    void			RightClicked(const GFX::point& point);
+    // Middle click: the info panel of the city under the mouse (the right
+    // button is the menu bar's).
+    void			MiddleClicked(const GFX::point& point);
     // Closes the info panel, else stops the party.
     // Returns false if there was nothing to close (i.e. quit).
     bool			Escape();
@@ -96,6 +108,8 @@ private:
     void			_TravelTo(const map_position& destination, int place);
     void			_EnterPlace(int place);
     void			_KeepPartyVisible();
+    bool			_MenuEvent(GameWindow& window, const SDL_Event& event,
+                        bool& quitting, bool& loading);
     void			_DrawStatusBar();
     void			_DrawCityPanel();
     void			_DrawCursor();
@@ -106,7 +120,9 @@ private:
     GameTime*		fClock;
     int				fTravelMinutes;	// toward the next hour (DARKLAND.EXE)
     InfoView*		fInfo;
+    MenuBar*		fMenu;
     std::function<void(GameWindow&)> fSaveHandler;
+    std::function<bool(GameWindow&)> fLoadHandler;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

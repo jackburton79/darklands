@@ -8,14 +8,23 @@
 #include "InfoView.h"
 #include "LocationFile.h"
 #include "MapViewer.h"
+#include "MenuBar.h"
+#include "MsgFile.h"
 #include "SaveFile.h"
 #include "ScreenSupport.h"
 #include "TextSupport.h"
 
+#include <algorithm>
+#include <cstdio>
+#include <dirent.h>
+#include <functional>
 #include <iostream>
 #include <random>
 #include <stdexcept>
 #include <sys/stat.h>
+
+// The saved games the Load dialog lists (the card's room)
+static const size_t kLoadListSize	= 10;
 
 
 Game::Game(GameData& data)
@@ -76,6 +85,7 @@ Game::LoadGame(const std::string& fileName)
     if (save.Party().members.empty())
         throw std::runtime_error("Game: no party in " + fileName);
     fTemplate = path;
+    fSettings.difficulty = std::max(0, std::min(2, save.Difficulty()));
     fParty = save.Party();
     fTime = save.Date();
     fSeed = save.Seed();
@@ -110,17 +120,14 @@ Game::Run()
     visit.SetParty(&fParty);
     visit.SetClock(&fTime);
     // the party recovers as time passes
-    fTime.SetListener([this](bool newDay) {
+    const GameTime::listener recover = [this](bool newDay) {
         PassTime(fParty, newDay,
             [this](int n) { return int(fRandom() % uint32(n)); });
-    });
+    };
+    fTime.SetListener(recover);
     visit.SetSeed(fSeed);
     visit.SetReputations(&fReputations);
-    // the locations' state, from DARKLAND.LOC where the file had none
-    const LocationFile& locations = fData.Locations();
-    fLocationFlags.resize(locations.CountLocations(), 0);
-    for (uint32 i = fEnterStates.size(); i < locations.CountLocations(); i++)
-        fEnterStates.push_back(locations.LocationAt(i).enterState);
+    _PrepareWorld();
     visit.SetWorld(&fEvents, &fLocationFlags, &fEnterStates);
     MapViewer map(fData);
     map.SetClock(&fTime);
@@ -143,13 +150,36 @@ Game::Run()
         _SaveDialog(window, -1, map.PartyPosition(), 0x0C);
     });
 
-    GameWindow window("Darklands");
+    MenuBar menu(fData);
+    menu.SetSettings(&fSettings);
+    visit.SetMenuBar(&menu);
+    map.SetMenuBar(&menu);
     int screen = fScreen;
     map_position position = fPosition;
+    // the menu's Load Saved Game: the game goes on from the saved one
+    const std::function<bool(GameWindow&)> load = [&](GameWindow& where) {
+        if (!_LoadDialog(where))
+            return false;
+        _PrepareWorld();
+        fTime.SetListener(recover);
+        visit.SetSeed(fSeed);
+        visit.SetParty(&fParty);
+        info.SetParty(&fParty);
+        cityIndex = fCity;
+        screen = fScreen;
+        position = fPosition;
+        return true;
+    };
+    visit.SetLoadHandler(load);
+    map.SetLoadHandler(load);
+
+    GameWindow window("Darklands");
     for (;;) {
         if (cityIndex >= 0) {
             const CityVisit::result result = visit.Run(window, cityIndex,
                 screen);
+            if (result == CityVisit::LOAD_GAME)
+                continue;
             if (result == CityVisit::PARTY_LOST) {
                 std::cout << "The whole party has died: the game is over."
                     << std::endl;
@@ -167,7 +197,10 @@ Game::Run()
             }
         }
         map.SetPartyPosition(position);
-        cityIndex = map.Run(window);
+        const int place = map.Run(window);
+        if (place == MapViewer::kLoadRequested)
+            continue;
+        cityIndex = place;
         if (cityIndex < 0)
             return;
         screen = CityVisit::SCREEN_OUTSIDE;
@@ -192,7 +225,7 @@ Game::Save(const std::string& comment, int location,
     }
     const saved_game game = { comment, fTime, fSeed, &fParty, location,
         position.x, position.y, state, &fEvents, &fReputations,
-        &fLocationFlags, &fEnterStates };
+        &fLocationFlags, &fEnterStates, fSettings.difficulty };
     template_.Write(directory + "/" + name, game, fData.Locations());
     return name;
 }
@@ -221,4 +254,82 @@ Game::_SaveDialog(GameWindow& window, int location,
     card.text = Font::ToGameCharset(text);
     view.SetCard(card, card_variables());
     view.Run(window);
+}
+
+
+void
+Game::_PrepareWorld()
+{
+    const LocationFile& locations = fData.Locations();
+    fLocationFlags.resize(locations.CountLocations(), 0);
+    for (uint32 i = fEnterStates.size(); i < locations.CountLocations(); i++)
+        fEnterStates.push_back(locations.LocationAt(i).enterState);
+}
+
+
+bool
+Game::_LoadDialog(GameWindow& window)
+{
+    // the saved games (SAVES/DKSAVEn.SAV), the newest first
+    struct saved {
+        int number;
+        std::string name;
+        std::string label;
+    };
+    std::vector<saved> games;
+    const std::string directory = fData.PathFor("SAVES");
+    if (DIR* folder = ::opendir(directory.c_str())) {
+        while (const dirent* entry = ::readdir(folder)) {
+            const std::string name = entry->d_name;
+            int number = 0;
+            char tail[8] = "";
+            if (std::sscanf(name.c_str(), "DKSAVE%d.%7s", &number, tail) != 2
+                    || std::string(tail) != "SAV")
+                continue;
+            try {
+                const SaveFile file(directory + "/" + name);
+                games.push_back({ number, name, file.Label() });
+            } catch (const std::exception&) {
+                // not a saved game
+            }
+        }
+        ::closedir(folder);
+    }
+    std::sort(games.begin(), games.end(),
+        [](const saved& a, const saved& b) { return a.number > b.number; });
+    // as many as the card has room for
+    if (games.size() > kLoadListSize)
+        games.resize(kLoadListSize);
+
+    CardView view(fData);
+    view.SetParty(&fParty);
+    msg_card card = { 10, 10, 0, 240, 0, "" };
+    card.text = Font::ToGameCharset(games.empty()
+        ? "There are no saved games.\n" : "Load which game?\n");
+    card.text += char(MSG_CODE_PARAGRAPH);
+    card.text += char(MSG_CODE_PARAGRAPH);
+    for (const saved& game : games) {
+        card.text += char(MSG_CODE_OPTION);
+        card.text += "...";
+        card.text += char(MSG_CODE_OPTION_TEXT);
+        card.text += Font::ToGameCharset(game.label + " (" + game.name + ")\n");
+    }
+    card.text += char(MSG_CODE_OPTION);
+    card.text += "...";
+    card.text += char(MSG_CODE_OPTION_TEXT);
+    card.text += "go back.\n";
+    view.SetCard(card, card_variables());
+    const int choice = view.Run(window);
+    if (choice < 0 || choice >= int(games.size()))
+        return false;
+    try {
+        LoadGame(games[size_t(choice)].name);
+    } catch (const std::exception& error) {
+        card.text = Font::ToGameCharset(std::string(
+            "The game could not be loaded: ") + error.what());
+        view.SetCard(card, card_variables());
+        view.Run(window);
+        return false;
+    }
+    return true;
 }

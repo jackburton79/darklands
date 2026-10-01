@@ -26,6 +26,7 @@ class GameData;
 class GameTime;
 class GameWindow;
 class InfoView;
+class MenuBar;
 class PartySidebar;
 struct character;
 struct party;
@@ -63,6 +64,9 @@ public:
     // The information screens that F1..F6 and the character boxes open
     // (not owned; NULL: none), as in the game (file 0x6FF0A).
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
+    // The menu bar (not owned; NULL: none): Party Info, Pause and Quit
+    // work here, Save and Load do not
+    void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
     // The inn: its city, the party's local reputation there, the price
     // of a day (the inn's meal and night) and the city's teachers (the
     // physician's, the monastery's). Every member starts relaxing.
@@ -144,6 +148,7 @@ private:
     party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
+    MenuBar*		fMenu;
     int				fCity;
     int				fReputation;
     uint32			fInnPrice;

@@ -9,6 +9,7 @@
 #include "Character.h"
 #include "ImcFile.h"
 #include "ImgFile.h"
+#include "MenuBar.h"
 #include "ListFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
@@ -66,6 +67,7 @@ BattleView::BattleView(GameData& data)
     fPictures(new ImgFile(data.PathFor("BATTLEGR.IMG"))),
     fFont(new Font(data.Fonts(), kFontIndex)),
     fRandom(std::random_device()()),
+    fMenu(NULL),
     fTicks(0),
     fEnemiesActive(true),
     fOrigin(0, 0),
@@ -219,6 +221,14 @@ BattleView::SelectMember(int member)
         if (member >= 0 && fFigures[i].member == member)
             fSelected = int(i);
     }
+}
+
+
+void
+BattleView::HaltSelected()
+{
+    if (fSelected >= 0)
+        fFigures[size_t(fSelected)].path.clear();
 }
 
 
@@ -558,12 +568,50 @@ BattleView::Outcome() const
 }
 
 
+namespace {
+
+// The menu bar as a battle needs it, put back when the battle is left
+struct BattleMenu {
+    explicit BattleMenu(MenuBar* menu)
+        :
+        bar(menu)
+    {
+        if (bar == NULL)
+            return;
+        bar->SetEnabled(MENU_SAVE_GAME, false);
+        bar->SetEnabled(MENU_LOAD_GAME, false);
+        bar->SetEnabled(MENU_PARTY_INFO, false);
+    }
+
+    ~BattleMenu()
+    {
+        if (bar == NULL)
+            return;
+        bar->SetEnabled(MENU_SAVE_GAME, true);
+        bar->SetEnabled(MENU_LOAD_GAME, true);
+        bar->SetEnabled(MENU_PARTY_INFO, true);
+        bar->SetEnabled(MENU_RESUME, false);
+        bar->SetEnabled(MENU_HALT, false);
+    }
+
+    MenuBar*	bar;
+};
+
+}	// namespace
+
+
 battle_outcome
 BattleView::Run(GameWindow& window)
 {
+    BattleMenu menuState(fMenu);
     bool dirty = true;
     Uint32 lastStep = 0;
     for (;;) {
+        if (fMenu != NULL) {
+            // Resume starts the enemies; Halt needs a member selected
+            fMenu->SetEnabled(MENU_RESUME, !fEnemiesActive);
+            fMenu->SetEnabled(MENU_HALT, fSelected >= 0);
+        }
         const battle_outcome outcome = Outcome();
         if (dirty) {
             Draw();
@@ -583,6 +631,34 @@ BattleView::Run(GameWindow& window)
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, 20) == 0)
             continue;
+        if (fMenu != NULL && outcome == BATTLE_GOING_ON) {
+            menu_command command = MENU_NONE;
+            if (MenuBar::Opens(event)) {
+                command = fMenu->Run(window, Draw(), event);
+                dirty = true;
+            } else if (event.type == SDL_KEYDOWN) {
+                command = fMenu->Shortcut(event.key.keysym.sym,
+                    event.key.keysym.mod);
+            }
+            if (command == MENU_QUIT) {
+                MenuBar::PostQuit();	// for the screen below, which quits
+                return BATTLE_LEFT;
+            }
+            if (command != MENU_NONE) {
+                if (command == MENU_RESUME)
+                    SetEnemiesActive(true);
+                else if (command == MENU_HALT)
+                    HaltSelected();
+                else if (command == MENU_PAUSE)
+                    MenuBar::Pause(window);
+                dirty = true;
+                lastStep = SDL_GetTicks();
+                continue;
+            }
+            if (event.type == SDL_MOUSEBUTTONUP
+                    && event.button.button == SDL_BUTTON_RIGHT)
+                continue;
+        }
         switch (event.type) {
             case SDL_QUIT:
                 SDL_PushEvent(&event);	// for the screen below, which quits

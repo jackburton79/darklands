@@ -177,6 +177,7 @@ SaveFile::Write(const std::string& fileName, const saved_game& game,
     PutWord(data, kBankNotesOffset, members.bankNotes);
     PutWord(data, kStoneOffset, members.philosopherStone);
     PutWord(data, kMapOffset, placed ? 0 : 3);
+    data[kDifficultyOffset] = uint8(std::max(0, std::min(2, game.difficulty)));
     const size_t count = members.members.size();
     data[kLeaderOffset] = uint8(members.leader);
     PutWord(data, kMembersOffset, uint16(count));

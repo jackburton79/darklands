@@ -18,6 +18,7 @@
 #include "ImgFile.h"
 #include "ListFile.h"
 #include "LocationFile.h"
+#include "MenuBar.h"
 #include "MsgFile.h"
 #include "PICImage.h"
 #include "SaveFile.h"
@@ -485,6 +486,8 @@ ShowBattle(GameData& data, const std::string& mapName, const std::string& enemy,
             view.AddEnemy(type, x, y, 4);
     }
     view.Scroll(0, BattleMap::kSize);	// the party, at the bottom
+    MenuBar menu(data);
+    view.SetMenuBar(&menu);
     GameWindow window("Darklands");
     static const char* kOutcomes[] = { "", "won", "lost", "left" };
     std::cout << "battle " << kOutcomes[view.Run(window)] << std::endl;

@@ -885,7 +885,8 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
                   quest's location: 120, Grötsch, in DKSAVE0), A88D (the
                   previous state)
     0x96    1     the difficulty, DS:906A (0 basic, 1 standard, 2
-                  expert: 1 in both saved games)
+                  expert: 1 in both saved games); the game's menu
+                  changes it and Game::Save() writes it
     0xA1    1     party leader: party slot
     0xA4    2     DS:A891: 3 on the map, 0 in a city
     0xEF    2     characters in the party

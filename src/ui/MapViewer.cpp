@@ -6,6 +6,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
+#include "MenuBar.h"
 #include "LocationFile.h"
 #include "Palette.h"
 #include "ScreenSupport.h"
@@ -64,6 +65,7 @@ MapViewer::MapViewer(GameData& data)
     fClock(NULL),
     fTravelMinutes(0),
     fInfo(NULL),
+    fMenu(NULL),
     fBuffer(NULL),
     fOrigin(0, 0),
     fMouse(0, 0),
@@ -124,6 +126,7 @@ MapViewer::Run(GameWindow& window)
     fPlace = -1;
 
     bool quitting = false;
+    bool loading = false;
     bool dirty = true;
     bool buttonDown = false;
     bool dragging = false;
@@ -146,6 +149,10 @@ MapViewer::Run(GameWindow& window)
                 continue;
         }
         do {
+            if (_MenuEvent(window, event, quitting, loading)) {
+                dirty = true;
+                continue;
+            }
             switch (event.type) {
                 case SDL_QUIT:
                     quitting = true;
@@ -215,8 +222,8 @@ MapViewer::Run(GameWindow& window)
                         buttonDown = false;
                         dragging = false;
                         dirty = true;
-                    } else if (event.button.button == SDL_BUTTON_RIGHT) {
-                        RightClicked(GameWindow::ToScreen(event.button.x,
+                    } else if (event.button.button == SDL_BUTTON_MIDDLE) {
+                        MiddleClicked(GameWindow::ToScreen(event.button.x,
                             event.button.y));
                         dirty = true;
                     }
@@ -230,10 +237,52 @@ MapViewer::Run(GameWindow& window)
                     break;
             }
         } while (!quitting && SDL_PollEvent(&event));
+        if (loading)
+            return kLoadRequested;
         if (fPlace >= 0)
             return fPlace;
     }
     return -1;
+}
+
+
+// The menu bar's events (the right button, F10, the shortcuts): true if
+// it took the event
+bool
+MapViewer::_MenuEvent(GameWindow& window, const SDL_Event& event,
+    bool& quitting, bool& loading)
+{
+    if (fMenu == NULL)
+        return false;
+    menu_command command;
+    if (!fMenu->Handle(window, event, [this]() { return Draw(); }, true,
+            command))
+        return false;
+    switch (command) {
+        case MENU_SAVE_GAME:
+            if (fSaveHandler)
+                fSaveHandler(window);
+            break;
+        case MENU_LOAD_GAME:
+            if (fLoadHandler && fLoadHandler(window))
+                loading = true;
+            break;
+        case MENU_QUIT:
+            quitting = true;
+            break;
+        case MENU_PARTY_INFO:
+            if (fInfo != NULL) {
+                fInfo->SetPosition(fParty);
+                fInfo->Run(window, InfoView::kPartyPage);
+            }
+            break;
+        case MENU_PAUSE:
+            MenuBar::Pause(window);
+            break;
+        default:
+            break;
+    }
+    return true;
 }
 
 
@@ -314,7 +363,7 @@ MapViewer::Clicked(const GFX::point& point)
 
 
 void
-MapViewer::RightClicked(const GFX::point& point)
+MapViewer::MiddleClicked(const GFX::point& point)
 {
     MouseMoved(point);
     if (fPlace >= 0 || !fMouseInside)

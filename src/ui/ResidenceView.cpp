@@ -8,6 +8,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
+#include "MenuBar.h"
 #include "PICImage.h"
 #include "Palette.h"
 #include "PartySidebar.h"
@@ -90,6 +91,7 @@ ResidenceView::ResidenceView(GameData& data)
     fParty(NULL),
     fClock(NULL),
     fInfo(NULL),
+    fMenu(NULL),
     fCity(-1),
     fReputation(0),
     fInnPrice(0),
@@ -161,6 +163,7 @@ ResidenceView::SetPlace(int cityIndex, int reputation, uint32 innPrice,
 void
 ResidenceView::Run(GameWindow& window)
 {
+    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME });
     bool dirty = true;
     for (;;) {
         if (dirty) {
@@ -170,6 +173,20 @@ ResidenceView::Run(GameWindow& window)
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, 100) == 0)
             continue;
+        menu_command command;
+        if (fMenu != NULL && fMenu->Handle(window, event,
+                [this]() { return Draw(); }, true, command)) {
+            if (command == MENU_QUIT) {
+                MenuBar::PostQuit();	// for the screen below, which quits
+                return;
+            }
+            if (command == MENU_PARTY_INFO && fInfo != NULL)
+                fInfo->Run(window, InfoView::kPartyPage);
+            else if (command == MENU_PAUSE)
+                MenuBar::Pause(window);
+            dirty = true;
+            continue;
+        }
         switch (event.type) {
             case SDL_QUIT:
                 SDL_PushEvent(&event);	// for the screen below, which quits

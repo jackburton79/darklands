@@ -31,6 +31,7 @@ struct saved_game {
     const std::vector<int16>* reputations;		// by location
     const std::vector<uint8>* locationFlags;
     const std::vector<uint16>* enterStates;
+    int difficulty;					// DS:906A: 0 basic, 1 standard, 2 expert
 };
 
 class SaveFile {

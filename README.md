@@ -50,7 +50,8 @@ What works so far:
   rules, wounds, deaths and loot.
 - **The party**: the Quickstart characters or a saved game, the
   information screens (F1..F6), the party recovering as time passes;
-  **saving** (Ctrl+S) in the original's format.
+  **saving** and loading in the original's format; the game's **menu
+  bar** (right mouse button, or F10), with the Game and Party menus.
 - **Tools** for the data: browse and export the images (`.PIC`,
   `.CAT`), render the world map, dump the locations, cities, enemies,
   saints, events and cards (see Running below).
@@ -94,6 +95,7 @@ screen, sound, the other quests, and many places' options (they say
 - [x] The flow between the city cards (inn, streets, gate) and the map
 - [x] The party: characters and saved games, the sidebar
 - [x] Saving the game (Ctrl+S), in the original's format
+- [x] The menu bar: Game (save, load, difficulty, pause, quit) and Party
 - [x] Game time: the clock, day and night, travel time (the game's own
       terrain costs, decoded from the executable)
 - [x] Party and character information screens
@@ -170,9 +172,11 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # Play, from a random city (--start <city>: from that one).
 # Cards: the mouse or the arrow keys to choose an option, click or
 # Return to take it, Esc to quit; Ctrl+S (on the map too) saves the game
-# as the first free SAVES/DKSAVEn.SAV, which --load reads.
+# as the first free SAVES/DKSAVEn.SAV, which --load reads. The menu bar:
+# hold the right mouse button (or tap F10, the cursor keys, Return); Alt+S
+# saves, Alt+L loads, Alt+Q quits.
 # Map: click to travel there (clicking a city goes there and shows it),
-# right click a city for its details, arrow keys (shift: faster) or drag
+# middle click a city for its details, arrow keys (shift: faster) or drag
 # to scroll, space to center on the party, Esc to go back or quit
 ./darklands --data /path/to/DARKLAND
 ./darklands --start Hamburg
@@ -255,6 +259,7 @@ src/game/           Game state and rules (no screen)
   Travel.*          Paths across the world map
   BattlePath.*      Paths across a battlefield map
   Combat.*          Melee strikes, as DARKLAND.EXE resolves them
+  GameSettings.h    What the Game menu sets: difficulty, sound, messages
 
 src/ui/             Screens and drawing
   Game.*            The game: new or loaded, cities and the world map in turn
@@ -271,6 +276,7 @@ src/ui/             Screens and drawing
   MapViewer.*       Interactive world map (scrolling, travel, city details)
   WorldMap.*        The world map: tiles, column rule, drawing any part of it
   CityLabels.*      City names drawn over the map
+  MenuBar.*         The hidden menu bar: Game, Orders, Attack, Party
   ScreenSupport.*   The game window and mouse cursor, for the screens
   TextSupport.*     Text rendering with the game fonts
 

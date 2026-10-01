@@ -127,6 +127,11 @@ include path: include headers by name (`#include "CityFile.h"`).
   figures next to a foe fight it, `Combat`; `AfterBattle()` then
   applies the wounds and the deaths), until the game's own drawing is
   decoded.
+- `MenuBar` (+ `GameSettings`): the hidden universal menu bar (right
+  button, F10, Alt shortcuts), over a view's buffer; the views run it
+  (`Handle()`, `Run()`) and act on the command it returns: `CardView`,
+  `MapViewer`, `TradeView`, `ResidenceView` and `BattleView` have
+  `SetMenuBar()`. `Game` owns it and the settings, and loads games.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

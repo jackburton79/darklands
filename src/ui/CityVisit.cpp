@@ -9,6 +9,7 @@
 #include "GameData.h"
 #include "GameTime.h"
 #include "InfoView.h"
+#include "MenuBar.h"
 #include "ExeData.h"
 #include "ListFile.h"
 #include "LocationFile.h"
@@ -67,6 +68,7 @@ CityVisit::CityVisit(GameData& data)
     fParty(NULL),
     fClock(NULL),
     fInfo(NULL),
+    fMenu(NULL),
     fReputations(NULL),
     fNight(false),
     fCity(-1),
@@ -156,6 +158,16 @@ CityVisit::SetInfoView(InfoView* info)
 }
 
 
+void
+CityVisit::SetMenuBar(MenuBar* menu)
+{
+    fMenu = menu;
+    fView.SetMenuBar(menu);
+    fTrade.SetMenuBar(menu);
+    fResidence.SetMenuBar(menu);
+}
+
+
 CityVisit::result
 CityVisit::Run(GameWindow& window, int cityIndex, int screen)
 {
@@ -165,6 +177,11 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
         if (option == CardView::kSaveRequested) {
             if (fSaveHandler)
                 fSaveHandler(window);
+            continue;
+        }
+        if (option == CardView::kLoadRequested) {
+            if (fLoadHandler && fLoadHandler(window))
+                return LOAD_GAME;
             continue;
         }
         if (option < 0)

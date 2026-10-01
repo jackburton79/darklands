@@ -24,6 +24,7 @@ class BattleMap;
 class ExeData;
 class Font;
 class Bitmap;
+class MenuBar;
 class GameData;
 class GameWindow;
 class ImcFile;
@@ -99,6 +100,14 @@ public:
     // game's rule (and its cash) is not decoded yet.
     std::vector<cache_item> Loot() const;
 
+    // The menu bar (not owned; NULL: none): in a battle the Game menu works
+    // but for Save and Load (the game does not allow them on a battlefield,
+    // inferred), Party Info is off (manual p. 20), of the Orders only
+    // Resume and Halt do anything so far.
+    void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
+    // The selected member stops where it is
+    void			HaltSelected();
+
     // Runs until the battle ends (then a message waits for a key or a
     // click) or Esc; the arrow keys scroll, 1..5 select a member, a click
     // selects or moves, the space bar stops or starts the enemies.
@@ -163,6 +172,7 @@ private:
     std::unique_ptr<ImgFile> fPictures;		// BATTLEGR.IMG
     std::unique_ptr<Font> fFont;
     std::mt19937	fRandom;
+    MenuBar*		fMenu;
     int				fTicks;
     bool			fEnemiesActive;
     std::unique_ptr<BattleMap> fMap;

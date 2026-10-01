@@ -1582,6 +1582,73 @@ are never loaded (no "$Monas" string in the executable). **verified**
 over 50 → 0, over 10 → 1, over −10 → 2, over −40 → 3, over −75 → 4,
 else 5. **verified** (code).
 
+## The menu bar
+
+The hidden bar across the top of the screen (manual pp. 17-19): the right
+mouse button held down, or F10, shows it; it has four pull-down menus,
+**Game**, **Orders**, **Attack** and **Party**.
+
+- **The data** (all **verified**, DARKLAND.EXE): the texts are at DS:0CA1
+  (file 0x191A61) to DS:0DF0. The function at file 0x10A0E (`enter 0xE`)
+  fills the records at startup: 5 menus at DS:9419, 10 bytes each (+0 the
+  title's pointer, +6 a state byte: 1 for Game and Party, 2 for Orders
+  and Attack, +8 the pointer to its items; the fifth, with an empty
+  title, ends the list), and the items, 20 bytes each (+0 the name's
+  pointer, +2 an enabled byte, +3 the shortcut's 3 bytes, +0xE the far
+  pointer to its handler, *inferred* an RTLink thunk of segment 09C0); the
+  Difficulty sub-menu (DS:99EC) has items of 22 bytes. The loop that sets
+  the enabled byte to 1 covers the Game items (its 8 and the terminator),
+  the Difficulty items and the Attack items; the Orders items start at 0
+  (*inferred*: the battle code turns them on), and so is Party Info.
+- **Texts and shortcuts**: a name starts with a glyph of font 0 (FONTS.FNT,
+  the small one, height 7): 01 is a checkmark, 02 a blank of the same
+  width; the game changes the first byte to check or uncheck an item
+  (Show Changes, Music and Sound FX start with 01). The shortcuts are
+  texts too, with the glyphs 0F "Alt", 0A "F6", 12 "Rtn", 13 "Spc", 03
+  "Esc" (rendered, **verified**):
+  - *Game*: Save Game (Alt S), Load Saved Game (Alt L), Difficulty (Alt D;
+    its sub-menu Basic, Standard, Expert), Show Changes (Alt C), Music
+    (Alt M), Sound FX (Alt F), Pause (Alt P), Quit to DOS (Alt Q).
+  - *Orders*: Resume (Spc), "?" (Rtn; the game puts the selected
+    character's name and "Finished" there, as the manual says), Enemy
+    Info (E), Walk towards (W), Flee towards (F), Halt (H), Travel As Group
+    (G), Travel Single File (Q), Use Door (U), Use Stairs (U), Open Chest
+    (O), Pick Lock (P), Dissolve Lock (D), Disarm trap (D; the texts at
+    DS:05B2..0643 are three kinds, simple, moderate, complex, and the same
+    "(Ldr)" for the leader), Surrender (All) (S), Loot Bodies (L), Exit
+    Battlefield (X), Cancel Giving Order (Esc). Some names end in blanks,
+    which widen the menu.
+  - *Attack*: Throw (T, with a sub-menu of potions), Std Attack (A),
+    Vulnerable (V), Berserk (B), Parry (P), Use Missile (M).
+  - *Party*: Party Info (F6), Change Marching Order (Alt O).
+- **Not in this executable**: the manual and its screenshot also have
+  "Visuals" (Full, Quick, None), "Set Ambush" (F7) and "Camp" (F8); the
+  strings are nowhere in DARKLAND.EXE (searched in the whole file), so
+  this version of the game has no such items: they are *not* in the bar
+  here (the ambush and the camp of the map are not a menu item either).
+- **How it behaves** (the manual): the right button down shows the bar,
+  moving with it down opens the title's menu, releasing on an item selects
+  it; with the keyboard F10, the cursor keys, Return, and F10 again to
+  leave. Items not allowed are dim. A menu's title is dim when it has
+  nothing to choose. The Save is "faded" where saving is prohibited
+  (battles: *inferred*; the string "Battlefield save rules are in effect"
+  is at file 0x192536).
+- **Not decoded**: the drawing (the colors, the exact size of the bar and
+  of the menus are measured on the screenshot of manual p. 17, *inferred*)
+  and what the handlers do (Change Marching Order is not implemented: how
+  the order is asked is unknown).
+- **Implemented** (`MenuBar`, `GameSettings`): the right button (the world
+  map's city details are on the middle button now), F10 and the Alt
+  shortcuts in the cards, the map, the trade and the residence screens
+  and the battle. The Game menu works: Save Game (as Ctrl+S), Load Saved
+  Game (a card lists the saved games, the newest first, ten at most:
+  *inferred*), Difficulty (written to the saved game, byte 0x96; the
+  rewards do not use it yet), Show Changes, Music and Sound FX (only
+  kept: the game has neither the messages nor the sound), Pause (waits
+  for a key), Quit. Party Info opens the F6 screen. In a battle Resume
+  and Halt work (and H); the other orders of the menu are dim, as the
+  battle has no such orders yet.
+
 ## Battles
 
 Where the battle code starts; the rules are not decoded yet.

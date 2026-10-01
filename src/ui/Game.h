@@ -9,6 +9,7 @@
 
 #include "Character.h"
 #include "EventFile.h"
+#include "GameSettings.h"
 #include "GameTime.h"
 #include "Travel.h"
 
@@ -38,6 +39,9 @@ public:
 
     const party&	Party() const	{ return fParty; }
     const GameTime&	Time() const	{ return fTime; }
+    // The Game menu's settings (the menu bar changes them; a saved game
+    // holds the difficulty)
+    const game_settings& Settings() const	{ return fSettings; }
 
     // Saves the game as the first free SAVES/DKSAVEn.SAV, as DARKLAND.EXE
     // does (file 0x7505A), with a comment; returns the file's name.
@@ -48,6 +52,11 @@ public:
                         const map_position& position, uint16 state);
 
 private:
+    // The locations' state, from DARKLAND.LOC where the game had none
+    void			_PrepareWorld();
+    // The menu's Load Saved Game: lists the saved games, loads the one
+    // chosen; false if none was
+    bool			_LoadDialog(GameWindow& window);
     // Ctrl+S: asks for the comment ("Save Game Comment:", file 0x74CD6),
     // saves and says where
     void			_SaveDialog(GameWindow& window, int location,
@@ -56,6 +65,7 @@ private:
     GameData&		fData;
     party			fParty;
     GameTime		fTime;
+    game_settings	fSettings;
     uint16			fSeed;			// the game's seed global (DS:9C4A)
     std::mt19937	fRandom;
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC

@@ -26,6 +26,7 @@ class Font;
 class GameData;
 class GameWindow;
 class InfoView;
+class MenuBar;
 class PartySidebar;
 struct item;
 struct money;
@@ -70,6 +71,9 @@ public:
     void			SetParty(party* members);
     // The information screens that F1..F6 open (not owned; NULL: none)
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
+    // The menu bar (not owned; NULL: none): Party Info, Pause and Quit
+    // work here, Save and Load do not
+    void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
     // Where the trade happens: a city (index into DARKLAND.CTY, or -1),
     // the party's reputation there and the location's flags.
     void			SetPlace(int cityIndex, int reputation, uint8 flags = 0);
@@ -159,6 +163,7 @@ private:
 
     party*			fParty;
     InfoView*		fInfo;
+    MenuBar*		fMenu;
     int				fCity;
     int				fReputation;
     uint8			fLocationFlags;

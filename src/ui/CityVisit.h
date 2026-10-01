@@ -33,6 +33,7 @@ struct city;
 class GameTime;
 class GameWindow;
 class InfoView;
+class MenuBar;
 struct party;
 
 class CityVisit {
@@ -391,6 +392,7 @@ public:
     enum result {
         LEAVE_CITY,				// the party is back on the map
         QUIT,
+        LOAD_GAME,				// the menu's Load Saved Game
         PARTY_LOST				// all its members died
     };
 
@@ -407,6 +409,13 @@ public:
     void			SetSeed(uint16 seed)		{ fSeed = seed; }
     // The information screens (not owned; NULL: none).
     void			SetInfoView(InfoView* info);
+    // The menu bar (not owned; NULL: none), also in the battles
+    void			SetMenuBar(MenuBar* menu);
+    // Called by Run() for the menu's Load Saved Game: true if a game was
+    // loaded (Run() then returns LOAD_GAME); not set: nothing happens
+    void			SetLoadHandler(
+                        const std::function<bool(GameWindow&)>& handler)
+                        { fLoadHandler = handler; }
     // Called by Run() for Ctrl+S (not set: nothing happens)
     void			SetSaveHandler(
                         const std::function<void(GameWindow&)>& handler)
@@ -738,7 +747,9 @@ private:
     party*			fParty;
     GameTime*		fClock;
     InfoView*		fInfo;
+    MenuBar*		fMenu;
     std::function<void(GameWindow&)> fSaveHandler;
+    std::function<bool(GameWindow&)> fLoadHandler;
     std::vector<int16>* fReputations;
     bool			fNight;			// the current card is a night card
     int				fCity;

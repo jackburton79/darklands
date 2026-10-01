@@ -6,6 +6,7 @@
 #include "FileStream.h"
 #include "GameData.h"
 #include "InfoView.h"
+#include "MenuBar.h"
 #include "ListFile.h"
 #include "PICImage.h"
 #include "Palette.h"
@@ -150,6 +151,7 @@ TradeView::TradeView(GameData& data)
     fBuffer(NULL),
     fParty(NULL),
     fInfo(NULL),
+    fMenu(NULL),
     fCity(-1),
     fReputation(0),
     fLocationFlags(0),
@@ -262,6 +264,7 @@ TradeView::SetMerchant(merchant_kind kind, uint32 seed)
 void
 TradeView::Run(GameWindow& window)
 {
+    const MenuLimits limits(fMenu, { MENU_SAVE_GAME, MENU_LOAD_GAME });
     bool dirty = true;
     for (;;) {
         if (dirty) {
@@ -271,6 +274,20 @@ TradeView::Run(GameWindow& window)
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, 100) == 0)
             continue;
+        menu_command command;
+        if (fMenu != NULL && fMenu->Handle(window, event,
+                [this]() { return Draw(); }, true, command)) {
+            if (command == MENU_QUIT) {
+                MenuBar::PostQuit();	// for the screen below, which quits
+                return;
+            }
+            if (command == MENU_PARTY_INFO && fInfo != NULL)
+                fInfo->Run(window, InfoView::kPartyPage);
+            else if (command == MENU_PAUSE)
+                MenuBar::Pause(window);
+            dirty = true;
+            continue;
+        }
         switch (event.type) {
             case SDL_QUIT:
                 SDL_PushEvent(&event);	// for the screen below, which quits
