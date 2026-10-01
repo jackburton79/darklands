@@ -107,7 +107,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   physician, alchemist), `CityGate` (night market, gate, walls),
   `CityGuards` (the watch, guards, chases), `CityPrison` (dungeon,
   court, execution, the priest), `CityWorld` (news, events, places),
-  `CityQuests` (the banks' tasks, the robber knight's tower) and
+  `CityQuests` (the banks' tasks, the robber knight's tower), `CityLord`
+  (the audience at the fortress and the town hall) and
   `CityEncounters` (the slum, thieves, the grove). A new screen goes in
   the enum (`CityVisit.h`), gets a row in `CityScreens.cpp` (also a night
   row if it has one) and its code in the file of its subject. `CardView` hides the

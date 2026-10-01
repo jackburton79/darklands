@@ -99,6 +99,8 @@ CityVisit::CityVisit(GameData& data)
     fEvents(NULL),
     fLocationFlags(NULL),
     fEnterStates(NULL),
+    fLordHall(false),
+    fQuestReturn(-1),
     fQuestPatron(-1),
     fQuestPlace(-1),
     fQuestRobber(false),
@@ -301,6 +303,8 @@ CityVisit::Choose(int option)
         const std::pair<int, int> choice = fSaintChoices[size_t(option)];
         const int saint = _SaintsFor(fScreen)[size_t(choice.second)];
         const int screen = fScreen;
+        fLordHall = screen == SCREEN_TOWN_HALL;
+        fVariables["ChosenTwoName"] = fParty->members[size_t(choice.first)].shortName;
         _Show(_Invoke(choice.first, saint) > 0
             ? _SaintAnswered(screen, choice.second) : _SaintIgnored(screen));
         return true;
@@ -703,6 +707,21 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
             return true;
+        case ACTION_LORD_AUDIENCE:
+            fLordHall = fScreen == SCREEN_TOWN_HALL;
+            _Show(_LordRequest(false));
+            return true;
+        case ACTION_LORD_CLERK:
+            fLordHall = fScreen == SCREEN_TOWN_HALL;
+            _Show(_LordRequest(true));
+            return true;
+        case ACTION_LORD_NEXT: {
+            const int next = fLordQueue.empty() ? fScreen : fLordQueue.front();
+            if (!fLordQueue.empty())
+                fLordQueue.erase(fLordQueue.begin());
+            _Show(next);
+            return true;
+        }
         case ACTION_SWIM:
             _Show(_Swim());
             return true;
@@ -715,7 +734,10 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_QUEST_RETURN:
             // back to the patron (DS:E7D8)
-            _Show(fQuestPatron == 6 ? SCREEN_MEDICI : SCREEN_FUGGER);
+            if (fQuestPatron == 10 && fQuestReturn >= 0)
+                _Show(fQuestReturn);
+            else
+                _Show(fQuestPatron == 6 ? SCREEN_MEDICI : SCREEN_FUGGER);
             return true;
         case ACTION_GOSSIP:
             _Show(_Gossip());
@@ -1120,7 +1142,12 @@ CityVisit::_Show(int screen, bool withScene)
         fView.SetScene("");
         return;
     }
-    fView.SetCard(fData.Messages(rules.deck).CardAt(uint32(rules.card)),
+    // the city lord's cards are the same in the town hall's deck
+    const char* deck = rules.deck;
+    if (fLordHall && screen >= SCREEN_LORD_NOT_TODAY
+            && screen <= SCREEN_LORD_SAINT_VAIN)
+        deck = "COUNC00";
+    fView.SetCard(fData.Messages(deck).CardAt(uint32(rules.card)),
         fVariables, _HiddenOptions(screen));
     if ((screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_MEDICI_DEPOSIT)
             && fParty != NULL) {
@@ -1145,7 +1172,18 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
         else if (rule.needs == kNeedsBadReputation)
             hide = _Reputation() > -10;
-        else if (rule.needs == kNeedsSwimMounted)
+        else if (rule.needs == kNeedsLordAudience || rule.needs == kNeedsLordClerk
+                || rule.needs == kNeedsLordSaint) {
+            // the fortress: not while the city's flag 2 is set (dim in the
+            // game); the town hall: not to a wanted party (and for the
+            // clerk, not with an appointment made)
+            const bool hall = screen == SCREEN_TOWN_HALL;
+            hide = hall ? _Wanted() : (c.flags & 2) != 0;
+            if (hall && rule.needs == kNeedsLordClerk && _Marked(kMarkAppointment))
+                hide = true;
+            if (rule.needs == kNeedsLordSaint && !_SaintKnown(screen))
+                hide = true;
+        } else if (rule.needs == kNeedsSwimMounted)
             hide = !_HasHorses();
         else if (rule.needs == kNeedsSwimOnFoot)
             hide = _HasHorses();

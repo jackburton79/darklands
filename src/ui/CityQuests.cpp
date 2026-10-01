@@ -390,6 +390,13 @@ CityVisit::_PatronThanks()
         fVariables["NamedTwoName"] = _PersonName(uint16(e.unknown2C + 1100));
         fEvents->erase(fEvents->begin() + reward);
     }
+    if (fQuestPatron == 10) {
+        // the city's lord, at the square (DS:E7D8 0x12, 0x19): card 0, the
+        // reputation 40..50 better (0E76:19D0)
+        _ChangeReputation(40, 50);
+        fThanksReturn = SCREEN_SQUARE;
+        return SCREEN_ROBBER_LORD_THANKS;
+    }
     return fRandom() % 4 == 0 ? SCREEN_ROBBER_AVENGED : SCREEN_ROBBER_REASON;
 }
 

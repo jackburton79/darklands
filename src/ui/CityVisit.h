@@ -392,6 +392,19 @@ public:
         SCREEN_SWIM_LOST,		// make it), 3 (one is lost), 4 (the first
         SCREEN_SWIM_ONE,		// ashore), 5 (the next ones)
         SCREEN_SWIM_FOLLOW,
+        SCREEN_LORD_NOT_TODAY,	// the city lord, $CITYF00 or $COUNC00 cards 1
+        SCREEN_LORD_WAITED,		// (an appointment for tomorrow), 2 (after
+        SCREEN_LORD_NOT_CONVINCING,	// a wait), 3 (not convincing), 4
+        SCREEN_LORD_FAMOUS,		// (reputation and fame), 5 (laughed at), 6
+        SCREEN_LORD_LAUGHED_AT,	// (nothing to offer), 7 (an appointment
+        SCREEN_LORD_NO_USE,		// made), 8 (the lord's speech after a
+        SCREEN_LORD_TOMORROW,	// saint), 9, 10 (the saint's help), 11
+        SCREEN_LORD_SPEECH,		// (in vain)
+        SCREEN_LORD_SAINT_WISE,
+        SCREEN_LORD_SAINT_REGAL,
+        SCREEN_LORD_SAINT_VAIN,
+        SCREEN_ROBBER_LORD,		// $RAUBI00 card 1, $RAUBI01 card 0
+        SCREEN_ROBBER_LORD_THANKS,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -669,6 +682,16 @@ private:
     int				_BankTaskChance(int patron) const;
     int				_BankTasks(int patron);
     int				_OfferQuest();
+    // The city's lord (DARKLAND.EXE, state 0x1B file 0xA4B0E, 0x2B file
+    // 0xB1A98)
+    int				_LordChance() const;
+    int				_LordRequest(bool clerk);
+    int				_LordGrant(int card);
+    int				_LordOffer(int returnTo);
+    int				_LordSaint(int index);
+    int				_LordCard(int screen, int next);
+    void			_SetReputation(int value);
+    static int		_HoursUntil(const GameTime& clock, int hour);
     void			_HireAgainstRobber(int patron, int castle, int patronSeed,
                         int reward, int strength, int extra);
     // Saints (DARKLAND.EXE: a card's saints at DS:EE4B, the invocation
@@ -845,6 +868,9 @@ private:
     std::vector<world_event>* fEvents;
     std::vector<uint8>* fLocationFlags;
     std::vector<uint16>* fEnterStates;
+    bool			fLordHall;		// the town hall's cards, not the fortress's
+    std::vector<int> fLordQueue;	// the screens that follow the one in view
+    int				fQuestReturn;	// where the offer leads back to, or -1
     int				fQuestPatron;	// the bank giving a task (8, 6), -1
     int				fQuestPlace;	// the task's place (DS:E896)
     bool			fQuestRobber;	// the task is the robber knight

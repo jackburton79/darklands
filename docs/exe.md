@@ -197,11 +197,64 @@ The options of a state are enabled (1), hidden (0) or disabled (2) by ten
 words at DS:EE76..EE88, set when the state starts and changed by its
 conditions; the cards have options the game never shows, hidden here too:
 the fortress (state 0x1B, file 0xA4B0E) offers the audience, the clerk
-and the saint (the dungeon's options, which the card has, stay hidden),
+and the saint (see "The city's lord") (the dungeon's options, which the card has, stay hidden),
 at night (0x1C, file 0xA6240) only its two ways out, the bribes of $Money1
 and $Money2 never being offered; the town hall (0x2B, file 0xB1A98) does
 not offer the weapons training, and at night (0x2C, file 0xB3446) only
 the square and its ways out. **verified** (code)
+
+## The city's lord
+
+The fortress (state 0x1B, file 0xA4B0E, $CITYF00) and the town hall (0x2B,
+file 0xB1A98, $COUNC00) have the same three options: an audience with the
+lord, a clerk, and a saint's help; the cards have the same numbers in
+both decks. **verified** (code)
+
+- **When offered**: the options start dim (2). The fortress turns them on
+  unless the city's flag word (record +0x5E) has bit 2 (0E76:1A7E(0x18):
+  66 of the 92 cities have it); the town hall unless the party is wanted
+  (09C0:20F3), and its clerk is dim again while mark 0x3A runs. The saint
+  option (150B:168C) needs a member who knows one of the card's saints:
+  Alcuin (5), Raymond Penafort (112), Wolfgang (134), Wenceslaus (129).
+  Dim options are hidden here (*inferred*: the card has no dim drawing).
+  The town hall's prisoner options (cards 14..17) need an event (mark
+  0x4D): not reproduced.
+- **The chance** (file 0xA5018, 0xA5300, 0xB223C): 0 with a reputation of
+  −40 or less (then the guards' challenge, state 1); else (the leader's
+  Speak Common / 2 + the reputation + his Charisma) / 2, 1 while mark
+  0x3C runs, 99 with mark 0x3B (nothing makes it), within 0..99.
+- **The audience** (file 0xA4D6C; 0xB2038): with mark 0x3A, card 1 and
+  the square. Else, random(100) = r: at most the chance: reputation +
+  fame / 10 at least r, an hour and card 4, else a wait of min(the
+  hours until 18, random(3) + 1) hours, one more in the fortress
+  (random(3) + 2 in the town hall: no more), $Number1, card 2; then mark
+  0x3C for 168 hours and the lord's offer. Over the chance: mark 0x3C
+  for 168 hours; if at most twice the chance, the hours until 19, the
+  reputation − 1, card 3 ($ChosenOneName: the leader), the square; else
+  the reputation − 10, card 5, the side streets.
+- **The clerk** (file 0xA50B8; 0xB2318): the same chance. With mark 0x3A
+  card 1 (the main street; the square in the town hall). At most the
+  chance: reputation / 3 + fame / 20 at least r, an hour, card 4 and the
+  offer (no mark); else two hours, mark 0x3A until 5 o'clock (the
+  fortress) or 18 (the town hall), card 7. Over it: mark 0x3C for 168
+  hours; at most twice the chance, or a reputation of 10 or more: card 6
+  (the main street; the square in the town hall); else the reputation −
+  10 (the town hall's not under 0 if it was positive), card 5, the side
+  streets.
+- **The saint** (file 0xA53A0; 0xB2638): if it answers, Alcuin, Raymond
+  and Wolfgang bring a wise old man (card 9, $ChosenTwoName the member
+  who prayed), Wenceslaus a regal one (card 10), then card 8, an hour and
+  the offer; if not, card 11 and the same place.
+- **The offer**: the castle nearest the city, 1462:10B6(10, castle, the
+  city's seed + 0x62, 15, 2, 0) (the robber knight, patron 10, level 15),
+  an hour, state 0x90 with the square (DS:E7D8 0x12 / 0x19; the main
+  street for the fortress's clerk): $RAUBI00 card 1, then card 14, then
+  back. In the town hall (file 0xB1D28) first a reward due for the knight
+  (0E76:3404(3, 10, location)) pays 7 times the city's size in florins
+  and makes a refusal for 72 hours (category 7, subject 10), then the
+  thanks (state 0x91, $RAUBI01 card 0, the reputation 40..50 better);
+  else, with random(100) under 50, the offer, and otherwise another task
+  (state 0x151, not implemented).
 
 ## Names and random numbers
 

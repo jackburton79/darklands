@@ -232,7 +232,9 @@ static const screen_rules kDayScreens[] = {
     // clerk and the saint; the dungeon's options, which the card also
     // has, are always hidden)
     { CityVisit::SCREEN_FORTRESS, "CITYF00", 0, NULL, {
-        TODO, TODO, TODO,					// audience, clerk, saint
+        { ACTION_LORD_AUDIENCE, 0, kNeedsLordAudience, 0 },
+        { ACTION_LORD_CLERK, 0, kNeedsLordClerk, 0 },
+        DO_IF(ACTION_SAINT, kNeedsLordSaint),
         HIDE, HIDE,							// the dungeon: prisoners, in
         HIDE, HIDE, HIDE,					// placeholders
         GO(SCREEN_MAIN_STREET),
@@ -298,7 +300,11 @@ static const screen_rules kDayScreens[] = {
     // "The entrance... of the $councilHall for $PlaceName is well guarded."
     // (state 0x2B, file 0xB1A98: the weapons training is never offered)
     { CityVisit::SCREEN_TOWN_HALL, "COUNC00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// audience, clerk, saint, dungeon
+        { ACTION_LORD_AUDIENCE, 0, kNeedsLordAudience, 0 },
+        { ACTION_LORD_CLERK, 0, kNeedsLordClerk, 0 },
+        DO_IF(ACTION_SAINT, kNeedsLordSaint),
+        HIDE, HIDE,							// the dungeon's prisoners: with an
+                                            // event only (mark 0x4D)
         HIDE, HIDE, HIDE,					// training, placeholders
         GO_IF(SCREEN_SQUARE, CITY_SQUARE),
         GO(SCREEN_SIDE_STREET)
@@ -383,6 +389,23 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // The city lord: the cards of $CITYF00, or $COUNC00 in the town hall
+    // (CityVisit::_Show()); each leads to the next of the queue
+    { CityVisit::SCREEN_LORD_NOT_TODAY, "CITYF00", 1, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_WAITED, "CITYF00", 2, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_NOT_CONVINCING, "CITYF00", 3, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_FAMOUS, "CITYF00", 4, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_LAUGHED_AT, "CITYF00", 5, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_NO_USE, "CITYF00", 6, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_TOMORROW, "CITYF00", 7, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_SPEECH, "CITYF00", 8, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_SAINT_WISE, "CITYF00", 9, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_SAINT_REGAL, "CITYF00", 10, NULL, { DO(ACTION_LORD_NEXT) } },
+    { CityVisit::SCREEN_LORD_SAINT_VAIN, "CITYF00", 11, NULL, { DO(ACTION_LORD_NEXT) } },
+    // The lord's offer of the robber knight (state 0x90, card 1) and his
+    // thanks (state 0x91, card 0)
+    { CityVisit::SCREEN_ROBBER_LORD, "RAUBI00", 1, NULL, { GO(SCREEN_ROBBER_WHEREABOUTS) } },
+    { CityVisit::SCREEN_ROBBER_LORD_THANKS, "RAUBI01", 0, NULL, { DO(ACTION_THANKS_RETURN) } },
     // The docks at night in the cold months (file 0xA9893: from November to
     // May): the swimming options are blank
     { CityVisit::SCREEN_DOCKS_ICE, "DOCKS01", 1, "XDOCK.PIC", {

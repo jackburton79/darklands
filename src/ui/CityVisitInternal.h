@@ -126,6 +126,9 @@ enum option_action {
     ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_LORD_AUDIENCE,		// the fortress and the town hall
+    ACTION_LORD_CLERK,
+    ACTION_LORD_NEXT,			// the next screen of the queue
     ACTION_SWIM,				// the docks at night: escape by water
     ACTION_SWIM_NEXT,			// the next card of the swim, or the map
     ACTION_AFTER_CARD,			// fAfterCard, or the map
@@ -262,6 +265,15 @@ static const int kNeedsMediciReward	= -46;
 // the docks at night: swimming away with or without mounts (0E76:1326(5))
 static const int kNeedsSwimMounted	= -48;
 static const int kNeedsSwimOnFoot	= -49;
+// the city lord's audience, a clerk, a saint's help: the fortress needs the
+// city's flag 2 clear, the town hall a party not wanted (and no
+// appointment, for the clerk)
+static const int kNeedsLordAudience	= -50;
+static const int kNeedsLordClerk	= -51;
+static const int kNeedsLordSaint	= -52;
+static const int kMarkAppointment	= 0x3A;	// an appointment for tomorrow
+static const int kMarkAudienceTaken	= 0x3C;	// no chance for a week
+static const int kMarkAudienceSure	= 0x3B;	// (never made)
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

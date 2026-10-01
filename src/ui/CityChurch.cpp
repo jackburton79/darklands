@@ -530,6 +530,10 @@ CityVisit::_SaintsFor(int screen) const
     // Eric, Hedwig, Reinold
     if (screen == SCREEN_TOWER || screen == SCREEN_FORT)
         saints = { 41, 46, 64, 114 };
+    // the city lord's audience (file 0xA4B0E, 0xB1A98): Alcuin, Raymond
+    // Penafort, Wolfgang, Wenceslaus
+    if (screen == SCREEN_FORTRESS || screen == SCREEN_TOWN_HALL)
+        saints = { 5, 112, 134, 129 };
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -656,6 +660,8 @@ CityVisit::_SaintAnswered(int screen, int index)
         }
         return SCREEN_CELL;				// Lucy again: nothing
     }
+    if (screen == SCREEN_FORTRESS || screen == SCREEN_TOWN_HALL)
+        return _LordSaint(index);
     // with a good reputation (over -10) the answer raises it, else it
     // lowers it (0E76:19D0 with the signs reversed)
     const bool liked = _Reputation() > -10;
@@ -775,6 +781,8 @@ CityVisit::_SaintIgnored(int screen)
             fClock->AddHours(6);
         return SCREEN_NO_ANSWER;
     }
+    if (screen == SCREEN_FORTRESS || screen == SCREEN_TOWN_HALL)
+        return _LordCard(SCREEN_LORD_SAINT_VAIN, screen);	// card 11
     switch (screen) {
         case SCREEN_CHALLENGE:
             return SCREEN_CHALLENGE_UNANSWERED;		// card 15, the fight

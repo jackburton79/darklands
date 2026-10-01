@@ -41,7 +41,8 @@ What works so far:
   executioner; thieves in the slum; a shell game at the city's feast.
 - **The world**: the map with the game's tiles, travel with the game's
   terrain costs and time, news and rumors drawn from the game's events.
-- **A quest**: the banks hire the party against a robber knight; his
+- **A quest**: the banks and the city's lord (audience, clerk, a saint's
+  help) hire the party against a robber knight; his
   tower can be besieged or the knight challenged, fought and slain, and
   the reward collected (the audience and the inside of the tower are
   not implemented yet).
