@@ -1342,6 +1342,11 @@ their content comes from the game's events. **verified** (code)
 
 ## Time and travel
 
+- The day: 1367:072A is true from hour 5 to 18, and the cities choose
+  their day or night cards with it (state n by day, n + 1 at night,
+  see "Game states"): night is the hours 19..4, whatever the bells
+  say. `GameTime::IsNight()` follows it (it began at 21h, Compline,
+  which showed the day cards two hours too long). **verified** (code)
 - The date: DS:00E0 hour, 00E2 day (1-based), 00E4 month (0-based),
   00E6 year; the month lengths are the words at DS:2776 (31, 28, 31...,
   no leap years). 1367:05C8 `AddHours(n)` (file 0x5CD88) adds hours with

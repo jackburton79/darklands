@@ -14,8 +14,10 @@
 
 class GameTime {
 public:
-    static const uint16 kNightStart	= 21;	// Compline
-    static const uint16 kNightEnd	= 6;	// Prime
+    // The game's day is the hours 5..18 (DARKLAND.EXE 1367:072A): the
+    // cities show their night cards from 19h to 4h
+    static const uint16 kNightStart	= 19;
+    static const uint16 kNightEnd	= 5;
 
                     GameTime();		// 1 January 1400, midnight
                     GameTime(uint16 year, uint16 month, uint16 day,

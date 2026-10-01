@@ -157,7 +157,7 @@ CityVisit::_SneakIntoTower()
 {
     if (fClock != NULL) {
         fClock->AddHours(2);
-        if (!fClock->IsNight() && fClock->Hour() < 19)
+        if (!fClock->IsNight())
             fClock->AddHours(19 - fClock->Hour());
     }
     const bool in = int(fRandom() % 100) <= _TowerSneakChance();
