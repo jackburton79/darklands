@@ -74,7 +74,9 @@ MapViewer::MapViewer(GameData& data)
     fSelectedCity(-1),
     fParty{ 0, 0 },
     fDestinationPlace(-1),
-    fPlace(-1)
+    fPlace(-1),
+    fWeariness(0),
+    fEncounterPlace(-1)
 {
     // load everything up front, so missing files are reported right away
     const WorldMap& map = fData.Map();
@@ -140,6 +142,16 @@ MapViewer::Run(GameWindow& window)
             dirty = Tick();
             if (fPlace >= 0)
                 return fPlace;
+            if (fEncounterPlace >= 0) {
+                const int place = fEncounterPlace;
+                fEncounterPlace = -1;
+                const int result = fEncounterHandler(window, place,
+                    fData.Map().TileTypeAt(fParty.x, fParty.y));
+                if (result != 0)
+                    return result;
+                _KeepPartyVisible();
+                dirty = true;
+            }
             continue;
         }
         if (dirty) {
@@ -468,7 +480,69 @@ MapViewer::Tick()
     _KeepPartyVisible();
     if (fPath.empty() && fDestinationPlace >= 0)
         _EnterPlace(fDestinationPlace);
+    else if (fEncounterHandler && fRandom && fPlace < 0) {
+        // file 0x5F0CC: the weariness grows with a chance of 10 in 500, up
+        // to 10; the party meets someone if (weariness + 1) * the base
+        // chance is at most random(1000); water (tile types 1 and 2) is
+        // never a place to meet someone
+        const int terrain = fData.Map().TileTypeAt(fParty.x, fParty.y);
+        if (terrain != 1 && terrain != 2) {
+            if (fWeariness < 10 && fRandom(500) <= 9)
+                fWeariness++;
+            const int place = NearestPlace();
+            if (place >= 0 && fRandom(1000)
+                    <= EncounterChance(terrain, place) * (fWeariness + 1)) {
+                fPath.clear();
+                fDestinationPlace = -1;
+                fWeariness = 0;
+                fEncounterPlace = place;
+            }
+        }
+    }
     return true;
+}
+
+
+int
+MapViewer::EncounterChance(int terrain, int place) const
+{
+    int chance = 1;
+    switch (terrain) {
+        case 4: case 5: case 16: case 17: case 20: case 21:
+            chance = 3;
+            break;
+        case 6: case 7: case 14: case 15: case 18: case 19: case 22: case 23:
+            chance = 2;
+            break;
+        default:
+            break;
+    }
+    const LocationFile& locations = fData.Locations();
+    if (place >= 0 && uint32(place) < locations.CountLocations()) {
+        const uint8* record = locations.RecordAt(uint32(place));
+        chance += int(record[0x0A]) | (int(record[0x0B]) << 8);
+    }
+    return chance;
+}
+
+
+int
+MapViewer::NearestPlace() const
+{
+    const LocationFile& locations = fData.Locations();
+    int best = -1;
+    int bestDistance = 0;
+    for (uint32 i = 0; i < locations.CountLocations(); i++) {
+        const location& l = locations.LocationAt(i);
+        const int dx = std::abs(int(l.x) - int(fParty.x));
+        const int dy = std::abs(int(l.y) - int(fParty.y));
+        const int distance = std::max(dx, dy) + std::min(dx, dy) / 2;
+        if (best < 0 || distance < bestDistance) {
+            best = int(i);
+            bestDistance = distance;
+        }
+    }
+    return best;
 }
 
 

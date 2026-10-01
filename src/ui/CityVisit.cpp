@@ -110,6 +110,9 @@ CityVisit::CityVisit(GameData& data)
     fAfterCard(-1),
     fSlumCamp(false),
     fThievesReturn(SCREEN_SLUM),
+    fBanditsSoldiers(false),
+    fBanditsTerrain(0),
+    fBanditsReturn(SCREEN_BANDITS_WARNING),
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
@@ -660,6 +663,35 @@ CityVisit::Choose(int option)
         case ACTION_THIEVES_RETURN:
             _Show(fThievesReturn);
             return true;
+        case ACTION_BANDITS_IGNORE:
+            _Show(SCREEN_BANDITS_AMBUSH);
+            return true;
+        case ACTION_BANDITS_TALK:
+            _Show(_BanditsTalk());
+            return true;
+        case ACTION_BANDITS_SURRENDER:
+            _Robbed();
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _Show(SCREEN_BANDITS_SURRENDERED);
+            return true;
+        case ACTION_BANDITS_SNEAK:
+            _Show(_BanditsSneak());
+            return true;
+        case ACTION_BANDITS_SCOUT:
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            _Show(SCREEN_BANDITS_SCOUTED);
+            return true;
+        case ACTION_BANDITS_CHARGE:
+            _Show(SCREEN_BANDITS_CHARGE);
+            return true;
+        case ACTION_BANDITS_FIGHT:
+            _FightBandits();
+            return true;
+        case ACTION_BANDITS_RETURN:
+            _Show(fBanditsReturn);
+            return true;
         case ACTION_SHELL_PAY:
             // file 0x110DCA: a groschen, and the pea seems to be under one
             // of the shells at random (cards 4..6)
@@ -1016,6 +1048,8 @@ CityVisit::_Show(int screen, bool withScene)
         fVariables["CurrentBell"] = fClock->BellName();
         fVariables["MonthName"] = fClock->MonthName();
     }
+    if (screen == SCREEN_BANDITS_MEET)
+        screen = _MeetBandits();
     // arriving at the monastery
     if (screen == SCREEN_MONASTERY && !_InMonastery(previous))
         screen = _EnterMonastery();
@@ -1228,6 +1262,9 @@ CityVisit::_Show(int screen, bool withScene)
     if (fLordHall && screen >= SCREEN_LORD_NOT_TODAY
             && screen <= SCREEN_LORD_SAINT_VAIN)
         deck = "COUNC00";
+    if (fBanditsSoldiers && screen >= SCREEN_BANDITS_WARNING
+            && screen <= SCREEN_BANDITS_CHARGE)
+        deck = "MEETB02";
     fView.SetCard(fData.Messages(deck).CardAt(uint32(rules.card)),
         fVariables, _HiddenOptions(screen));
     if ((screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_MEDICI_DEPOSIT)

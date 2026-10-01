@@ -69,6 +69,26 @@ public:
     void			SetCampHandler(
                         const std::function<void(GameWindow&, int)>& handler)
                         { fCampHandler = handler; }
+    // Called by Run() when the party meets someone on the way (the hazard
+    // of DARKLAND.EXE's map step, file 0x5EDA0, see EncounterChance()): with
+    // the place nearest to the party and the tile type under it; it returns 0 to
+    // go on, else the value Run() then returns (-1 quit, kLoadRequested).
+    // `random(n)` is 0..n-1. Not set: no encounters.
+    void			SetEncounterHandler(
+                        const std::function<int(GameWindow&, int, int)>& handler,
+                        const std::function<int(int)>& random)
+                        { fEncounterHandler = handler; fRandom = random; }
+    // The chance in a thousand, per step, of the base chance of the place
+    // (file 0x607E4: 3, 2 or 1 by the terrain, + the nearest place's weight,
+    // DARKLAND.LOC +0x0A), times the party's weariness + 1
+    int				EncounterChance(int terrain, int place) const;
+    // The place of DARKLAND.LOC nearest to the party (the bigger of the two
+    // distances plus half the smaller), or -1
+    int				NearestPlace() const;
+    // The weariness (DS:E488, 0..10) grows slowly (10 in 500 per step,
+    // file 0x5F0CC); a meeting resets it (*inferred*)
+    int				Weariness() const		{ return fWeariness; }
+
     // What the place adds to the danger of a camp (DARKLAND.EXE, file
     // 0x6005E; the party's size comes on top, 3 each): a city within 5
     // tiles, and the terrain under the party
@@ -141,6 +161,8 @@ private:
     std::function<bool(GameWindow&)> fLoadHandler;
     std::function<void(GameWindow&)> fOrderHandler;
     std::function<void(GameWindow&, int)> fCampHandler;
+    std::function<int(GameWindow&, int, int)> fEncounterHandler;
+    std::function<int(int)> fRandom;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;
@@ -155,6 +177,8 @@ private:
     std::vector<map_position> fPath;	// tiles still to walk, in order
     int				fDestinationPlace;	// place at the end of fPath, or -1
     int				fPlace;				// place the party reached, or -1
+    int				fWeariness;
+    int				fEncounterPlace;	// to meet at the next Run() step, or -1
 
     uint8			fBlack;
     uint8			fWhite;

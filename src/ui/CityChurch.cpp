@@ -534,6 +534,13 @@ CityVisit::_SaintsFor(int screen) const
     // Penafort, Wolfgang, Wenceslaus
     if (screen == SCREEN_FORTRESS || screen == SCREEN_TOWN_HALL)
         saints = { 5, 112, 134, 129 };
+    // the bandits (file 0x137C8D): the list's first five, and Saint
+    // Hubert in the forests (tile types 12..17)
+    if (screen >= SCREEN_BANDITS_WARNING && screen <= SCREEN_BANDITS_CHARGE) {
+        saints = { 101, 102, 54, 61, 131 };
+        if (fBanditsTerrain >= 12 && fBanditsTerrain <= 17)
+            saints.push_back(69);
+    }
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -750,6 +757,17 @@ CityVisit::_SaintAnswered(int screen, int index)
             return SCREEN_INNER_SAINT;
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_SAINT;			// card 8 (file 0xACA1A)
+        case SCREEN_BANDITS_WARNING:
+        case SCREEN_BANDITS_AMBUSH:
+        case SCREEN_BANDITS_SCOUTED:
+            // Saint Hubert, card 9; the others, a peace or a light at
+            // random (cards 7, 8; *inferred*), an hour
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            if (_SaintsFor(screen)[size_t(index)] == 69)
+                return SCREEN_BANDITS_HUBERT;
+            return fRandom() % 2 == 0 ? SCREEN_BANDITS_PEACE
+                : SCREEN_BANDITS_LIGHT;
         case SCREEN_TOWER:
         case SCREEN_FORT:
             // file 0x1005F3: an hour; the first three, card 15 and the
@@ -820,6 +838,11 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_BANDITS_WARNING:
+        case SCREEN_BANDITS_AMBUSH:
+        case SCREEN_BANDITS_SCOUTED:
+            fBanditsReturn = screen;
+            return SCREEN_BANDITS_UNANSWERED;		// card 6, as before
         case SCREEN_TOWER:
         case SCREEN_FORT:
             _Mark(kMarkTowerAsked, 6480);

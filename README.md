@@ -128,6 +128,8 @@ screen, sound, the other quests, and many places' options (they say
 - [x] The robber knight quest: the banks' task, the tower, the reward
 - [x] Random encounters in the city: thieves in the slum, the shell
       game
+- [x] Bandits on the map: the ambush, bluffing, saints, surrender,
+      sneaking, the fight and the reputation it gives
 - [x] The monastery: prayers, the library and the abbess (asking)
 - [ ] What happens in the other places (training, audiences...), the
       other quests

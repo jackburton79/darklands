@@ -1045,6 +1045,49 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_THIEVES_LEFT_FOR_DEAD, "CITYT00", 16, NULL, { DO(ACTION_THIEVES_RETURN) } },
     { CityVisit::SCREEN_THIEVES_THANKED, "CITYT00", 17, NULL, { DO(ACTION_THIEVES_RETURN) } },
     { CityVisit::SCREEN_THIEVES_BLESSED, "CITYT00", 18, NULL, { DO(ACTION_THIEVES_RETURN) } },
+    // The bandits of the map (states 0x102 and 0x103, files 0x137C26 and
+    // 0x138BD8; the soldiers' deck, MEETB02, has the same cards). The
+    // potion's options are not offered.
+    { CityVisit::SCREEN_BANDITS_MEET, "MEETB01", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_WARNING, "MEETB01", 0, NULL, {
+        DO(ACTION_BANDITS_IGNORE),			// press onward
+        DO(ACTION_BANDITS_TALK),
+        HIDE,								// a potion
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_BANDITS_SURRENDER),
+        DO(ACTION_BANDITS_SNEAK),
+        HIDE,
+        DO(ACTION_BANDITS_SCOUT)
+    } },
+    { CityVisit::SCREEN_BANDITS_AMBUSH, "MEETB01", 1, NULL, {
+        HIDE,
+        DO(ACTION_BANDITS_TALK),
+        HIDE,
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_BANDITS_SURRENDER),
+        HIDE,
+        DO(ACTION_BANDITS_FIGHT)
+    } },
+    { CityVisit::SCREEN_BANDITS_SCOUTED, "MEETB01", 14, NULL, {
+        DO(ACTION_BANDITS_CHARGE),			// bull forward
+        DO(ACTION_BANDITS_TALK),
+        HIDE,
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_BANDITS_SURRENDER),
+        DO(ACTION_BANDITS_SNEAK),
+        DO(ACTION_BANDITS_FIGHT)
+    } },
+    { CityVisit::SCREEN_BANDITS_TALKED, "MEETB01", 2, NULL, { LEAVE } },		// intimidated
+    { CityVisit::SCREEN_BANDITS_UNHEARD, "MEETB01", 3, NULL, { DO(ACTION_BANDITS_FIGHT) } },
+    { CityVisit::SCREEN_BANDITS_UNANSWERED, "MEETB01", 6, NULL, { DO(ACTION_BANDITS_RETURN) } },
+    { CityVisit::SCREEN_BANDITS_PEACE, "MEETB01", 7, NULL, { LEAVE } },		// a saint's peace
+    { CityVisit::SCREEN_BANDITS_LIGHT, "MEETB01", 8, NULL, { LEAVE } },		// a saint's light
+    { CityVisit::SCREEN_BANDITS_HUBERT, "MEETB01", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_SURRENDERED, "MEETB01", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_BEATEN, "MEETB01", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_ELUDED, "MEETB01", 12, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_LEFT_FOR_DEAD, "MEETB01", 13, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BANDITS_CHARGE, "MEETB01", 17, NULL, { DO(ACTION_BANDITS_FIGHT) } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },

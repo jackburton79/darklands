@@ -82,7 +82,8 @@ CityVisit::_RunBattle(GameWindow& window)
     view.SetMenuBar(fMenu);
     {
         std::unique_ptr<Catalog> maps(fData.OpenCatalog("IMAPS.CAT"));
-        const std::string name = "ICITY.00" + std::to_string(fRandom() % 4);
+        const std::string name = fBattleKind == BATTLE_WITH_BANDITS
+            ? _BanditsMap() : "ICITY.00" + std::to_string(fRandom() % 4);
         std::unique_ptr<Stream> stream(maps->GetStream(name));
         if (!stream)
             throw std::runtime_error("CityVisit: no map " + name);
@@ -90,12 +91,14 @@ CityVisit::_RunBattle(GameWindow& window)
             name);
     }
     for (size_t i = 0; i < fParty->members.size(); i++) {
-        int x = 12;
-        int y = 20;
+        // on the wilderness maps the party starts at the bottom left
+        int x = fBattleKind == BATTLE_WITH_BANDITS ? 6 : 12;
+        int y = fBattleKind == BATTLE_WITH_BANDITS ? 33 : 20;
         if (view.FindFreeCell(x, y)) {
             view.AddPartyMember(int(i), fParty->members[i], fParty->images[i],
                 i < fParty->colors.size() ? fParty->colors[i]
-                    : std::vector<uint8>(), x, y, 2);
+                    : std::vector<uint8>(), x, y,
+                fBattleKind == BATTLE_WITH_BANDITS ? 0 : 2);
         }
     }
     const EnemyFile& enemies = fData.Enemies();
@@ -104,13 +107,13 @@ CityVisit::_RunBattle(GameWindow& window)
         const int variants = std::max(1, int(enemies.TypeAt(first).variants));
         const uint32 type = first + uint32(std::min(group.variant, variants - 1));
         for (int i = 0; i < group.count; i++) {
-            int x = 20;
-            int y = 20;
+            int x = fBattleKind == BATTLE_WITH_BANDITS ? 33 : 20;
+            int y = fBattleKind == BATTLE_WITH_BANDITS ? 6 : 20;
             if (view.FindFreeCell(x, y))
-                view.AddEnemy(type, x, y, 6);
+                view.AddEnemy(type, x, y, fBattleKind == BATTLE_WITH_BANDITS ? 4 : 6);
         }
     }
-    view.Scroll(0, 12);
+    view.Scroll(0, fBattleKind == BATTLE_WITH_BANDITS ? BattleMap::kSize : 12);
     const battle_outcome outcome = view.Run(window);
 
     // the wounded keep their wounds, the dead leave the party; with
@@ -172,6 +175,10 @@ CityVisit::ResolveBattle(int outcome)
     }
     if (fBattleKind == BATTLE_WITH_KNIGHTS_MEN) {
         _Show(_ResolveMenBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_WITH_BANDITS) {
+        _Show(_ResolveBanditsBattle(outcome));
         return;
     }
     if (fBattleKind == BATTLE_WITH_THIEVES) {

@@ -350,6 +350,22 @@ public:
         SCREEN_THIEVES_LEFT_FOR_DEAD,	// thanks (17, 18); the party
         SCREEN_THIEVES_THANKED,	// beaten and robbed (16)
         SCREEN_THIEVES_BLESSED,
+        SCREEN_BANDITS_MEET,	// $MEETB01 / $MEETB02, the bandits met on the
+                                // map (SetBandits()): the start
+        SCREEN_BANDITS_WARNING,	// a warning (card 0)
+        SCREEN_BANDITS_AMBUSH,	// the ambush (1)
+        SCREEN_BANDITS_TALKED,	// talked out of it (2)
+        SCREEN_BANDITS_UNHEARD,	// or not (3)
+        SCREEN_BANDITS_UNANSWERED,	// a prayer unanswered (6)
+        SCREEN_BANDITS_PEACE,	// answered (7, 8: a saint's peace or light,
+        SCREEN_BANDITS_LIGHT,	// 9: Saint Hubert)
+        SCREEN_BANDITS_HUBERT,
+        SCREEN_BANDITS_SURRENDERED,	// the surrender (10)
+        SCREEN_BANDITS_BEATEN,	// the bandits beaten (11)
+        SCREEN_BANDITS_ELUDED,	// eluded (12)
+        SCREEN_BANDITS_LEFT_FOR_DEAD,	// the party beaten (13)
+        SCREEN_BANDITS_SCOUTED,	// the scouting (14)
+        SCREEN_BANDITS_CHARGE,	// the charge (17)
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
         SCREEN_SHELL_LOST_RIGHT,	// pea under the right-hand (1), middle
         SCREEN_SHELL_LOST_MIDDLE,	// (2) or left-hand shell (3), the
@@ -459,6 +475,13 @@ public:
     // the difficulty changes the fame of a task done
     void			SetSettings(const game_settings* settings)
                         { fSettings = settings; }
+    // The bandits of the map (a state 0x102 or 0x103 of the game): the
+    // soldiers' deck or the bandits', and the tile type under the party
+    // (for the saints and the battlefield). Enter(place, SCREEN_BANDITS_MEET)
+    // then starts the encounter; `place` is the nearest place of the map,
+    // whose reputation it changes.
+    void			SetBandits(bool soldiers, int terrain)
+                        { fBanditsSoldiers = soldiers; fBanditsTerrain = terrain; }
     // The members who retired, waiting in the cities (not owned; NULL: none)
     void			SetRetired(std::vector<retired_member>* retired)
                         { fRetired = retired; }
@@ -804,6 +827,12 @@ private:
     int				_RunFromThieves();
     void			_FightThieves();
     int				_ResolveThievesBattle(int outcome);
+    int				_MeetBandits();
+    int				_BanditsTalk();
+    int				_BanditsSneak();
+    void			_FightBandits();
+    int				_ResolveBanditsBattle(int outcome);
+    std::string		_BanditsMap();
     void			_Robbed();
     bool			_FeastNear() const;
     int				_PlayShells(int shell);
@@ -884,6 +913,7 @@ private:
         BATTLE_WITH_KNIGHT,
         BATTLE_WITH_KNIGHTS_MEN,
         BATTLE_WITH_THIEVES,
+        BATTLE_WITH_BANDITS,
         BATTLE_AT_SANCTUARY
     };
     struct foes {
@@ -935,6 +965,9 @@ private:
                                     // -1 the map
     bool			fSlumCamp;		// the pending residence is in the slum
     int				fThievesReturn;	// where the thieves' cards end
+    bool			fBanditsSoldiers;	// MEETB02, not MEETB01
+    int				fBanditsTerrain;	// the tile type under the party
+    int				fBanditsReturn;	// where an unanswered prayer leads back
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall

@@ -1784,7 +1784,8 @@ their content comes from the game's events. **verified** (code)
   territory: the state +0x0E (the castles' 0x92, the robber knight's
   land, $RAUBI02); else a random encounter (file 0x5E1DB: the dragon's
   and other events', then by the terrain, DS:D843). **verified**
-  (code); the encounters are not reproduced.
+  (code); the bandits' encounters are (see "Bandits on the map"), the
+  others are not.
 
 ## Camping in the wilderness
 
@@ -1843,6 +1844,49 @@ encounters.
   saint answered (2) or not (6), the ambush laid (3) or botched (4),
   the fight won (7), the escape (8, 10) or the defeat (9). The states' own code (overlay
   at file 0x17AF90..) is not decoded.
+
+## Bandits on the map
+
+The random meeting of the map's step (see "Places" above) can be the
+bandits' ambush: states 0x102 ($MeetB01, "bandits", file 0x137C26) and
+0x103 ($MeetB02, "bandit-soldiers", file 0x138BD8; the same cards and
+code), the only way the party's reputation goes up without the cities.
+
+- **The meeting** (the step at file 0x5EDA0): water (tile types 1 and 2)
+  never; DS:E488 grows by one if random(500) <= 9 (up to 10); a meeting
+  if random(1000) <= (DS:E488 + 1) · chance, the chance being file
+  0x607E4: 3 for tile types 4, 5, 16, 17, 20, 21, 2 for 6, 7, 14, 15, 18,
+  19, 22, 23, else 1, plus the nearest place's word +0x0A (1, 5, 9 or 10
+  in DARKLAND.LOC). **verified** (code). Which meeting it is (a table by
+  tile type, the choosers at file 0x5E1DB..) is not decoded: the program
+  takes half of them for the bandits, the soldiers' deck at random, and
+  resets DS:E488 after a meeting (*inferred*).
+- **The cards** (verified from the decks, the options by position, as in
+  the thieves': a placeholder holds its place): card 0 (a member's
+  Perception warned the party: $ChosenOneName is the best one) offers
+  press onward (the ambush, card 1), bluff, a potion, a saint, surrender,
+  sneak away and scout (card 14, an hour; which then has a charge, 17).
+  Card 1, the ambush, offers bluff, a potion, a saint, surrender and the
+  fight. 2 bluffed, 3 not (the fight), 4/5 the potion, 6 a prayer
+  unanswered, 7/8/9 answered (9 is Saint Hubert's), 10 the surrender
+  (stripped of arms, armor and valuables), 11 the bandits beaten, 12
+  eluded, 13 the party beaten (robbed), 15/16 members left behind
+  (not reproduced).
+- **The saints** (file 0x137C8D, *verified*): 101, 102, 54, 61 and 131,
+  and 69 (Hubert) when the tile type under the party is 12..17.
+- **The fight** (file 0x137E50, 0E76:2278): enemy 7 (the bandits) and a
+  leader, enemy 0x12 (a brigand sergeant) or 0x16 (a robber captain);
+  a win calls 0E76:19D0(nearest place, 0, 5): the reputation of the
+  *nearest place* rises (by chance 100 − |reputation| %), which is what
+  makes the places' lords and banks offer tasks. The camp's ambushes
+  ($CampB00 and $CampJ00) do not change it.
+- **Not decoded, *inferred* in the program**: the Perception chance of
+  the warning (as the thieves'), the bluff's chance (the leader's
+  Charisma + Speak Common), the sneaking's (the party's average of
+  Stealth and Woodwise), the number of bandits (the party's size + 0..2,
+  at most 8; the party's strength 09C0:1C1B is not known), the wilderness
+  map (IWILDGEN.101..106, 111..116), the loss's reputation (−2..−1),
+  the potions (not offered) and the members left behind.
 
 ## The church
 

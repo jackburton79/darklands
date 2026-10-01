@@ -153,9 +153,14 @@ Game::Run()
     visit.SetInfoView(&info);
     map.SetInfoView(&info);
     int cityIndex = fCity;
+    bool meeting = false;		// the bandits of the map are on
     // Ctrl+S: in a city the game goes on at the inn; at another place,
     // at its arrival
     visit.SetSaveHandler([&](GameWindow& window) {
+        if (meeting) {
+            _SaveDialog(window, -1, map.PartyPosition(), 0x0C);
+            return;
+        }
         const location& here = fData.Locations().LocationAt(uint32(cityIndex));
         const bool city = uint32(cityIndex) < fData.Cities().CountCities();
         _SaveDialog(window, cityIndex, map_position{ here.x, here.y },
@@ -202,6 +207,27 @@ Game::Run()
         camp.SetCamp(3 * int(fParty.members.size()) + terrain);
         camp.Run(where);
     });
+    // The meetings on the way (the hazard is MapViewer's): half of them
+    // are the bandits of states 0x102 and 0x103 (*inferred*: the game's
+    // other meetings are not done), the reputation of the nearest place
+    // is what a win raises
+    map.SetEncounterHandler([&](GameWindow& where, int place, int terrain) {
+        if (fRandom() % 2 == 0)
+            return 0;
+        visit.SetBandits(fRandom() % 2 == 0, terrain);
+        meeting = true;
+        const CityVisit::result result = visit.Run(where, place,
+            CityVisit::SCREEN_BANDITS_MEET);
+        meeting = false;
+        if (result == CityVisit::LOAD_GAME)
+            return MapViewer::kLoadRequested;
+        if (result == CityVisit::PARTY_LOST) {
+            std::cout << "The whole party has died: the game is over."
+                << std::endl;
+            return -1;
+        }
+        return result == CityVisit::QUIT ? -1 : 0;
+    }, [this](int n) { return int(fRandom() % uint32(n)); });
     visit.SetOrderHandler(order);
     map.SetOrderHandler(order);
     visit.SetLoadHandler(load);

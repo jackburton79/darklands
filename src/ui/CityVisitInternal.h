@@ -157,6 +157,14 @@ enum option_action {
     ACTION_THIEVES_RUN,
     ACTION_THIEVES_FIGHT,
     ACTION_THIEVES_RETURN,		// back where the party was (DS:E7D8)
+    ACTION_BANDITS_IGNORE,		// the bandits of the map: press onward
+    ACTION_BANDITS_TALK,
+    ACTION_BANDITS_SURRENDER,
+    ACTION_BANDITS_SNEAK,
+    ACTION_BANDITS_SCOUT,
+    ACTION_BANDITS_CHARGE,
+    ACTION_BANDITS_FIGHT,
+    ACTION_BANDITS_RETURN,		// after a prayer unanswered
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,

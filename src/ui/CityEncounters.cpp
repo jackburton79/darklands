@@ -239,6 +239,122 @@ CityVisit::_Robbed()
 }
 
 
+// The bandits of the map (states 0x102, 0x103, files 0x137C26 and
+// 0x138BD8; the same code for both, in MEETB01 / MEETB02). Like the
+// thieves, they are met in ambush (card 1) unless a member's Perception
+// (the best one, as above) warns the party (card 0): *inferred* from the
+// thieves, the chance is not decoded.
+int
+CityVisit::_MeetBandits()
+{
+    fBanditsReturn = SCREEN_BANDITS_WARNING;
+    int best = 0;
+    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
+        if (fParty->members[i].attributes[ATTRIBUTE_PERCEPTION]
+                > fParty->members[size_t(best)].attributes[ATTRIBUTE_PERCEPTION])
+            best = int(i);
+    }
+    const int perception = fParty != NULL && !fParty->members.empty()
+        ? fParty->members[size_t(best)].attributes[ATTRIBUTE_PERCEPTION] : 0;
+    _SetChosen(best);
+    return int(fRandom() % 100) > perception ? SCREEN_BANDITS_AMBUSH
+        : SCREEN_BANDITS_WARNING;
+}
+
+
+// Bluffing (*inferred*): if random(100) is at most the leader's Charisma
+// + Speak Common, the bandits leave (card 2, a lesson in Speak Common,
+// an hour); else card 3 and the fight
+int
+CityVisit::_BanditsTalk()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_BANDITS_UNHEARD;
+    character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = leader.attributes[ATTRIBUTE_CHARISMA]
+        + leader.skills[kSkillSpeakCommon];
+    if (int(fRandom() % 100) > chance)
+        return SCREEN_BANDITS_UNHEARD;
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    TrainSkill(leader, kSkillSpeakCommon, 10, random);
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_BANDITS_TALKED;
+}
+
+
+// Sneaking away (*inferred*): if random(100) is at most the party's
+// average Stealth and Woodwise, card 12 and two hours; else the bandits
+// notice (the charge, card 17)
+int
+CityVisit::_BanditsSneak()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_BANDITS_CHARGE;
+    int total = 0;
+    for (const character& member : fParty->members)
+        total += (member.skills[kSkillStealth] + member.skills[kSkillWoodwise]) / 2;
+    if (int(fRandom() % 100) > total / int(fParty->members.size()))
+        return SCREEN_BANDITS_CHARGE;
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    return SCREEN_BANDITS_ELUDED;
+}
+
+
+// The fight (file 0x137E50, 0E76:2278): enemy 7 (the bandits) with a
+// leader, enemy 0x12 (a brigand sergeant) for MEETB01 and 0x16 (a robber
+// captain) for MEETB02 (the card's soldiers); how many (the party's
+// strength, 09C0:1C1B) is not decoded: the party's size and up to two
+// more, at most 8
+void
+CityVisit::_FightBandits()
+{
+    fFoes.clear();
+    const int size = fParty != NULL ? int(fParty->members.size()) : 1;
+    const int count = std::max(3, std::min(8, size + int(fRandom() % 3)));
+    fFoes.push_back(foes{ 7, fBanditsSoldiers ? 2 : 1, count });
+    fFoes.push_back(foes{ fBanditsSoldiers ? 0x16 : 0x12, 1, 1 });
+    fBattleKind = BATTLE_WITH_BANDITS;
+    fPendingBattle = true;
+}
+
+
+// Won (file 0x137F80): the reputation of the nearest place up by 1..5
+// (0E76:19D0(place, 0, 5)), card 11; fled, card 12; lost, the party
+// robbed, the reputation down by 1..2 (*inferred*, as the thieves), two
+// hours, card 13
+int
+CityVisit::_ResolveBanditsBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        _ChangeReputation(1, 5);
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_BANDITS_BEATEN;
+    }
+    if (outcome != BATTLE_LOST)
+        return SCREEN_BANDITS_ELUDED;
+    _ChangeReputation(-2, -1);
+    _Robbed();
+    if (fClock != NULL)
+        fClock->AddHours(2);
+    return SCREEN_BANDITS_LEFT_FOR_DEAD;
+}
+
+
+// The battlefield (the wilderness maps of IMAPS.CAT, IWILDGEN.1xx; which
+// one the game picks is not decoded)
+std::string
+CityVisit::_BanditsMap()
+{
+    static const int kMaps[12] = { 101, 102, 103, 104, 105, 106, 111, 112,
+        113, 114, 115, 116 };
+    return "IWILDGEN." + std::to_string(kMaps[fRandom() % 12]);
+}
+
+
 // The city's feast near (0E76:1A8E(location, 0x23)): within 14 days of
 // its day (DARKLAND.CTY +0x6C), counted from the first of this month
 bool
