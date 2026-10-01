@@ -193,6 +193,16 @@ main (0x06/0x08) and side streets. The church's "talk to a priest"
 leads to CLERI00 (0x6F), sanctuary to state 0x81, the inn's "the
 composition of your party" to state 0xAA.
 
+The options of a state are enabled (1), hidden (0) or disabled (2) by ten
+words at DS:EE76..EE88, set when the state starts and changed by its
+conditions; the cards have options the game never shows, hidden here too:
+the fortress (state 0x1B, file 0xA4B0E) offers the audience, the clerk
+and the saint (the dungeon's options, which the card has, stay hidden),
+at night (0x1C, file 0xA6240) only its two ways out, the bribes of $Money1
+and $Money2 never being offered; the town hall (0x2B, file 0xB1A98) does
+not offer the weapons training, and at night (0x2C, file 0xB3446) only
+the square and its ways out. **verified** (code)
+
 ## Names and random numbers
 
 - 06A1:29A4 `srand`, 06A1:29B6 `rand` (Microsoft C: seed = seed ·

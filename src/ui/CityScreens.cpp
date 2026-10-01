@@ -228,9 +228,13 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_SIDE_STREET)
     } },
     // "Looming overhead are the great battlements of the $fortress..."
+    // (DARKLAND.EXE, state 0x1B, file 0xA4B0E: it shows the audience, the
+    // clerk and the saint; the dungeon's options, which the card also
+    // has, are always hidden)
     { CityVisit::SCREEN_FORTRESS, "CITYF00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// audience, clerk, saint, dungeon
-        TODO, TODO, TODO,					// placeholders
+        TODO, TODO, TODO,					// audience, clerk, saint
+        HIDE, HIDE,							// the dungeon: prisoners, in
+        HIDE, HIDE, HIDE,					// placeholders
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -292,9 +296,10 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_SIDE_STREET)
     } },
     // "The entrance... of the $councilHall for $PlaceName is well guarded."
+    // (state 0x2B, file 0xB1A98: the weapons training is never offered)
     { CityVisit::SCREEN_TOWN_HALL, "COUNC00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO,	// audience, clerk, dungeon...
-        TODO, TODO,							// placeholders
+        TODO, TODO, TODO, TODO, TODO,		// audience, clerk, saint, dungeon
+        HIDE, HIDE, HIDE,					// training, placeholders
         GO_IF(SCREEN_SQUARE, CITY_SQUARE),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -1058,9 +1063,12 @@ static const screen_rules kNightScreens[] = {
         GO(SCREEN_SIDE_STREET)
     } },
     // "Flickering torchlight highlights the stone walls of the $fortress"
+    // (state 0x1C, file 0xA6240: all its options but the two ways out are
+    // hidden, the bribes of $Money1 and $Money2 are never offered)
     { CityVisit::SCREEN_FORTRESS, "CITYF01", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO,	// bribes, dungeon...
-        TODO, TODO,							// placeholders
+        HIDE, HIDE, HIDE, HIDE,				// bribes, talk, saint,
+        HIDE, HIDE,							// sneak, potion
+        HIDE, HIDE,							// placeholders
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -1102,10 +1110,11 @@ static const screen_rules kNightScreens[] = {
         HIDE,								// sneak in (not offered)
         GO(SCREEN_CHURCHES)					// go elsewhere
     } },
-    // "The $councilHall doors are locked..."
+    // "The $councilHall doors are locked..." (state 0x2C, file 0xB3446: its
+    // bribes, as the fortress's, are never offered)
     { CityVisit::SCREEN_TOWN_HALL, "COUNC01", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO,	// bribes, dungeon...
-        TODO,								// placeholder
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,	// bribes, dungeon...
+        HIDE,								// placeholder
         GO_IF(SCREEN_SQUARE, CITY_SQUARE),
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
