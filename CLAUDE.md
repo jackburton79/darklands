@@ -139,8 +139,9 @@ include path: include headers by name (`#include "CityFile.h"`).
   `SetMenuBar()`. `Game` owns it and the settings, and loads games.
 - `PartySelectView`: the party selection screen (CRETSCR3.PIC), used by
   `Game` (`--select`) and by `CityVisit` at the inn; "Create a Character"
-  opens `CreationView` (not at the inn). CRETSCRN.PIC, with eleven
-  buttons (heraldry, image, colors), is another party screen: not done.
+  opens `CreationView` (not at the inn). `SetSheet(true)` gives CRETSCRN.PIC's
+  eleven buttons (heraldry, image, three colors: `PartyColors`), a new
+  game's screen.
 - `CharacterCreation` (`src/game/`): the rules of the life simulation
   (six family backgrounds, 37 occupations, EPs on attributes and skills,
   which occupations are offered, what they give); `CreationView` shows

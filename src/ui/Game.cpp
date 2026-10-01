@@ -291,6 +291,7 @@ Game::Run()
     GameWindow window("Darklands");
     if (fSelectParty) {
         PartySelectView select(fData);
+        select.SetSheet(true);
         select.SetInfoView(&info);
         select.SetRoster(PartySelectView::MakeRoster(fParty, fRetired,
             PartySelectView::kEverywhere), false);

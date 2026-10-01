@@ -52,7 +52,8 @@ What works so far:
 - **The party**: the Quickstart characters or a saved game, the
   information screens (F1..F6) with the **equipment** scroll (ready, unready, drop, give), the party recovering as time passes;
   **saving** and loading in the original's format; the **party selection**
-  screen (`--select`, and at the inn); the **creation of a character**,
+  screen (`--select`, and at the inn) with the new game's heraldry, image
+  and colors; the **creation of a character**,
   living his life (`--create`, or "Create a Character"); the game's **menu
   bar** (right mouse button, or F10), with the Game and Party menus.
 - **Tools** for the data: browse and export the images (`.PIC`,
@@ -283,7 +284,7 @@ src/ui/             Screens and drawing
   City*.cpp         The rest of CityVisit by subject: Church, Services,
                     Gate, Guards, Prison, World, Quests, Encounters
   CardView.*        A menu card on screen: frame, text, options
-  PartySelectView.* The party selection screen: the characters, 8 buttons
+  PartySelectView.* The party selection screens: the characters, 8 or 11 buttons
   CreationView.*    The creation of a character: the life simulation
   InfoView.*        The party and character information screens
   PartySidebar.*    The character boxes on the left of the screens

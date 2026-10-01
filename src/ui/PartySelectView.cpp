@@ -11,6 +11,7 @@
 #include "InfoView.h"
 #include "PICImage.h"
 #include "Palette.h"
+#include "PartyColors.h"
 #include "ScreenSupport.h"
 #include "TextSupport.h"
 
@@ -40,16 +41,43 @@ static const int kPartyLeft			= 5;
 static const int kPartyTop			= 6;
 static const int kPartyWidth		= 52;
 
-// The buttons' texts (DARKLAND.EXE, 290E:1E8A.., a 0xFF and the letters
-// after the first, which is the key) in the manual's order
+// The buttons' texts (DARKLAND.EXE, 290E:1E8A.. and the far strings
+// 290E:1D43 40, 39, 103, 65, 100..102, 42, 58, 43, 44: a 0xFF and the
+// letters after the first, which is the key), by action
 static const char* kLabels[PartySelectView::ACTION_COUNT] = {
     "Create a Character", "Examine a Character", "Add to the Party",
     "Delete from the Party", "Select Character Image", "Kill a Character",
-    "Begin the Adventure", "Return to Main Menu"
+    "Begin the Adventure", "Return to Main Menu", "Heraldry", "1st color",
+    "2nd color", "3rd color"
 };
 static const char kKeys[PartySelectView::ACTION_COUNT] = {
-    'C', 'E', 'A', 'D', 'S', 'K', 'B', 'R'
+    'C', 'E', 'A', 'D', 'S', 'K', 'B', 'R', 'H', '1', '2', '3'
 };
+// The buttons from the top: CRETSCR3.PIC's eight, CRETSCRN.PIC's eleven
+static const PartySelectView::action kInnSlots[8] = {
+    PartySelectView::ACTION_CREATE, PartySelectView::ACTION_EXAMINE,
+    PartySelectView::ACTION_ADD, PartySelectView::ACTION_DELETE,
+    PartySelectView::ACTION_IMAGE, PartySelectView::ACTION_KILL,
+    PartySelectView::ACTION_BEGIN, PartySelectView::ACTION_RETURN
+};
+static const PartySelectView::action kSheetSlots[11] = {
+    PartySelectView::ACTION_CREATE, PartySelectView::ACTION_ADD,
+    PartySelectView::ACTION_HERALDRY, PartySelectView::ACTION_IMAGE,
+    PartySelectView::ACTION_COLOR1, PartySelectView::ACTION_COLOR2,
+    PartySelectView::ACTION_COLOR3, PartySelectView::ACTION_DELETE,
+    PartySelectView::ACTION_KILL, PartySelectView::ACTION_BEGIN,
+    PartySelectView::ACTION_RETURN
+};
+// CRETSCRN.PIC: the buttons, 15 pixels apart from y 24 (the overlay's hit
+// test is y 25..190); the party's boxes at the left, 40 pixels each, and
+// the highlighted member's picture below them
+static const int kSheetButtonTop	= 24;
+static const int kBoxHeight			= 40;
+static const int kBoxLeft			= 2;
+static const int kBoxWidth			= 56;
+static const int kPortraitLeft		= 12;
+static const int kPortraitTop		= 164;
+static const int kFirstFigureColor	= 235;	// the sprites' own 8 colors
 
 
 static bool
@@ -129,13 +157,15 @@ PartySelectView::PartySelectView(GameData& data)
     fTop(0),
     fHot(-1),
     fPressed(-1),
+    fSheet(false),
+    fColorStep(0),
     fRandom(std::random_device()())
 {
-    memset(fPalette.colors, 0, sizeof(fPalette.colors));
-    for (int i = 0; i < 256; i++)
-        fPalette.colors[i].r = fPalette.colors[i].g = fPalette.colors[i].b = uint8(i);
+    fPalette = PICImage::EGAPalette();
     fFont.reset(new Font(fData.Fonts(), kFontIndex));
     fBackground = _LoadPicture("CRETSCR3.PIC", &fPalette);
+    GFX::Palette sheetPalette = PICImage::EGAPalette();
+    fSheetBackground = _LoadPicture("CRETSCRN.PIC", &sheetPalette);
     fButton = _LoadPicture("BUTTNCR1.PIC");
     fButtonLit = _LoadPicture("BUTTNCR2.PIC");
     fBuffer = new Bitmap(kScreenWidth, kScreenHeight, 8);
@@ -237,6 +267,44 @@ PartySelectView::Select(int index)
 }
 
 
+void
+PartySelectView::SetSheet(bool sheet)
+{
+    fSheet = sheet;
+    fHot = -1;
+    // the new screen's own colors
+    if (sheet) {
+        GFX::Palette palette = PICImage::EGAPalette();
+        FileStream stream(fData.PathFor("CRETSCRN.PIC").c_str(),
+            FileStream::READ_ONLY);
+        PICImage image(&stream);
+        image.ApplyPalette(palette);
+        for (int i = 0; i < kFirstFigureColor; i++)
+            fPalette.colors[i] = palette.colors[i];
+    } else {
+        FileStream stream(fData.PathFor("CRETSCR3.PIC").c_str(),
+            FileStream::READ_ONLY);
+        PICImage image(&stream);
+        image.ApplyPalette(fPalette);
+    }
+    fBuffer->SetColors(fPalette.colors, 0, 256);
+    fBlack = NearestColor(fPalette, 16, 16, 16);
+    fWhite = NearestColor(fPalette, 255, 255, 255);
+    fCrimson = NearestColor(fPalette, 200, 16, 40);
+    fDim = NearestColor(fPalette, 110, 110, 110);
+    fMark = NearestColor(fPalette, 24, 120, 40);
+}
+
+
+PartySelectView::action
+PartySelectView::ButtonAction(int slot) const
+{
+    if (slot < 0 || slot >= ButtonCount())
+        return ACTION_NONE;
+    return fSheet ? kSheetSlots[slot] : kInnSlots[slot];
+}
+
+
 bool
 PartySelectView::IsEnabled(action what) const
 {
@@ -245,9 +313,15 @@ PartySelectView::IsEnabled(action what) const
         case ACTION_CREATE:
             return !fInCity;
         case ACTION_IMAGE:
-            return false;				// not reproduced
+        case ACTION_HERALDRY:
+        case ACTION_COLOR1:
+        case ACTION_COLOR2:
+        case ACTION_COLOR3:
+            // a member of the party (DARKLAND.EXE looks him up among the
+            // five slots); the inn's screen has no such buttons
+            return chosen && fRoster[size_t(fSelected)].inParty && !fInCity;
         case ACTION_EXAMINE:
-            return chosen && fInfo != NULL;
+            return chosen && fInfo != NULL && !fSheet;
         case ACTION_ADD:
             return chosen && !fRoster[size_t(fSelected)].inParty
                 && CountInParty() < kMaxParty;
@@ -300,6 +374,29 @@ PartySelectView::Do(action what, GameWindow* window)
             fRoster.erase(fRoster.begin() + long(chosen));
             Select(std::min(fSelected, int(fRoster.size()) - 1));
             return true;
+        case ACTION_HERALDRY: {
+            // the next shield, 'A'..'O' (the byte goes up, from 'P' back to
+            // 'A', file 0x73290)
+            char& shield = fRoster[chosen].member.heraldry;
+            shield = (shield < 'A' || shield >= 'O') ? 'A' : char(shield + 1);
+            return true;
+        }
+        case ACTION_IMAGE: {
+            // the next of the game's four pictures
+            roster_entry& entry = fRoster[chosen];
+            entry.image = ImageCode((ImageIndex(entry.image) + 1) % kImageCount);
+            return true;
+        }
+        case ACTION_COLOR1:
+        case ACTION_COLOR2:
+        case ACTION_COLOR3: {
+            // one of six presets, the step shared by the three keys and
+            // the members (DS:E890, 0..5, going up before it is used)
+            fColorStep = (fColorStep + 1) % 6;
+            roster_entry& entry = fRoster[chosen];
+            return ApplyColorPreset(entry.colors, int(what) - ACTION_COLOR1 + 1,
+                entry.image, fColorStep);
+        }
         case ACTION_BEGIN:
         case ACTION_RETURN:
             return true;
@@ -356,9 +453,10 @@ PartySelectView::_Examine(GameWindow* window)
 
 
 GFX::rect
-PartySelectView::ButtonRect(int index) const
+PartySelectView::ButtonRect(int slot) const
 {
-    return GFX::rect(kButtonLeft, kButtonTop + index * kButtonPitch,
+    return GFX::rect(kButtonLeft,
+        (fSheet ? kSheetButtonTop : kButtonTop) + slot * kButtonPitch,
         kButtonWidth, kButtonHeight);
 }
 
@@ -372,22 +470,39 @@ PartySelectView::NameRect(int row) const
 
 
 const char*
-PartySelectView::ButtonLabel(int index) const
+PartySelectView::ButtonLabel(int slot) const
 {
-    return index >= 0 && index < ACTION_COUNT ? kLabels[index] : "";
+    const action what = ButtonAction(slot);
+    if (what == ACTION_NONE)
+        return "";
+    if (fSheet && what == ACTION_KILL)
+        return "Kill character";
+    return kLabels[what];
 }
 
 
 int
 PartySelectView::_ButtonAt(const GFX::point& point) const
 {
-    for (int i = 0; i < ACTION_COUNT; i++) {
+    for (int i = 0; i < ButtonCount(); i++) {
         const GFX::rect box = ButtonRect(i);
         if (point.x >= box.x && point.x < box.x + box.w && point.y >= box.y
                 && point.y < box.y + box.h)
             return i;
     }
     return -1;
+}
+
+
+// The party's box at a point of the left strip (the new game's screen)
+int
+PartySelectView::_MemberBoxAt(const GFX::point& point) const
+{
+    if (!fSheet || point.x < kBoxLeft || point.x >= kBoxLeft + kBoxWidth
+            || point.y < 0 || point.y >= kBoxHeight * kMaxParty)
+        return -1;
+    const int member = point.y / kBoxHeight;
+    return member < CountInParty() ? member : -1;
 }
 
 
@@ -421,11 +536,18 @@ PartySelectView::Clicked(const GFX::point& point, GameWindow* window)
         Select(name);
         return ACTION_NONE;
     }
-    const int button = _ButtonAt(point);
-    if (button < 0 || !IsEnabled(action(button)))
+    // a member of the party: his colors are shown (file 0x723FD)
+    const int box = _MemberBoxAt(point);
+    if (box >= 0) {
+        Select(box);
         return ACTION_NONE;
-    Do(action(button), window);
-    return action(button);
+    }
+    const int slot = _ButtonAt(point);
+    const action what = ButtonAction(slot);
+    if (what == ACTION_NONE || !IsEnabled(what))
+        return ACTION_NONE;
+    Do(what, window);
+    return what;
 }
 
 
@@ -446,10 +568,16 @@ PartySelectView::KeyPressed(int key, GameWindow* window)
     } else if (key == SDLK_RETURN || key == SDLK_KP_ENTER) {
         if (fSelected >= 0 && fSelected < int(fRoster.size()))
             chosen = fRoster[size_t(fSelected)].inParty ? ACTION_DELETE : ACTION_ADD;
-    } else if (key >= SDLK_a && key <= SDLK_z) {
-        for (int i = 0; i < ACTION_COUNT; i++) {
-            if (kKeys[i] == char('A' + key - SDLK_a))
-                chosen = action(i);
+    } else {
+        char letter = 0;
+        if (key >= SDLK_a && key <= SDLK_z)
+            letter = char('A' + key - SDLK_a);
+        else if (key >= SDLK_1 && key <= SDLK_3)
+            letter = char('1' + key - SDLK_1);
+        for (int slot = 0; letter != 0 && slot < ButtonCount(); slot++) {
+            const action what = ButtonAction(slot);
+            if (kKeys[what] == letter)
+                chosen = what;
         }
     }
     if (chosen == ACTION_NONE || !IsEnabled(chosen))
@@ -459,10 +587,91 @@ PartySelectView::KeyPressed(int key, GameWindow* window)
 }
 
 
+const PartySelectView::raw_picture*
+PartySelectView::_Picture(const std::string& name)
+{
+    std::map<std::string, raw_picture>::const_iterator found
+        = fPictures.find(name);
+    if (found == fPictures.end()) {
+        raw_picture picture;
+        picture.width = picture.height = 0;
+        try {
+            picture = _LoadPicture(name + ".PIC");
+        } catch (const std::exception&) {
+        }
+        found = fPictures.insert(std::make_pair(name, picture)).first;
+    }
+    return found->second.width > 0 ? &found->second : NULL;
+}
+
+
+// The party's boxes (the new game's screen): the number and the nickname,
+// the figure (<image>STAT.PIC) and the shield (SHIELD<letter>.PIC, 11 x 19)
+void
+PartySelectView::_DrawParty()
+{
+    int line = 0;
+    for (const roster_entry& entry : fRoster) {
+        if (!entry.inParty)
+            continue;
+        const int top = line * kBoxHeight;
+        const bool selected = fSelected >= 0 && fSelected < int(fRoster.size())
+            && &fRoster[size_t(fSelected)] == &entry;
+        _Text(std::to_string(line + 1) + " " + entry.member.shortName,
+            kBoxLeft + 3, top + 3, selected ? fWhite : fBlack, kBoxWidth - 4);
+        if (const raw_picture* figure = _Picture(entry.image + "STAT"))
+            _DrawPicture(*figure, kBoxLeft + 6, top + 16);
+        const std::string shield = std::string("SHIELD")
+            + (entry.member.heraldry >= 'A' && entry.member.heraldry <= 'O'
+                ? entry.member.heraldry : 'A');
+        if (const raw_picture* picture = _Picture(shield))
+            _DrawPicture(*picture, kBoxLeft + 30, top + 16);
+        line++;
+    }
+}
+
+
+// The highlighted member's picture, in his colors: the 8 palette entries
+// 235..242 are his (6-bit RGB triplets); a picture's index 0 is clear
+void
+PartySelectView::_DrawPortrait()
+{
+    if (fSelected < 0 || fSelected >= int(fRoster.size())
+            || !fRoster[size_t(fSelected)].inParty)
+        return;
+    const roster_entry& entry = fRoster[size_t(fSelected)];
+    const raw_picture* picture = _Picture(entry.image + "SMALL");
+    if (picture == NULL)
+        return;
+    for (int i = 0; i < 8; i++) {
+        GFX::Color& color = fPalette.colors[kFirstFigureColor + i];
+        if (size_t(3 * i + 2) < entry.colors.size()) {
+            const uint8* rgb = &entry.colors[size_t(3 * i)];
+            color.r = uint8((rgb[0] << 2) | (rgb[0] >> 4));
+            color.g = uint8((rgb[1] << 2) | (rgb[1] >> 4));
+            color.b = uint8((rgb[2] << 2) | (rgb[2] >> 4));
+        } else {
+            color.r = color.g = color.b = uint8(64 + 16 * i);
+        }
+    }
+    fBuffer->SetColors(fPalette.colors, 0, 256);
+    for (int row = 0; row < picture->height; row++) {
+        for (int column = 0; column < picture->width; column++) {
+            const uint8 pixel = picture->pixels[size_t(row) * picture->width
+                + column];
+            if (pixel != 0) {
+                fBuffer->PutPixel(kPortraitLeft + column, kPortraitTop + row,
+                    pixel);
+            }
+        }
+    }
+}
+
+
 Bitmap*
 PartySelectView::Draw()
 {
-    _DrawPicture(fBackground, 0, 0);
+    _DrawPicture(fSheet ? fSheetBackground : fBackground, 0, 0);
 
     // the strip: the highlighted character's name
     if (fSelected >= 0 && fSelected < int(fRoster.size())) {
@@ -473,22 +682,27 @@ PartySelectView::Draw()
     }
 
     // the party, in order
-    int line = 0;
-    for (const roster_entry& entry : fRoster) {
-        if (!entry.inParty)
-            continue;
-        _Text(std::to_string(line + 1) + " " + entry.member.shortName,
-            kPartyLeft, kPartyTop + line * (kRowHeight + 1), fBlack,
-            kPartyWidth);
-        line++;
+    if (fSheet) {
+        _DrawParty();
+    } else {
+        int line = 0;
+        for (const roster_entry& entry : fRoster) {
+            if (!entry.inParty)
+                continue;
+            _Text(std::to_string(line + 1) + " " + entry.member.shortName,
+                kPartyLeft, kPartyTop + line * (kRowHeight + 1), fBlack,
+                kPartyWidth);
+            line++;
+        }
     }
 
     // the buttons
-    for (int i = 0; i < ACTION_COUNT; i++) {
-        const GFX::rect box = ButtonRect(i);
-        const bool enabled = IsEnabled(action(i));
-        _DrawPicture(fHot == i && enabled ? fButtonLit : fButton, box.x, box.y);
-        const std::string label = kLabels[i];
+    for (int slot = 0; slot < ButtonCount(); slot++) {
+        const GFX::rect box = ButtonRect(slot);
+        const bool enabled = IsEnabled(ButtonAction(slot));
+        _DrawPicture(fHot == slot && enabled ? fButtonLit : fButton, box.x,
+            box.y);
+        const std::string label = ButtonLabel(slot);
         const int width = fFont->StringWidth(Font::ToGameCharset(label));
         const int x = box.x + (box.w - width) / 2;
         const uint8 color = enabled ? fBlack : fDim;
@@ -514,6 +728,8 @@ PartySelectView::Draw()
         _Text(entry.member.fullName, box.x + 9, box.y + 1,
             selected ? fWhite : fBlack, box.w - 10);
     }
+    if (fSheet)
+        _DrawPortrait();
     return fBuffer;
 }
 

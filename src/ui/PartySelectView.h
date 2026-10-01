@@ -22,6 +22,7 @@
 #include "GraphicsDefs.h"
 #include "SupportDefs.h"
 
+#include <map>
 #include <memory>
 #include <random>
 #include <string>
@@ -53,6 +54,10 @@ public:
         ACTION_KILL,
         ACTION_BEGIN,
         ACTION_RETURN,
+        ACTION_HERALDRY,		// the new game's screen (CRETSCRN.PIC) only:
+        ACTION_COLOR1,			// the shield, and the three colors of the
+        ACTION_COLOR2,			// character's battle figure
+        ACTION_COLOR3,
         ACTION_COUNT,
         ACTION_NONE = -1
     };
@@ -85,6 +90,14 @@ public:
     void			SetRoster(const std::vector<roster_entry>& roster,
                         bool inCity);
     const std::vector<roster_entry>& Roster() const	{ return fRoster; }
+    // The screen: the eight buttons of CRETSCR3.PIC (the default, and the
+    // inn's), or the eleven of CRETSCRN.PIC (a new game's: no Examine, but
+    // Heraldry, the image and the three colors of a member of the party)
+    void			SetSheet(bool sheet);
+    bool			IsSheet() const			{ return fSheet; }
+    int				ButtonCount() const		{ return fSheet ? 11 : 8; }
+    // The action of a button (by its place, from the top)
+    action			ButtonAction(int slot) const;
     // For "Examine": the information screens (not owned; NULL: none)
     void			SetInfoView(InfoView* info)	{ fInfo = info; }
 
@@ -104,9 +117,9 @@ public:
     // A click: a name selects it, a button acts; returns the action or
     // ACTION_NONE
     action			Clicked(const GFX::point& point, GameWindow* window = NULL);
-    GFX::rect		ButtonRect(int index) const;
+    GFX::rect		ButtonRect(int slot) const;
     GFX::rect		NameRect(int row) const;
-    const char*		ButtonLabel(int index) const;
+    const char*		ButtonLabel(int slot) const;
     // The keyboard: a button's letter, Up/Down on the list; Return adds or
     // deletes; Esc returns.
     action			KeyPressed(int key, GameWindow* window = NULL);
@@ -127,6 +140,10 @@ private:
                         int maxWidth = 1000);
     int				_NameAt(const GFX::point& point) const;
     int				_ButtonAt(const GFX::point& point) const;
+    int				_MemberBoxAt(const GFX::point& point) const;
+    void			_DrawParty();
+    void			_DrawPortrait();
+    const raw_picture* _Picture(const std::string& name);
     void			_Examine(GameWindow* window);
     bool			_Create(GameWindow& window);
 
@@ -137,6 +154,8 @@ private:
     raw_picture		fBackground;
     raw_picture		fButton;		// BUTTNCR1.PIC
     raw_picture		fButtonLit;		// BUTTNCR2.PIC
+    raw_picture		fSheetBackground;	// CRETSCRN.PIC
+    std::map<std::string, raw_picture> fPictures;	// shields, figures
     GFX::Palette	fPalette;
     std::vector<roster_entry> fRoster;
     bool			fInCity;
@@ -144,6 +163,8 @@ private:
     int				fTop;			// the first name shown
     int				fHot;			// the button under the mouse, or -1
     int				fPressed;		// the button shown pressed, or -1
+    bool			fSheet;
+    int				fColorStep;		// the preset the colors keys are at, 0..5
     uint8			fWhite;
     uint8			fCrimson;
     uint8			fDim;

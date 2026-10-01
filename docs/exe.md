@@ -309,6 +309,46 @@ marked.
   equipment and no money, card 8) are not; "Create a Character" is
   reproduced, see the next section.
 
+## The party screen of a new game
+
+CRETSCRN.PIC, the screen of 1462:0000 of overlay 0x25 (file 0x72230),
+which starts a new game: the party in four boxes of 40 pixels at the
+left (x 2..57), eleven buttons (hit test x 70..200, y 25 + 15 · n), the
+characters of the world at the right, and below the boxes the highlighted
+member's picture (<image>SMALL.PIC, 41 x 33, at (12, 164)). The loop at
+1462:0000 maps a click on the buttons to the keys C A H S 1 2 3 D K B
+Esc (the words 0x2E43.. at 0x00D0), a click on a name to the highlight,
+a click on a box (x under 60) to that member (1462:1FDB: his 24 colors are
+copied from the table at 0x33FC + 24 · slot to the palette bytes of the
+sprites' 8 colors, DS:E753..E76A, and his picture is drawn).
+The key handler is 1462:0444. **verified** (code), except where marked.
+
+- **Heraldry** (H, 1462:0F5E): for a member of the party (the highlighted
+  one is looked up among the five slots of the party, in CHARACTR.TMP),
+  the heraldry byte (the record's +0x15, 'A'..'O') goes up, from 'P' back to
+  'A', and SHIELD<letter>.PIC (11 x 19) is loaded and drawn in his box.
+- **Select Character Image** (S, 1462:12AC): the member's picture goes to
+  the next of the four, F01, F60, C00, A00 (DS:E7E2, 4-byte names, DS:E7E0
+  the index, DS:E7DE the count: the game keeps its own index, the program
+  goes on from the member's picture, *inferred*); <image>SMALL.PIC is
+  loaded. The pictures are <image>STAT.PIC (10..11 x 19, the boxes'
+  figure, interface colors 136..148), SHORT.PIC (11 x 19) and SMALL.PIC
+  (41 x 33), the last two in the sprites' colors 235..242.
+- **The colors** (1, 2, 3; 1462:14D0, 1A58, 2174): each key sets some of the
+  member's 24 bytes (8 RGB triplets, 6 bits) to one of six presets, which
+  go up by one at each press (DS:E890, 0..5, shared by the three keys and
+  all the members), by the member's picture (compared with the 3-letter
+  names at 0x4181..0x41D3). The bytes of each key: F01: 1st 0..5, 2nd
+  6..14, 3rd 15..23; F60: 1st 15..23, 2nd 3..14, 3rd 0..2; C00: 1st 0..5,
+  2nd 15..23, 3rd 6..14; A00: 1st 0..8, 2nd and 3rd 9..23. The presets (72
+  blocks of constants) are in `PartyColors.cpp`, extracted from the code.
+- **Reproduced** (`PartySelectView::SetSheet(true)`, used by `Game` for a
+  new game): the eleven buttons with Heraldry, the picture and the colors
+  (a member of the party only), the boxes with the figure and the shield,
+  the picture below. The name strip, the list and the other buttons are the
+  8-button screen's. The inn's screen (CRETSCR3.PIC) has no such buttons
+  (and not the picture's, *inferred*).
+
 ## Character creation
 
 The life of a new character (manual p. 13), all in one overlay: file
@@ -325,7 +365,8 @@ The life of a new character (manual p. 13), all in one overlay: file
   Delete from the Party, Kill character, Begin the Adventure, Return to
   Main Menu (keys C A H S 1 2 3 D K B Esc); the party at the left (a click
   on a member opens his colors), the characters of the world at the right
-  (x 197..312, y 20..180, 8 pixels a row). It is not reproduced yet. The
+  (x 197..312, y 20..180, 8 pixels a row). Reproduced, see "The party
+  screen of a new game". The
   creation draws on **CHARGEN.PIC** (the character sheet's frames; its
   palette is the screen's: BUTTONA.PIC, BUBBLE01..05.PIC, BUBLBACK.PIC and
   TEXTBACK.PIC use it too). **verified** (the loader, 18C8:04B2).
