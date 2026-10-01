@@ -139,11 +139,18 @@ CityVisit::_GiveTo(character& member, int code)
 }
 
 
-// The best at Artifice (0E76:14A4(14))
+// The member best at Artifice (0E76:14A4(14): it gives the skill and
+// leaves the member's number in DS:991D), the first of equals
 int
 CityVisit::_Picker() const
 {
-    return _BestSkill(kSkillArtifice);
+    int best = 0;
+    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
+        if (fParty->members[i].skills[kSkillArtifice]
+                > fParty->members[size_t(best)].skills[kSkillArtifice])
+            best = int(i);
+    }
+    return best;
 }
 
 
