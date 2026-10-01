@@ -154,6 +154,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveExecutionBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_AT_SANCTUARY) {
+        _Show(_ResolveSanctuaryBattle(outcome));
+        return;
+    }
     if (fBattleKind == BATTLE_WITH_PURSUERS) {
         _Show(_ResolveChaseBattle(outcome));
         return;

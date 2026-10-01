@@ -126,6 +126,12 @@ enum option_action {
     ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_SANCTUARY,			// into the sanctuary (state 0x81)
+    ACTION_SANCTUARY_REST,		// until `target` o'clock
+    ACTION_SANCTUARY_SURRENDER,
+    ACTION_SANCTUARY_WORD,		// from the captain of the guard
+    ACTION_SANCTUARY_SNEAK,
+    ACTION_SANCTUARY_BACK,
     ACTION_PARTY,				// the party's composition, from here
     ACTION_PARTY_FIND,			// look for people
     ACTION_PARTY_RECRUITS,		// the people found
@@ -284,6 +290,9 @@ static const int kMarkAudienceSure	= 0x3B;	// (never made)
 // (`target`, his slot)
 static const int kNeedsPartyRoom	= -53;
 static const int kNeedsPartyRetire	= -54;
+// the sanctuary's rests: by day (to nightfall), by night (to daybreak)
+static const int kNeedsByDay		= -55;
+static const int kNeedsByNight		= -56;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

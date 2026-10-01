@@ -726,6 +726,24 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
             return true;
+        case ACTION_SANCTUARY:
+            _Show(SCREEN_SANCTUARY);
+            return true;
+        case ACTION_SANCTUARY_REST:
+            _Show(_SanctuaryRest(rule.target));
+            return true;
+        case ACTION_SANCTUARY_SURRENDER:
+            _Show(_SanctuarySurrender());
+            return true;
+        case ACTION_SANCTUARY_WORD:
+            _Show(_SanctuaryWord());
+            return true;
+        case ACTION_SANCTUARY_SNEAK:
+            _Show(_SanctuarySneak());
+            return true;
+        case ACTION_SANCTUARY_BACK:
+            _Show(SCREEN_SANCTUARY);
+            return true;
         case ACTION_PARTY:
             fPartyReturn = fScreen;
             _Show(SCREEN_PARTY);
@@ -1009,6 +1027,11 @@ CityVisit::_Show(int screen, bool withScene)
     // November to May the swimming options are not offered, card 1)
     if (screen == SCREEN_DOCKS && fNight && _ColdWater())
         screen = SCREEN_DOCKS_ICE;
+    // the sanctuary: the captain of the guard (1367:0DB4, the city's seed +
+    // 0x156)
+    if (screen == SCREEN_SANCTUARY || (screen >= SCREEN_SANCTUARY_FREE
+            && screen <= SCREEN_SANCTUARY_HARSH))
+        fVariables["NamedOneName"] = _PersonName(uint16(_PeopleSeed() + 0x156));
     // the party's composition: $ChosenOneName..$ChosenFiveName are the
     // members in their order
     if (screen == SCREEN_PARTY && fParty != NULL) {
@@ -1217,7 +1240,11 @@ CityVisit::_HiddenOptions(int screen) const
         if (rule.needs == kNeedsDonation)
             hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
         else if (rule.needs == kNeedsBadReputation)
-            hide = _Reputation() > -10;
+            hide = _Reputation() > -10 && !_Wanted();
+        else if (rule.needs == kNeedsByDay)
+            hide = fClock == NULL || !IsGameDay(*fClock);
+        else if (rule.needs == kNeedsByNight)
+            hide = fClock != NULL && IsGameDay(*fClock);
         else if (rule.needs == kNeedsLordAudience || rule.needs == kNeedsLordClerk
                 || rule.needs == kNeedsLordSaint) {
             // the fortress: not while the city's flag 2 is set (dim in the

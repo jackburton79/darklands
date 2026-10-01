@@ -290,6 +290,34 @@ marked.
   lost when the game is saved and loaded, or closed. New people to hire
   are not made (without any, "not implemented").
 
+## Sanctuary
+
+State 0x81 ($SANCT00, 187B:0000 of overlay 0x4C, file 0xF5EF0; the church's
+day card 8, the night card 4 and the cathedral lead to it; the monastery
+refuses it). The option is offered unless the party is not wanted
+(09C0:20F3) and the local reputation (0E76:199C) is over −10. The card is
+always 0; $NamedOneName is the captain of the guard, 1367:0DB4(the city's
+seed + 0x156). Options (a switch at file 0xF6040). **verified** (code)
+
+- *rest till nightfall* (by day) and *till daybreak* (at night): the hours
+  until 19 or 6 (1367:086A); the other one is then offered.
+- *the captain's word* (0xF62E2): random(3) hours; with the reputation
+  over −10 card 1, over −75 card 2, else card 3.
+- *sneak out* (0xF636C; the chance 0xF641E): the lowest sum of a member's
+  Stealth and Streetwise (0E76:1446(15, 16)), within 10..99, he being
+  $ChosenOneName. random(100) at most it: card 10, two hours, the side
+  streets; else card 9 and an hour.
+- *give yourself up* (0xF6154): with the reputation over −75 card 11 and the
+  dungeon (state 0xD); else a battle (type 0x18, seed location + 0x6F,
+  random(5) + 4 of enemy 3 at variant random(3) + |s| / 4 + 1 and one
+  sergeant, as the guardroom's). Its result (0xF61F3): the reputation
+  −1..−5 (0E76:19D0); 0 or 1 the guards nervous (mark 0x12) for 2000 /
+  size hours, an hour, the churches (0x13); 2 an hour, 0E76:23E2 (not
+  decoded) and the sanctuary again; 3 or 4 three hours and the dungeon.
+  Then mark 0x11 (wanted) for 240 hours if the reputation was −75 or
+  less, else 120.
+- Cards 4..8 and 12 are never shown by this code.
+
 ## Names and random numbers
 
 - 06A1:29A4 `srand`, 06A1:29B6 `rand` (Microsoft C: seed = seed ·
@@ -1596,8 +1624,8 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
 
 - **The card**: $Money1 is a tenth of the party's purse, in pfennigs;
   "give $Money1" is disabled when that is under 10. "Seek sanctuary" is
-  disabled when the local reputation is over −10 (and a check at
-  0x9C0:20F3, not decoded, is false).
+  disabled when the local reputation is over −10 and the party is not
+  wanted (0x9C0:20F3: see "Sanctuary").
 - **Mass** (1838:0214): bell b = 1367:07EE; there is a Mass at bell 2
   (Latins) always, at 3 in cities of size 5 or more, 4: 6, 5: 7, 6: 4,
   7: 6, never at 1 and 8. If there is one, every member gains Religion /
@@ -1633,8 +1661,8 @@ file 0xB89E0. **verified** (code); see `CityVisit.cpp`.
   (at Prime in size 4, at Nones in size 4 or more), Compline (at
   Vespers, size 6 or more), else Prime; at Terce, Sexts and Compline it
   reads an unset variable (the night card is not shown then). Sanctuary
-  shows card 4 and goes to state 0x81 (not decoded); leaving goes to the
-  churches (0x13).
+  shows card 4 and goes to state 0x81 (see "Sanctuary"); leaving goes to
+  the churches (0x13).
 
 ## The monastery
 

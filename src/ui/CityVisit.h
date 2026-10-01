@@ -409,6 +409,15 @@ public:
         SCREEN_PARTY,			// the party's composition: $PARTY00 card 0, 6
         SCREEN_PARTY_LOOKING,	// (looking for people), 7 (a member retires)
         SCREEN_PARTY_RETIRED,
+        SCREEN_CHURCH_SANCTUARY,	// $CITYC00 card 8, $CITYC01 card 4
+        SCREEN_CHURCH_NIGHT_SANCTUARY,
+        SCREEN_SANCTUARY,		// $SANCT00: card 0, the captain's word (1,
+        SCREEN_SANCTUARY_FREE,	// 2, 3), a failed (9) and a successful
+        SCREEN_SANCTUARY_STERN,	// (10) sneaking out, giving up (11)
+        SCREEN_SANCTUARY_HARSH,
+        SCREEN_SANCTUARY_STUMBLE,
+        SCREEN_SANCTUARY_ESCAPED,
+        SCREEN_SANCTUARY_SURRENDER,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -695,6 +704,12 @@ private:
     int				_PartyLooking();
     void			_ShowRecruits();
     int				_Retire(int slot);
+    // Sanctuary (DARKLAND.EXE, state 0x81, file 0xF5EF0)
+    int				_SanctuaryRest(int hour);
+    int				_SanctuaryWord();
+    int				_SanctuarySneak();
+    int				_SanctuarySurrender();
+    int				_ResolveSanctuaryBattle(int outcome);
     int				_LordChance() const;
     int				_LordRequest(bool clerk);
     int				_LordGrant(int card);
@@ -841,7 +856,8 @@ private:
         BATTLE_AT_GATE,
         BATTLE_WITH_KNIGHT,
         BATTLE_WITH_KNIGHTS_MEN,
-        BATTLE_WITH_THIEVES
+        BATTLE_WITH_THIEVES,
+        BATTLE_AT_SANCTUARY
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM

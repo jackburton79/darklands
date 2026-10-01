@@ -273,7 +273,8 @@ static const screen_rules kDayScreens[] = {
     } },
     // "Gargoyles leer overhead as you approach the famed $cathedral."
     { CityVisit::SCREEN_CATHEDRAL, "CATHE00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO, TODO,	// mass, priest, donate...
+        TODO, TODO, TODO, TODO, TODO, TODO,	// mass, priest, donate...
+        { ACTION_SANCTUARY, 0, kNeedsBadReputation, 0 },
         GO(SCREEN_CHURCHES),				// leave the cathedral
         HIDE								// a relic as a quest reward
     } },
@@ -283,7 +284,7 @@ static const screen_rules kDayScreens[] = {
         DO(ACTION_CONFESSION),
         TODO,								// talk to a priest
         DO_IF(ACTION_DONATION, kNeedsDonation),	// give $Money1
-        TODO_IF(kNeedsBadReputation),		// seek sanctuary
+        { ACTION_GO, CityVisit::SCREEN_CHURCH_SANCTUARY, kNeedsBadReputation, 0 },	// seek sanctuary
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -390,6 +391,24 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // The way into the sanctuary from the church, by day and by night
+    { CityVisit::SCREEN_CHURCH_SANCTUARY, "CITYC00", 8, NULL, { DO(ACTION_SANCTUARY) } },
+    { CityVisit::SCREEN_CHURCH_NIGHT_SANCTUARY, "CITYC01", 4, NULL, { DO(ACTION_SANCTUARY) } },
+    // The sanctuary (state 0x81): rest, give up, the captain's word, sneak
+    // out
+    { CityVisit::SCREEN_SANCTUARY, "SANCT00", 0, NULL, {
+        { ACTION_SANCTUARY_REST, 19, kNeedsByDay, 0 },
+        { ACTION_SANCTUARY_REST, 6, kNeedsByNight, 0 },
+        DO(ACTION_SANCTUARY_SURRENDER),
+        DO(ACTION_SANCTUARY_WORD),
+        DO(ACTION_SANCTUARY_SNEAK)
+    } },
+    { CityVisit::SCREEN_SANCTUARY_FREE, "SANCT00", 1, NULL, { DO(ACTION_SANCTUARY_BACK) } },
+    { CityVisit::SCREEN_SANCTUARY_STERN, "SANCT00", 2, NULL, { DO(ACTION_SANCTUARY_BACK) } },
+    { CityVisit::SCREEN_SANCTUARY_HARSH, "SANCT00", 3, NULL, { DO(ACTION_SANCTUARY_BACK) } },
+    { CityVisit::SCREEN_SANCTUARY_STUMBLE, "SANCT00", 9, NULL, { DO(ACTION_SANCTUARY_BACK) } },
+    { CityVisit::SCREEN_SANCTUARY_ESCAPED, "SANCT00", 10, NULL, { GO(SCREEN_SIDE_STREET) } },
+    { CityVisit::SCREEN_SANCTUARY_SURRENDER, "SANCT00", 11, NULL, { DO(ACTION_TO_PRISON) } },
     // The party's composition (state 0xAA): find somebody, let a member
     // retire (the followers' options never apply)
     { CityVisit::SCREEN_PARTY, "PARTY00", 0, NULL, {
@@ -1139,7 +1158,8 @@ static const screen_rules kNightScreens[] = {
     } },
     // "...votive candles cast the only light"
     { CityVisit::SCREEN_CATHEDRAL, "CATHE01", 0, NULL, {
-        TODO, TODO, TODO, TODO,				// mass, priest, relic, sanctuary
+        TODO, TODO, TODO,					// mass, priest, relic
+        { ACTION_SANCTUARY, 0, kNeedsBadReputation, 0 },
         GO(SCREEN_CHURCHES),				// leave the cathedral
         HIDE								// a relic as a quest reward
     } },
@@ -1148,7 +1168,7 @@ static const screen_rules kNightScreens[] = {
     { CityVisit::SCREEN_CHURCH, "CITYC01", 0, NULL, {
         DO(ACTION_MASS),
         DO(ACTION_ALTAR_BOY),
-        TODO_IF(kNeedsBadReputation),		// seek sanctuary
+        { ACTION_GO, CityVisit::SCREEN_CHURCH_NIGHT_SANCTUARY, kNeedsBadReputation, 0 },	// seek sanctuary
         GO(SCREEN_CHURCHES)					// leave the church
     } },
     // "At night the monastery is mostly dark..." (state 0x38, file
