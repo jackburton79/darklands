@@ -94,6 +94,7 @@ CityVisit::CityVisit(GameData& data)
     fGateReturn(SCREEN_MAIN_STREET),
     fGateShoutFight(false),
     fAfterDark(-1),
+    fNoticesFromSquare(false),
     fNewsReturn(SCREEN_INN),
     fEvents(NULL),
     fLocationFlags(NULL),
@@ -386,6 +387,9 @@ CityVisit::Choose(int option)
         case ACTION_TO_GROVE:
             _Show(_ToGrove());
             return true;
+        case ACTION_SQUARE_SNEAK:
+            _Show(_SquareSneak(rule.target));
+            return true;
         case ACTION_SNEAK:
             _Show(_Sneak());
             return true;
@@ -555,6 +559,7 @@ CityVisit::Choose(int option)
                     : rule.minutes / 60));
             }
             fNewsReturn = rule.target;
+            fNoticesFromSquare = false;
             _Show(SCREEN_NEWS);
             return true;
         case ACTION_NEWS_RETURN:

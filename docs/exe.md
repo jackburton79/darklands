@@ -866,6 +866,23 @@ patron gives them. **verified** (code) unless marked.
   surrender, result 4, has no BattleView outcome); the speed is the
   agility; 09C0:20F3 and the potions are not reproduced; card 13 of
   $SELEC01 (St. Reinold) is never shown by this code.
+- **The square at night** (state 0x19, $CITYS01, 18FC:0008 of the overlay
+  at file 0xA3A60: a handler and a chance for each option, 0xA3C4A): the
+  chance (0xA3E48, 0xA3EF2, 0xA3F94, 0xA403E, 0xA40F0, 0xA41A8, 0xA4260)
+  starts at 100; each member in turn brings it down to his Stealth if
+  lower, then adds 25 (the notices), 28 (the town hall), 20 (the prison),
+  30 (the barracks), 50 (the university), 45 (the main street) or 65 (the
+  side street); 20 less (30 the prison, 35 the barracks) if mark 0x14 runs
+  or 09C0:2107 (1462:0102: 2 with mark 0x12, + 1 with 0x13) is exactly 1;
+  within 0..99 (1367:000A). If random(100) is at most the chance: the
+  notices (state 0x6D, which end at the square, DS:E896 = 0x19; no time),
+  the town hall (0x2C, no time), the prison (0x11E, not decoded), the
+  barracks (0x75, the same code by day, no time), the university (0x31),
+  the main street (6 / 8) or the side street (9 / 0xA), the last three
+  after an hour (1367:05C8(1)). Else 0E76:2D5C(−2, location, 0, 0x14, 1,
+  99, 0, 32, 0, 0), mark 0x14 for 32 hours, and the watch (0x3C), which
+  returns to 0x19. **verified** (code). The slum from the business
+  district takes no hours and has no chance, day or night (0x9F49C).
 - **The docks at night** (state 0x20, $Docks01, file 0xA9820; its options
   are the handlers of a table at file 0xA99F2): option 0 (the boats) goes
   to the docks' day state 0x1F; options 3 and 4 the main and side streets

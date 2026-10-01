@@ -1067,13 +1067,15 @@ static const screen_rules kNightScreens[] = {
     { CityVisit::SCREEN_SLEEP, "URBAN01", 2, NULL, { WAIT(SCREEN_INN, 9 * 60) } },	// sleep
     // "Amid the dark shadows of the city square..."
     { CityVisit::SCREEN_SQUARE, "CITYS01", 0, NULL, {
-        TODO,								// read the notices
-        GO_IF(SCREEN_TOWN_HALL, CITY_TOWN_HALL),
-        TODO,								// the prison
-        TODO_IF(CITY_ARMORY),				// the barracks: no night card
-        GO_IF(SCREEN_UNIVERSITY, CITY_UNIVERSITY),
-        GO(SCREEN_MAIN_STREET),
-        GO(SCREEN_SIDE_STREET)
+        // every walk may fail: the watch (file 0xA3C4A); the barracks
+        // have no night card, the day's is shown
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_NEWS, kAlways, 0 },	// notices
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_TOWN_HALL, CITY_TOWN_HALL, 0 },
+        TODO,								// the prison (state 0x11E)
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_BARRACKS, CITY_ARMORY, 0 },
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_UNIVERSITY, CITY_UNIVERSITY, 0 },
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_MAIN_STREET, kAlways, 0 },
+        { ACTION_SQUARE_SNEAK, CityVisit::SCREEN_SIDE_STREET, kAlways, 0 }
     } },
     // "Flickering torchlight highlights the stone walls of the $fortress"
     // (state 0x1C, file 0xA6240: all its options but the two ways out are
@@ -1140,7 +1142,7 @@ static const screen_rules kNightScreens[] = {
         GO_IF(SCREEN_INN, CITY_INN),
         GO_IF(SCREEN_PHYSICIAN, kNeedsPhysician),	// file 0x9F3F2
         GO(SCREEN_GROVE),
-        TODO_IF(CITY_SLUMS),
+        GO_IF(SCREEN_SLUM, CITY_SLUMS),		// no sneaking: file 0x9F49C
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET),
         WAIT(SCREEN_INNER_WALL, 60),		// a piece of wall (file 0x9F588)

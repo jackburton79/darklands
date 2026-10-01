@@ -154,8 +154,13 @@ CityVisit::_Gossip()
 int
 CityVisit::_NextNews()
 {
-    if (fNewsQueue.empty())
+    if (fNewsQueue.empty()) {
+        if (fNoticesFromSquare) {			// the notices of the night
+            fNoticesFromSquare = false;		// square (DS:E896 = 0x19)
+            return SCREEN_SQUARE;
+        }
         return SCREEN_NEWS;
+    }
     const std::pair<int, int> next = fNewsQueue.front();
     fNewsQueue.erase(fNewsQueue.begin());
     if (next.second >= 0)

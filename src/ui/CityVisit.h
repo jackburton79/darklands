@@ -524,6 +524,7 @@ private:
     uint32			_Fine() const;
     int				_SneakChance() const;
     int				_NightWalkChance();
+    int				_SquareSneak(int target);
     int				_Hazard(int high, int low);
     bool			_Wanted() const;
     int				_ToGrove();
@@ -837,6 +838,7 @@ private:
     int				fGateReturn;	// where "not leave just yet" goes
     bool			fGateShoutFight;	// card 1 of the gate: the fight next
     int				fAfterDark;		// the wall's option waiting for the dark
+    bool			fNoticesFromSquare;	// the notices end at the square
     int				fNewsReturn;	// where the news menu goes back to
     std::vector<std::pair<int, int> > fNewsQueue;	// the news' cards
                                     // still to show, and their places

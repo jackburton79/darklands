@@ -38,6 +38,7 @@ enum option_action {
     ACTION_APOLOGIZE,
     ACTION_STONE,				// the alchemist's options
     ACTION_ALCHEMIST_SHOP,
+    ACTION_SQUARE_SNEAK,		// the square at night: `target`, by stealth
     ACTION_SNEAK,				// the market at night
     ACTION_BRIBE,
     ACTION_PAY_FINE,			// the night watch
@@ -275,6 +276,7 @@ static const int kMarkAlert			= 0x12;	// the gate's guards nervous
 static const int kMarkGateFought	= 0x13;	// a fight at the gate lately
 static const int kMarkSallyAlarm	= 0x22;	// the sally port's guard
 static const int kMarkGuarded		= 0x17;	// the market is watched
+static const int kMarkSquareWatched	= 0x14;	// the square at night
 static const int kMarkBribeRefused	= 0x19;
 static const int kMarkSneakFailed	= 0x1A;
 static const int kMarkWatchMet		= 0x40;

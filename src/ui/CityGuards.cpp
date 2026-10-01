@@ -525,6 +525,57 @@ CityVisit::_NightWalkChance()
 }
 
 
+// The walks from the square at night (file 0xA3C4A, a handler and a chance
+// for each option; the chances at 0xA3E48...): the chance starts at 100,
+// each member in turn brings it down to his Stealth if lower, then adds
+// a number by the place (25 the notices, 28 the town hall, 30 the barracks,
+// 50 the university, 45 the main street, 65 the side street), and it is 20
+// less (35 for the barracks) while the party is watched (mark 0x14, or
+// 09C0:2107 = 1: mark 0x13 without 0x12), within 0..99. If random(100)
+// is at most the chance, the place (no time for the hall and the barracks,
+// an hour for the others; the notices, state 0x6D, come back here); else
+// mark 0x14 for 32 hours (0E76:2D5C) and the watch, which leads back
+// here. `target`: SCREEN_NEWS for the notices
+int
+CityVisit::_SquareSneak(int target)
+{
+    int add = 25;
+    int penalty = 20;
+    int hours = 0;
+    switch (target) {
+        case SCREEN_TOWN_HALL:		add = 28; break;
+        case SCREEN_BARRACKS:		add = 30; penalty = 35; break;
+        case SCREEN_UNIVERSITY:		add = 50; hours = 1; break;
+        case SCREEN_MAIN_STREET:	add = 45; hours = 1; break;
+        case SCREEN_SIDE_STREET:	add = 65; hours = 1; break;
+        default:					break;
+    }
+    int chance = 100;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members) {
+            chance = std::min(chance, int(member.skills[kSkillStealth]));
+            chance += add;
+        }
+    }
+    const bool nervous = _Marked(kMarkGateFought) && !_Marked(kMarkAlert);
+    if (nervous || _Marked(kMarkSquareWatched))
+        chance -= penalty;
+    chance = std::max(0, std::min(chance, 99));
+    if (int(fRandom() % 100) > chance) {
+        _Mark(kMarkSquareWatched, 32);
+        fWatchReturn = SCREEN_SQUARE;
+        return SCREEN_NIGHT_WATCH;
+    }
+    if (fClock != NULL && hours > 0)
+        fClock->AddHours(uint32(hours));
+    if (target == SCREEN_NEWS) {
+        fNoticesFromSquare = true;
+        return _Notices();
+    }
+    return target;
+}
+
+
 // A hazard (1462:0000 of overlay 0x27, file 0x809A0; its second argument
 // is not used): `high` raised by the city's state (1: 5 / 4, 2: 6 / 4)
 // and by each of marks 0x13 and 0x12 (6 / 5), then random(high - low)
