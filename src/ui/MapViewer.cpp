@@ -500,7 +500,7 @@ MapViewer::Tick()
                     fPath.clear();
                     fDestinationPlace = -1;
                     fWeariness = 0;
-                    fEncounterPlace = place;
+                    fEncounterPlace = std::max(0, NearestCity());
                     fEncounterState = state;
                 }
             }
@@ -530,6 +530,28 @@ MapViewer::EncounterChance(int terrain, int place) const
         chance += int(record[0x0A]) | (int(record[0x0B]) << 8);
     }
     return chance;
+}
+
+
+int
+MapViewer::NearestCity() const
+{
+    const LocationFile& locations = fData.Locations();
+    const uint32 count = std::min(locations.CountLocations(),
+        fData.Cities().CountCities());
+    int best = -1;
+    int bestDistance = 0x270F;
+    for (uint32 i = 0; i < count; i++) {
+        const location& l = locations.LocationAt(i);
+        const int dx = std::abs(int(l.x) - int(fParty.x));
+        const int dy = std::abs(int(l.y) - int(fParty.y)) / 3;
+        const int distance = dy <= dx ? dx + dy / 2 : dy + dx / 2;
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            best = int(i);
+        }
+    }
+    return best;
 }
 
 

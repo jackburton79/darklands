@@ -120,6 +120,17 @@ ChooseEncounter(int terrain, int month, const std::function<int(int)>& random)
 bool
 IsEncounterPlayed(int state)
 {
-    return state == ENCOUNTER_THIEVES || state == ENCOUNTER_BANDITS
-        || state == ENCOUNTER_SOLDIERS;
+    switch (state) {
+        case ENCOUNTER_THIEVES:
+        case ENCOUNTER_BANDITS:
+        case ENCOUNTER_SOLDIERS:
+        case ENCOUNTER_FRIAR:
+        case ENCOUNTER_PILGRIMS:
+        case ENCOUNTER_BISHOP:
+        case ENCOUNTER_HERMIT:
+        case ENCOUNTER_TOLL:
+            return true;
+        default:
+            return false;
+    }
 }

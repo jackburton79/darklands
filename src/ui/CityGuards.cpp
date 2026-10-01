@@ -176,6 +176,14 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveMenBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_TITHE_GUARDS) {
+        _Show(_ResolveTitheBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_WITH_FRIAR) {
+        _Show(_ResolveFriarBattle(outcome));
+        return;
+    }
     if (fBattleKind == BATTLE_WITH_BANDITS) {
         _Show(_ResolveBanditsBattle(outcome));
         return;

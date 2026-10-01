@@ -369,6 +369,50 @@ public:
         SCREEN_BANDITS_LEFT_FOR_DEAD,	// the party beaten (13)
         SCREEN_BANDITS_SCOUTED,	// the scouting (14)
         SCREEN_BANDITS_CHARGE,	// the charge (17)
+        SCREEN_PILGRIMS_MEET,	// $MeetP00, pilgrims on the map (state
+        SCREEN_PILGRIMS,		// 0x106): the start, then the card (0),
+        SCREEN_PILGRIMS_WISHED,	// a good journey (1), the gift (2), the
+        SCREEN_PILGRIMS_PAID,	// mounts (3), the escort (4, 5)
+        SCREEN_PILGRIMS_MOUNTS,
+        SCREEN_PILGRIMS_ESCORT,
+        SCREEN_PILGRIMS_ARRIVED,
+        SCREEN_HERMIT_MEET,		// $MeetH00, a hermit (0x118)
+        SCREEN_HERMIT,			// 0
+        SCREEN_HERMIT_COLD,		// 1
+        SCREEN_HERMIT_VISIT,	// 2
+        SCREEN_HERMIT_TRAINED,	// 3..6
+        SCREEN_HERMIT_PRAYED,
+        SCREEN_HERMIT_TAUGHT,
+        SCREEN_HERMIT_KNEW,
+        SCREEN_TITHE_MEET,		// $MeetV00, the bishop's tithe (0x108) and
+        SCREEN_TITHE,			// $MeetH02, the nobleman's toll (0x163):
+        SCREEN_TITHE_PAID,		// the demand (0), paid (1), a saint
+        SCREEN_TITHE_BLESSED,	// answers (2) or not (3), refused (4),
+        SCREEN_TITHE_PRAYED,	// escaped (5), caught (6), no chance (7),
+        SCREEN_TITHE_REFUSED,	// submitted (8), the fight won (11) or
+        SCREEN_TITHE_ESCAPED,	// lost (12), the plea heard (13) or not
+        SCREEN_TITHE_CAUGHT,	// (14), the guards too tired (15), a
+        SCREEN_TITHE_CORNERED,	// poor party (16)
+        SCREEN_TITHE_ROBBED,
+        SCREEN_TITHE_WON,
+        SCREEN_TITHE_BEATEN,
+        SCREEN_TITHE_PLEADED,
+        SCREEN_TITHE_PLEA_FAILED,
+        SCREEN_TITHE_FLED,
+        SCREEN_TITHE_POOR,
+        SCREEN_FRIAR_MEET,		// $MeetG01, a friar's indulgences (0x7F)
+        SCREEN_FRIAR,			// 0
+        SCREEN_FRIAR_PAID,		// 1
+        SCREEN_FRIAR_CURSING,	// 2
+        SCREEN_FRIAR_PRAYED,	// 3
+        SCREEN_FRIAR_REPENTS,	// 4
+        SCREEN_FRIAR_HONEST,	// 5
+        SCREEN_FRIAR_PROTECTED,	// 6
+        SCREEN_FRIAR_CURSED,	// 8
+        SCREEN_FRIAR_WON,		// 9
+        SCREEN_FRIAR_FINED,		// 10
+        SCREEN_FRIAR_ROBBED,	// 11
+        SCREEN_FRIAR_CURSE,		// 12
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
         SCREEN_SHELL_LOST_RIGHT,	// pea under the right-hand (1), middle
         SCREEN_SHELL_LOST_MIDDLE,	// (2) or left-hand shell (3), the
@@ -486,6 +530,8 @@ public:
     // The meetings of the map (the bandits, the thieves): the fights are
     // on the wilderness maps, and the cards end by leaving
     void			SetOnMap(bool onMap)		{ fOnMap = onMap; }
+    // The bishop's tithe (false) or the nobleman's toll (true)
+    void			SetToll(bool toll)			{ fToll = toll; }
     void			SetBandits(bool soldiers, int terrain)
                         { fBanditsSoldiers = soldiers; fBanditsTerrain = terrain; }
     // The members who retired, waiting in the cities (not owned; NULL: none)
@@ -838,6 +884,34 @@ private:
     int				_BanditsSneak();
     void			_FightBandits();
     int				_ResolveBanditsBattle(int outcome);
+    // The other meetings of the map (CityMeetings.cpp)
+    int				_MeetPilgrims();
+    int				_PilgrimsGive();
+    int				_PilgrimsMounts();
+    int				_PilgrimsArrive();
+    int				_MeetHermit();
+    int				_HermitMeet();
+    int				_HermitTrain();
+    int				_HermitPray();
+    int				_HermitTeach(int member);
+    int				_MeetTithe();
+    int				_TitheEscapeChance() const;
+    int				_TithePleaChance() const;
+    int				_TithePlead();
+    int				_TitheRefuse();
+    int				_TitheEscape();
+    int				_TitheSubmit();
+    void			_FightTithe();
+    int				_ResolveTitheBattle(int outcome);
+    int				_MeetFriar();
+    void			_FriarCurse();
+    void			_FriarPenalties();
+    void			_FightFriar();
+    int				_ResolveFriarBattle(int outcome);
+    int				_FriarSaint(int saint);
+    bool			_AllMounted() const;
+    int				_BestHorse(const character& member) const;
+    void			_PayMeetingMoney();
     std::string		_WildMap();
     void			_Robbed();
     bool			_FeastNear() const;
@@ -920,6 +994,8 @@ private:
         BATTLE_WITH_KNIGHTS_MEN,
         BATTLE_WITH_THIEVES,
         BATTLE_WITH_BANDITS,
+        BATTLE_WITH_TITHE_GUARDS,
+        BATTLE_WITH_FRIAR,
         BATTLE_AT_SANCTUARY
     };
     struct foes {
@@ -972,6 +1048,12 @@ private:
     bool			fSlumCamp;		// the pending residence is in the slum
     int				fThievesReturn;	// where the thieves' cards end
     bool			fOnMap;			// a meeting of the map
+    bool			fToll;			// $MeetH02, not $MeetV00
+    uint32			fMeetMoney;		// $Money1 of the meeting, in pfennigs
+    int				fMeetDays;		// $Number1
+    int				fMeetReturn;	// where a failed plea or prayer goes
+    bool			fPleaFailed;
+    bool			fPrayerFailed;
     bool			fBanditsSoldiers;	// MEETB02, not MEETB01
     int				fBanditsTerrain;	// the tile type under the party
     int				fBanditsReturn;	// where an unanswered prayer leads back

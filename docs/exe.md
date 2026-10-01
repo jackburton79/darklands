@@ -1941,6 +1941,71 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   + 1. A win: the reputation of the nearest place up (0E76:19D0), which is
   what makes the places' lords and banks offer tasks. The camp's ambushes
   ($CampB00 and $CampJ00) do not change it. **verified**
+- **Pilgrims** (state 0x106, file 0x13BCD8): $Money1 is (random(50) + 3)
+  groschen (1367:00A4(money, florins, groschen, pfennigs)); the options
+  are offered only to a purse that covers it (1367:02D4) and to a party
+  all of whose members have a mount (0E76:1326(5)). *Onward*: card 1. *The
+  gift* (file 0x13BF8C): 1367:023E subtracts it, card 2, a lesson in Virtue
+  for all (09C0:1F63(−2, 9, 1, 5)), divine favor + Religion / 4 + 4 for
+  each (0E76:0A72(member, 6, ·)). *The mounts* (0x13C03C): three hours,
+  card 3, the same with 15 and the horses given (09C0:202B(member,
+  0x2000)). *The escort* (0x13C0F6): card 4, random(3) + 1 days ($Number1),
+  card 5, a lesson (10), favor + Religion / 5 + the days; $NearestCity is the
+  nearest city (09C0:1FA9 below); 0E76:4E68 is then called with it (not
+  decoded). **verified**
+- **The nearest city** (09C0:1FA9(x, y) = 1462:271A of overlay 0x1E, file
+  0x6018A): over the first 92 places (the cities) the one with the least
+  d = max(|dx|, |dy| / 3) + min(...) / 2. The reputation a meeting changes
+  is its. **verified**
+- **The hermit** (state 0x118, file 0x147EE4): $NamedOneName a name made
+  at random. *Meet him* (file 0x148186): card 2 if random(100) is at most
+  the leader's Speak Common / 3 + Religion / 4 + Virtue / 3 + Perception /
+  2 (0..99), else card 1. Card 2: *training* (card 3, a lesson in Religion
+  for all (1, 15), until noon), *praying* (card 4, divine favor + 25 for
+  all, until noon of the next day), *a saint for a member*: one of the 136
+  at random (the bit 0x80 >> (n % 8) of the byte n / 8 of his saints),
+  card 6 if he knows it, else he learns it, card 5; the hours (until noon
+  + 24) % 25. **verified**
+- **The bishop's tithe and the nobleman's toll** (states 0x108, file
+  0x13D546, and 0x163, file 0x1773B9; $MeetV00 and $MeetH02, the same
+  cards and code): the bishop asks purse / 50 + the letter of credit / 100
+  pfennigs (1..9999, at most half the purse), and with 10 or less lets
+  them go (card 16); the nobleman 6 pfennigs of a purse under 30, two
+  groschen of one under 300, else a florin. Card 0: *pay* (not offered
+  without the money; card 1), *a saint* (Godfrey, John Nepomuk, Odo, Olaf;
+  the nobleman's Alcuin for Godfrey: card 2; unanswered, card 3 without
+  the option), *plead* (the bishop's chance: the party's average Virtue +
+  the leader's Speak Common / 2, within 0..100; the nobleman's: the
+  party's fame + his Speak Common, within 1..99; won, card 13 and a lesson
+  in Speak Common, else card 14 and no more pleas), *refuse* (card 4: only
+  submit or fight), *escape* (with every member mounted, the slowest's
+  agility + his best horse's quality + his Riding / 2, within 0..99, else
+  card 7; escaped, card 5 and a lesson in Riding, else card 6 with a
+  lesson of mode 0; submit or fight). *Submit* (file 0x13DF7C): the search,
+  two hours, card 8 (the nobleman's men also leave clubs). The fight
+  (field 0x2E): the bishop's, enemy 3 at variant random(3) + s / 4 + 2,
+  random(2) + 4 of them, and enemy 0x21 at variant s % 3 + 2, 3 if s is
+  over 6, else 2; the nobleman's, enemy 3 at random(3) + s / 4 + 1,
+  random(3) + 3 of them, and three of enemy 0x21 at variant 2 (s over 6)
+  or 1. The ends: won, an hour, the reputation down by 10..20 (the
+  toll's, 20..30), card 11; retreated, card 15; lost, random(3) + 3 hours,
+  the search, card 12; and the bishop's costs every member 2 points of
+  Virtue and 25 of divine favor. **verified** (the potion's options, 9 and
+  10, are not offered)
+- **The friar** (state 0x7F, file 0xF4C08): the pardon costs purse / 60 + 3
+  pfennigs for each member, the whole purse if it is a groschen or less.
+  Card 0: *pay* (card 1), *a saint* (Godfrey, John Nepomuk, Dominic, Odo,
+  Olaf: card 5 and favor + 8, Dominic card 4 and + 9, a lesson in Virtue
+  for all; unanswered card 3), *go on* (card 2, the curse chant): *a saint*
+  (card 5 or, the plague saints Roch and Sebastian, card 6 and favor + 6;
+  unanswered, card 12 and the curse), *fight* (field 0x2E, seven of enemy
+  13 and enemy 32, variant 1), *leave* (the curse, card 8). The curse
+  (file 0xF4EB4): each member loses x = (100 − Virtue) / 14 + 1 of
+  Strength and of Endurance, 4x of divine favor, and x / 2 off the
+  maximum of the first two (0E76:0BB6). The fight's end: an hour; won,
+  card 9; retreated, the curse, card 8; lost, the search, card 11; all
+  costing each member 2 of Virtue and 30 of divine favor. **verified**
+  (the saints' places in the answers are *inferred*)
 - **Not decoded, *inferred* in the program**: the Perception chance of
   the warning (as the thieves'), the bluff's chance (the leader's
   Charisma + Speak Common), the sneaking's (the party's average of

@@ -541,6 +541,16 @@ CityVisit::_SaintsFor(int screen) const
         if (fBanditsTerrain >= 12 && fBanditsTerrain <= 17)
             saints.push_back(69);
     }
+    // the bishop's tithe (file 0x13D686): Godfrey, John Nepomuk, Odo, Olaf;
+    // the nobleman's toll (0x1774D4): Alcuin instead of Godfrey
+    if (screen == SCREEN_TITHE)
+        saints = { fToll ? 5 : 61, 78, 101, 102 };
+    // the friar: Godfrey, John Nepomuk, Dominic, Odo, Olaf (file 0xF4CEC);
+    // against his curse the plague saints, Roch and Sebastian (0xF51D3)
+    if (screen == SCREEN_FRIAR)
+        saints = { 61, 78, 36, 101, 102 };
+    if (screen == SCREEN_FRIAR_CURSING)
+        saints = { 61, 78, 115, 117, 101, 102 };
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -757,6 +767,11 @@ CityVisit::_SaintAnswered(int screen, int index)
             return SCREEN_INNER_SAINT;
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_SAINT;			// card 8 (file 0xACA1A)
+        case SCREEN_TITHE:
+            return SCREEN_TITHE_BLESSED;			// card 2 (file 0x13DAF6)
+        case SCREEN_FRIAR:
+        case SCREEN_FRIAR_CURSING:
+            return _FriarSaint(_SaintsFor(screen)[size_t(index)]);
         case SCREEN_BANDITS_WARNING:
         case SCREEN_BANDITS_AMBUSH:
         case SCREEN_BANDITS_SCOUTED:
@@ -838,6 +853,15 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_TITHE:
+            fPrayerFailed = true;
+            return SCREEN_TITHE_PRAYED;				// card 3, no more prayers
+        case SCREEN_FRIAR:
+            fPrayerFailed = true;
+            return SCREEN_FRIAR_PRAYED;				// card 3
+        case SCREEN_FRIAR_CURSING:
+            _FriarCurse();							// card 12 and the curse
+            return SCREEN_FRIAR_CURSE;
         case SCREEN_BANDITS_WARNING:
         case SCREEN_BANDITS_AMBUSH:
         case SCREEN_BANDITS_SCOUTED:

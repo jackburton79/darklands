@@ -214,9 +214,28 @@ Game::Run()
     map.SetEncounterHandler([&](GameWindow& where, int place, int terrain,
             int state) {
         int screen = CityVisit::SCREEN_THIEVES_MAP_MEET;
-        if (state == ENCOUNTER_BANDITS || state == ENCOUNTER_SOLDIERS) {
-            visit.SetBandits(state == ENCOUNTER_SOLDIERS, terrain);
-            screen = CityVisit::SCREEN_BANDITS_MEET;
+        visit.SetToll(state == ENCOUNTER_TOLL);
+        switch (state) {
+            case ENCOUNTER_BANDITS:
+            case ENCOUNTER_SOLDIERS:
+                visit.SetBandits(state == ENCOUNTER_SOLDIERS, terrain);
+                screen = CityVisit::SCREEN_BANDITS_MEET;
+                break;
+            case ENCOUNTER_PILGRIMS:
+                screen = CityVisit::SCREEN_PILGRIMS_MEET;
+                break;
+            case ENCOUNTER_HERMIT:
+                screen = CityVisit::SCREEN_HERMIT_MEET;
+                break;
+            case ENCOUNTER_BISHOP:
+            case ENCOUNTER_TOLL:
+                screen = CityVisit::SCREEN_TITHE_MEET;
+                break;
+            case ENCOUNTER_FRIAR:
+                screen = CityVisit::SCREEN_FRIAR_MEET;
+                break;
+            default:
+                break;
         }
         meeting = true;
         visit.SetOnMap(true);

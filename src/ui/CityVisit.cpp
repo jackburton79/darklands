@@ -111,6 +111,12 @@ CityVisit::CityVisit(GameData& data)
     fSlumCamp(false),
     fThievesReturn(SCREEN_SLUM),
     fOnMap(false),
+    fToll(false),
+    fMeetMoney(0),
+    fMeetDays(0),
+    fMeetReturn(0),
+    fPleaFailed(false),
+    fPrayerFailed(false),
     fBanditsSoldiers(false),
     fBanditsTerrain(0),
     fBanditsReturn(SCREEN_BANDITS_WARNING),
@@ -292,6 +298,10 @@ CityVisit::Enter(int cityIndex, int screen)
         AddCityVariables(fData, cityIndex, fVariables);
     else {
         fVariables["PlaceName"]
+            = fData.Locations().LocationAt(uint32(cityIndex)).name;
+    }
+    if (fOnMap && uint32(cityIndex) < fData.Locations().CountLocations()) {
+        fVariables["NearestCity"]
             = fData.Locations().LocationAt(uint32(cityIndex)).name;
     }
     if (fParty != NULL)
@@ -673,6 +683,67 @@ CityVisit::Choose(int option)
             if (fThievesReturn < 0)
                 return false;			// the map
             _Show(fThievesReturn);
+            return true;
+        case ACTION_PILGRIMS_GO:
+            _Show(SCREEN_PILGRIMS_WISHED);
+            return true;
+        case ACTION_PILGRIMS_GIVE:
+            _Show(_PilgrimsGive());
+            return true;
+        case ACTION_PILGRIMS_MOUNTS:
+            _Show(_PilgrimsMounts());
+            return true;
+        case ACTION_PILGRIMS_ESCORT:
+            _Show(SCREEN_PILGRIMS_ESCORT);
+            return true;
+        case ACTION_PILGRIMS_ARRIVE:
+            _Show(_PilgrimsArrive());
+            return true;
+        case ACTION_HERMIT_MEET:
+            _Show(_HermitMeet());
+            return true;
+        case ACTION_HERMIT_TRAIN:
+            _Show(_HermitTrain());
+            return true;
+        case ACTION_HERMIT_PRAY:
+            _Show(_HermitPray());
+            return true;
+        case ACTION_HERMIT_TEACH:
+            _Show(_HermitTeach(rule.target));
+            return true;
+        case ACTION_TITHE_PAY:
+            _PayMeetingMoney();
+            _Show(SCREEN_TITHE_PAID);
+            return true;
+        case ACTION_TITHE_PLEAD:
+            fMeetReturn = fScreen;
+            _Show(_TithePlead());
+            return true;
+        case ACTION_TITHE_REFUSE:
+            _Show(_TitheRefuse());
+            return true;
+        case ACTION_TITHE_ESCAPE:
+            _Show(_TitheEscape());
+            return true;
+        case ACTION_TITHE_SUBMIT:
+            _Show(_TitheSubmit());
+            return true;
+        case ACTION_TITHE_FIGHT:
+            _FightTithe();
+            return true;
+        case ACTION_TITHE_RETURN:
+            _Show(fMeetReturn);
+            return true;
+        case ACTION_FRIAR_PAY:
+            _PayMeetingMoney();
+            _Show(SCREEN_FRIAR_PAID);
+            return true;
+        case ACTION_FRIAR_FIGHT:
+            _FightFriar();
+            return true;
+        case ACTION_FRIAR_LEAVE:
+            _FriarCurse();
+            _Show(SCREEN_FRIAR_CURSED);
             return true;
         case ACTION_BANDITS_IGNORE:
             _Show(SCREEN_BANDITS_AMBUSH);
@@ -1061,6 +1132,14 @@ CityVisit::_Show(int screen, bool withScene)
     }
     if (screen == SCREEN_BANDITS_MEET)
         screen = _MeetBandits();
+    if (screen == SCREEN_PILGRIMS_MEET)
+        screen = _MeetPilgrims();
+    else if (screen == SCREEN_HERMIT_MEET)
+        screen = _MeetHermit();
+    else if (screen == SCREEN_TITHE_MEET)
+        screen = _MeetTithe();
+    else if (screen == SCREEN_FRIAR_MEET)
+        screen = _MeetFriar();
     if (screen == SCREEN_THIEVES_MAP_MEET) {
         fThievesReturn = -1;
         screen = _MeetThieves();
@@ -1281,6 +1360,8 @@ CityVisit::_Show(int screen, bool withScene)
     if (fBanditsSoldiers && screen >= SCREEN_BANDITS_WARNING
             && screen <= SCREEN_BANDITS_CHARGE)
         deck = "MEETB02";
+    if (fToll && screen >= SCREEN_TITHE_MEET && screen <= SCREEN_TITHE_POOR)
+        deck = "MEETH02";
     fView.SetCard(fData.Messages(deck).CardAt(uint32(rules.card)),
         fVariables, _HiddenOptions(screen));
     if ((screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_MEDICI_DEPOSIT)
@@ -1392,6 +1473,17 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = hide || rope;
         } else if (rule.needs == kNeedsGrate) {
             hide = _Marked(kMarkGrateFailed);
+        } else if (rule.needs == kNeedsMeetMoney) {
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < fMeetMoney
+                || fMeetMoney == 0;
+        } else if (rule.needs == kNeedsMounts) {
+            hide = !_AllMounted();
+        } else if (rule.needs == kNeedsPlea) {
+            hide = fPleaFailed;
+        } else if (rule.needs == kNeedsFreshSaint) {
+            hide = fPrayerFailed || !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsMemberHere) {
+            hide = fParty == NULL || size_t(rule.target) >= fParty->members.size();
         } else if (rule.needs == kNeedsSaint) {
             hide = !_SaintKnown(screen);
         } else if (rule.needs == kNeedsTowerWelcome) {

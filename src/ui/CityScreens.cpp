@@ -1101,6 +1101,103 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_BANDITS_ELUDED, "MEETB01", 12, NULL, { LEAVE } },
     { CityVisit::SCREEN_BANDITS_LEFT_FOR_DEAD, "MEETB01", 13, NULL, { LEAVE } },
     { CityVisit::SCREEN_BANDITS_CHARGE, "MEETB01", 17, NULL, { DO(ACTION_BANDITS_FIGHT) } },
+    // Pilgrims (state 0x106, file 0x13BCD8)
+    { CityVisit::SCREEN_PILGRIMS_MEET, "MEETP00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_PILGRIMS, "MEETP00", 0, NULL, {
+        DO(ACTION_PILGRIMS_GO),
+        DO_IF(ACTION_PILGRIMS_GIVE, kNeedsMeetMoney),
+        DO_IF(ACTION_PILGRIMS_MOUNTS, kNeedsMounts),
+        DO(ACTION_PILGRIMS_ESCORT)
+    } },
+    { CityVisit::SCREEN_PILGRIMS_WISHED, "MEETP00", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_PILGRIMS_PAID, "MEETP00", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_PILGRIMS_MOUNTS, "MEETP00", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_PILGRIMS_ESCORT, "MEETP00", 4, NULL, { DO(ACTION_PILGRIMS_ARRIVE) } },
+    { CityVisit::SCREEN_PILGRIMS_ARRIVED, "MEETP00", 5, NULL, { LEAVE } },
+    // A hermit (state 0x118, file 0x147EE4)
+    { CityVisit::SCREEN_HERMIT_MEET, "MEETH00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_HERMIT, "MEETH00", 0, NULL, { DO(ACTION_HERMIT_MEET), LEAVE } },
+    { CityVisit::SCREEN_HERMIT_COLD, "MEETH00", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_HERMIT_VISIT, "MEETH00", 2, NULL, {
+        HIDE, HIDE,
+        DO(ACTION_HERMIT_TRAIN),
+        DO(ACTION_HERMIT_PRAY),
+        { ACTION_HERMIT_TEACH, 0, kNeedsMemberHere, 0 },
+        { ACTION_HERMIT_TEACH, 1, kNeedsMemberHere, 0 },
+        { ACTION_HERMIT_TEACH, 2, kNeedsMemberHere, 0 },
+        { ACTION_HERMIT_TEACH, 3, kNeedsMemberHere, 0 },
+        LEAVE
+    } },
+    { CityVisit::SCREEN_HERMIT_TRAINED, "MEETH00", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_HERMIT_PRAYED, "MEETH00", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_HERMIT_TAUGHT, "MEETH00", 5, NULL, { LEAVE } },
+    { CityVisit::SCREEN_HERMIT_KNEW, "MEETH00", 6, NULL, { LEAVE } },
+    // The bishop's tithe (state 0x108, file 0x13D546), and the nobleman's
+    // toll ($MeetH02, state 0x163), the same cards
+    { CityVisit::SCREEN_TITHE_MEET, "MEETV00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE, "MEETV00", 0, NULL, {
+        DO_IF(ACTION_TITHE_PAY, kNeedsMeetMoney),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO_IF(ACTION_TITHE_PLEAD, kNeedsPlea),
+        DO(ACTION_TITHE_REFUSE),
+        DO(ACTION_TITHE_ESCAPE),
+        HIDE								// a potion
+    } },
+    { CityVisit::SCREEN_TITHE_PAID, "MEETV00", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_BLESSED, "MEETV00", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_PRAYED, "MEETV00", 3, NULL, {
+        DO_IF(ACTION_TITHE_PAY, kNeedsMeetMoney),
+        HIDE,
+        DO_IF(ACTION_TITHE_PLEAD, kNeedsPlea),
+        DO(ACTION_TITHE_REFUSE),
+        DO(ACTION_TITHE_ESCAPE),
+        HIDE
+    } },
+    { CityVisit::SCREEN_TITHE_REFUSED, "MEETV00", 4, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_TITHE_SUBMIT), DO(ACTION_TITHE_FIGHT) } },
+    { CityVisit::SCREEN_TITHE_ESCAPED, "MEETV00", 5, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_CAUGHT, "MEETV00", 6, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_TITHE_SUBMIT), DO(ACTION_TITHE_FIGHT) } },
+    { CityVisit::SCREEN_TITHE_CORNERED, "MEETV00", 7, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_TITHE_SUBMIT), DO(ACTION_TITHE_FIGHT) } },
+    { CityVisit::SCREEN_TITHE_ROBBED, "MEETV00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_WON, "MEETV00", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_BEATEN, "MEETV00", 12, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_PLEADED, "MEETV00", 13, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_PLEA_FAILED, "MEETV00", 14, NULL, { DO(ACTION_TITHE_RETURN) } },
+    { CityVisit::SCREEN_TITHE_FLED, "MEETV00", 15, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TITHE_POOR, "MEETV00", 16, NULL, { LEAVE } },
+    // A friar's indulgences (state 0x7F, file 0xF4C08)
+    { CityVisit::SCREEN_FRIAR_MEET, "MEETG01", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR, "MEETG01", 0, NULL, {
+        DO_IF(ACTION_FRIAR_PAY, kNeedsMeetMoney),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        GO(SCREEN_FRIAR_CURSING)
+    } },
+    { CityVisit::SCREEN_FRIAR_PAID, "MEETG01", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_CURSING, "MEETG01", 2, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE,								// a potion
+        DO(ACTION_FRIAR_FIGHT),
+        DO(ACTION_FRIAR_LEAVE)
+    } },
+    { CityVisit::SCREEN_FRIAR_PRAYED, "MEETG01", 3, NULL, {
+        DO_IF(ACTION_FRIAR_PAY, kNeedsMeetMoney),
+        HIDE,
+        GO(SCREEN_FRIAR_CURSING)
+    } },
+    { CityVisit::SCREEN_FRIAR_REPENTS, "MEETG01", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_HONEST, "MEETG01", 5, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_PROTECTED, "MEETG01", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_CURSED, "MEETG01", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_WON, "MEETG01", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_FINED, "MEETG01", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_ROBBED, "MEETG01", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FRIAR_CURSE, "MEETG01", 12, NULL, { LEAVE } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },

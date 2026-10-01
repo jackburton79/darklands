@@ -165,6 +165,26 @@ enum option_action {
     ACTION_BANDITS_CHARGE,
     ACTION_BANDITS_FIGHT,
     ACTION_BANDITS_RETURN,		// after a prayer unanswered
+    ACTION_PILGRIMS_GO,			// the pilgrims: onward
+    ACTION_PILGRIMS_GIVE,
+    ACTION_PILGRIMS_MOUNTS,
+    ACTION_PILGRIMS_ESCORT,
+    ACTION_PILGRIMS_ARRIVE,
+    ACTION_HERMIT_MEET,			// the hermit
+    ACTION_HERMIT_TRAIN,
+    ACTION_HERMIT_PRAY,
+    ACTION_HERMIT_TEACH,		// target: the member
+    ACTION_TITHE_PAY,			// the bishop's tithe, the nobleman's toll
+    ACTION_TITHE_PLEAD,
+    ACTION_TITHE_REFUSE,
+    ACTION_TITHE_ESCAPE,
+    ACTION_TITHE_SUBMIT,
+    ACTION_TITHE_FIGHT,
+    ACTION_TITHE_RETURN,
+    ACTION_FRIAR_PAY,			// the friar
+    ACTION_FRIAR_REFUSE,
+    ACTION_FRIAR_FIGHT,
+    ACTION_FRIAR_LEAVE,			// ignore the curse
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
@@ -309,6 +329,13 @@ static const int kNeedsByNight		= -56;
 // to give (an item of flag 0x1000)
 static const int kNeedsCathedralGift = -57;
 static const int kNeedsRelic		= -58;
+// or the meetings of the map: the purse covers the demand, every member
+// has a mount, the plea or the prayer not yet tried, a member to teach
+static const int kNeedsMeetMoney	= -59;
+static const int kNeedsMounts		= -60;
+static const int kNeedsPlea			= -61;
+static const int kNeedsFreshSaint	= -62;
+static const int kNeedsMemberHere	= -63;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)
