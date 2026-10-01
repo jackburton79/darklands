@@ -9,8 +9,9 @@
  * it too (0E76:2246).
  *
  * Reproduced here: examining, adding, deleting, killing, beginning and
- * returning. Creating a character (a whole life to live through) and
- * selecting an image are not, and show dim.
+ * returning, and creating a character (CreationView: a whole life to
+ * live through; not at the inn, *inferred*). Selecting an image is not,
+ * and shows dim.
  *
  * Everything is drawn into a 320x200 8-bit buffer; the input handlers and
  * Draw() work without a window, for testing.
@@ -22,6 +23,7 @@
 #include "SupportDefs.h"
 
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -126,6 +128,7 @@ private:
     int				_NameAt(const GFX::point& point) const;
     int				_ButtonAt(const GFX::point& point) const;
     void			_Examine(GameWindow* window);
+    bool			_Create(GameWindow& window);
 
     GameData&		fData;
     InfoView*		fInfo;
@@ -146,4 +149,5 @@ private:
     uint8			fDim;
     uint8			fMark;
     uint8			fBlack;
+    std::mt19937	fRandom;
 };

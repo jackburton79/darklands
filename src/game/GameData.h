@@ -17,6 +17,7 @@ class Catalog;
 class CityFile;
 class DescriptionFile;
 class EnemyFile;
+class ExeData;
 class FontFile;
 class ListFile;
 class LocationFile;
@@ -42,6 +43,7 @@ public:
     const EnemyFile&	Enemies();			// DARKLAND.ENM
     const FontFile&		Fonts();			// FONTS.FNT
     const ListFile&		Lists();			// DARKLAND.LST: items, saints...
+    const ExeData&		Exe();				// DARKLAND.EXE's tables
     const GFX::Palette&	EnemyPalette();		// ENEMYPAL.DAT, all chunks
     // The colors of a battle sprite set ("E00", "M03", "A00"...): the
     // battle's palette (EGA colors, COMNCLRS.DAT, BKGNDPAL.DAT) and, for
@@ -75,6 +77,7 @@ private:
     std::unique_ptr<DescriptionFile> fCityDescriptions;
     std::unique_ptr<FontFile>		fFonts;
     std::unique_ptr<ListFile>		fLists;
+    std::unique_ptr<ExeData>		fExe;
     std::unique_ptr<GFX::Palette>	fEnemyPalette;
     std::unique_ptr<Catalog>		fMessageCatalog;
     std::map<std::string, std::unique_ptr<MsgFile> > fMessages;

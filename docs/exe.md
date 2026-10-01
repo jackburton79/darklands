@@ -286,7 +286,7 @@ marked.
 - **The selection screen** (0E76:2246 = 9C0:1EE1 = 1462:0000 of overlay 0x26;
   its entry at file 0x7C5F0, the same screen that starts a new world:
   manual pp. 11-12): CRETSCR3.PIC (the larger CRETSCRN.PIC with eleven
-  buttons is the creation of a character), eight buttons of
+  buttons is another party screen, see "Character creation"), eight buttons of
   BUTTNCR1.PIC / BUTTNCR2.PIC (123 x 13, one for the pressed look) at x 68, y
   44 + 15 · n (the hit test: x 70..200, y 45..165, a button every 15
   pixels), a list of the characters of the world at the right (x 198..312,
@@ -306,8 +306,151 @@ marked.
   game's characters out of the party: the records after the party's, which
   `SaveFile` now reads and writes). `--select [city]` starts a new game
   with the screen. New people to hire (made as a character is, with no
-  equipment and no money, card 8) are not: that needs the creation of a
-  character, a life to live through (manual p. 13).
+  equipment and no money, card 8) are not; "Create a Character" is
+  reproduced, see the next section.
+
+## Character creation
+
+The life of a new character (manual p. 13), all in one overlay: file
+0x76890, called as **18C8:0004** (`call 18C8:0004` at 1462:115D, the
+"Create a Character" key (C) of the **CRETSCRN.PIC** screen). **verified**
+(code). Offsets below are the segment's own: file = 0x76890 + offset
+(its jump tables hold such offsets).
+
+- **CRETSCRN.PIC is not the creation's screen**, it is the party screen
+  the creation is started from (1462:0000.., file 0x72230): eleven
+  buttons at x 70..200, y 25 + 15 · n, their labels at 290E:1D43 strings
+  40, 39, 103, 65, 100, 101, 102, 42, 58, 43, 44: Create a Character, Add
+  to the Party, Heraldry, Select Character Image, 1st, 2nd and 3rd color,
+  Delete from the Party, Kill character, Begin the Adventure, Return to
+  Main Menu (keys C A H S 1 2 3 D K B Esc); the party at the left (a click
+  on a member opens his colors), the characters of the world at the right
+  (x 197..312, y 20..180, 8 pixels a row). It is not reproduced yet. The
+  creation draws on **CHARGEN.PIC** (the character sheet's frames; its
+  palette is the screen's: BUTTONA.PIC, BUBBLE01..05.PIC, BUBLBACK.PIC and
+  TEXTBACK.PIC use it too). **verified** (the loader, 18C8:04B2).
+- **Functions**: 18C8:0004 the loop (mouse and keys), 058E the key
+  handler, 10DA the middle column and the instruction plaque, 1738 the
+  boards (values, "points:room", EPs, age), 20FA a new person, 22BE which
+  occupations are offered, 356C what a family or occupation does, 372A its
+  gifts, 3A9E gives an item, 3890 row to skill, 38A6 and 39CA the
+  formulae and the saints he knows, 1462:38AA writes the character to
+  CHARACTR.TMP (record 0x80 bytes + saints 0x14 + formulae 0x16 + items
+  0x180, count in the header, record i at 0x20 + 0x22A · i).
+- **State** (DS): the character is built in the record at DS:E80A (age
+  E81C, sex E821, *maximum* attributes E86E.., skills E875..), stage
+  DS:8C1E (0 name, 1 family, 2 attribute EPs, 3 occupation, 4 skill EPs),
+  family 8C02, the occupation held now 4428 and the one before 442A, the
+  flags "has been occupation k" at 4402 + k, EPs left 8BFA and the stage's
+  total 8C48, EPs spent on each attribute (words at 8C06) and skill (words
+  at 8C22) in this stage, the list of choices (words at 8BD2, −1 ends
+  it), the highlighted row 8BFC, the row under the mouse 43EE. **verified**
+- **Tables** (segment 290E, 58-byte records, **verified**: the values are
+  sane and the names match): the six families at 2B65 and the 37
+  occupations at 2CC1 (names: the texts 218..223 and 105..141, in the
+  order of the list: Recruit, Soldier, ... Bandit): a word
+  (EPs), six signed bytes (END STR AGL PER INT CHR), 19 bytes (skill
+  points, in the record's order), 19 bytes (the most EPs the skill can
+  take; 0 for families), then 12 bytes of which only a word at +56 is not
+  0 (90, 20, 12, 4, 1, 0 for the families; 1, 2, 6, 20, 15 ... for the
+  occupations: maybe wealth, nothing in the code reads it). After the
+  last record, 290E:3521, nine rows of six signed bytes: what every five
+  years past 30 do to END STR AGL PER INT CHR (0, −1 −1 −1 0 0 0, ...,
+  −6 −6 −4 −3 −2 −3).
+- **A new person** (20FA): a man, age 0, END 12 STR 15 AGL 12 PER 12 INT 12
+  CHR 11 DF 99 (a woman: END 14 STR 12 AGL 12 PER 12 INT 12 CHR 12), no
+  skills, heraldry 'A', in-use equipment 0xFF; a random name by
+  1367:0DB4 (kind 0: man, 1: woman: first name, space, surname) seeded
+  with the clock, the nickname its first word (at most 9 letters); the
+  names a player types are at most 23 and 9 characters of printable ASCII
+  (1462:43E6, a TEXTBACK.PIC plaque at (110, 80)). "Make him a woman"
+  sets the other sex's attributes and makes a new name unless the name was
+  typed.
+- **Stages**: *name* → "Begin childhood" → *family* (six rows) → a
+  family is applied (childhood, age 0 → 15) → *attributes*: the family's
+  EPs to spend, "Done changing attr" drops the rest → *occupation*: the
+  occupations offered now (the list holds 20; the plaque shows 14 rows) →
+  an occupation is applied (five years, age +5) → *skills*: EPs to spend,
+  then "Go to next occupation" (not past 65), "Begin Adventuring" or "Kill
+  character" (a new person). The mouse: a click on the highlighted
+  attribute or skill row adds a point, a click on the tube takes one
+  back; keys + / − and the arrows do the same; Esc on the name stage
+  leaves; during the attribute or skill stage it only goes back to the
+  family or occupation list, *without* taking the family or occupation
+  back (the game's own slip: choosing again would apply a second one),
+  which `CreationView` does not do. **verified** (the dispatch at 058E and
+  4664).
+- **What a stage does** (356C, family: tables of 290E:2B65 and age < 15;
+  occupation: 290E:2CC1): the six attributes change by their bytes, kept
+  at 1..99, except that past 40 END and STR are left alone; each skill
+  grows by its byte (two more for the first occupation, age < 19), kept
+  at 0..99; an occupation is recorded (previous := last, last := it, flag
+  set) and gives its gifts; EPs := the word, plus 20 at age 15 and 5 at
+  age 20; the age grows by 15 (family) or 5; from 30, the row
+  min(8, (age − 30) / 5) of the aging table changes the attributes, kept
+  at 1..99 again. **verified** (code, compared by hand).
+- **Spending EPs** (4DE2..4FF0): an attribute point costs 1, 2 from 29
+  and 3 from 39 (the value before the increase), at most 40 and 40 points
+  in a stage; a skill point costs 1, 2 from 49 and 3 from 79, at most
+  the occupation's limit of EPs on that skill, skill at most 89; taking a
+  point back refunds 1, 2 from 30 (skills 50) and 3 from 40 (skills 80)
+  and only points of this stage can be taken back. **verified**
+- **The gifts** (372A): the equipment is the *last* occupation's alone
+  (the item count is cleared every time); saints (random(136), a bit of the
+  record's saints) and formulae (random(22), the record's +0x94 byte) add
+  up. By occupation: Recruit V:Cuirboulli + L:Leather, Soldier V:Chainmail
+  + L:Studded, Veteran V:Brigandine + L:Cuirbouilli, Captain V:Brigandine
+  + L:Studded, Noble Heir and Hunter and Bandit V:Studded + L:Leather,
+  Knight V:Brigandine + L:Chainmail, Courtier, Peddler, Local Trader and
+  the three crafts V:Leather, Manorial Lord and Travelling Merchant
+  V:Chainmail + L:Leather, Schulz V:Cuirboulli + L:Studded, Thief V:Leather
+  + L:Leather; saint: Priest, Friar, Hermit, Monk/Nun; two saints: Bishop,
+  Abbot; formula: Oblate, Professor, Alchemist; two: Master Alchemist;
+  nothing: the others. **verified** (the switch at 372A and the item
+  names).
+- **Begin Adventuring** (1462 5248..): attributes (maximum) become the
+  current ones, then he gets a weapon by his best weapon skill (the first
+  on a tie): Short Sword, Club, Military Flail, Short Spear, Throwing
+  Knife, Short Bow, Crossbow (item codes 5, 15, 17, 21, 1, 28, 30), and
+  one potion (item 95 + k) for each formula he knows. He is written to
+  CHARACTR.TMP, outside the party. **verified**
+- **Which occupations are offered** (22BE): 37 blocks of tests, one per
+  occupation, on the age, the family (for the first choice, age 15 < 20,
+  some families qualify unconditionally), END..CHR and skills, the flags
+  of the occupations held, the last and the one before. They are
+  transcribed in `CharacterCreation.cpp` (`Offered()`) and **verified** by
+  running the original code on 40,000 random states (a small emulator
+  of the x86 subset the function uses, 33,696 different answers): no
+  difference. The game's own slips are kept: Recruit's second alternative
+  never holds; for the first choice (age 15) Thief and Peasant read
+  `family != 3 || family != 5` and `family != 0 || family != 1`, true
+  for every family; Hunter's "the last one is none of ..." is a chain
+  of equalities that cannot hold.
+- **The screen** (CHARGEN.PIC, 320 x 200; positions from the code,
+  **verified** against the picture): the title plaque (nickname at x 71,
+  name at x 131, "Age NN" at 268 / 286, y 4, text black over a light
+  copy one pixel lower); the instruction plaque (x 71, y 18, 26, 34); the
+  middle column of BUTTONA.PIC plates, 109 x 10 at (64, 45 + 11 · n) with
+  the text at (68, y + 2), black, blue (EGA 9) under the mouse; the keys
+  of the name and skill stage's buttons are marked in the strings (0x8C),
+  in crimson here (*inferred*) and "Go to next occupation" is dim past 65;
+  the boards: attributes, names at x 216 and values at 201, y 20 + 8 · n,
+  seven rows; skills: "points:EPs" at x 246, value at 278, name at 290,
+  rows 0..6 weapons, 8..13 knowledge, 15..20 the others (the last group
+  two pixels lower), light text (index 191), the selected row green
+  (EGA 10); "EP" at (216, 87) and the EPs left at (198, 87); the tube:
+  BUBLBACK.PIC over BUBBLE01..05.PIC (12 x 50 at (208, 105)), which
+  cycle, covering as many rows as half the percentage of the EPs that
+  went. In the choosing stages the boards preview the row under the
+  mouse: the attributes it would give, its EPs, and for each skill the
+  points it gives and the EPs it leaves (two more points than it gives are
+  shown for the second occupation, age 20: the game's slip, kept).
+  The Formulae and Saints plates (stage 3 and 4) list what he knows.
+- **Not reproduced**: the party screen of CRETSCRN.PIC (heraldry, image
+  and colors), the Formulae and Saints lists' background (ARMBRS13.PIC),
+  which image a new character has (taken here by sex from the
+  Quickstart party's: F60, F01), the list of more than 14 occupations
+  (the plaque shows 14).
 
 ## Names and random numbers
 

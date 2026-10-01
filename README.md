@@ -52,7 +52,8 @@ What works so far:
 - **The party**: the Quickstart characters or a saved game, the
   information screens (F1..F6), the party recovering as time passes;
   **saving** and loading in the original's format; the **party selection**
-  screen (`--select`, and at the inn); the game's **menu
+  screen (`--select`, and at the inn); the **creation of a character**,
+  living his life (`--create`, or "Create a Character"); the game's **menu
   bar** (right mouse button, or F10), with the Game and Party menus.
 - **Tools** for the data: browse and export the images (`.PIC`,
   `.CAT`), render the world map, dump the locations, cities, enemies,
@@ -184,6 +185,7 @@ Game files are looked up by name, in that directory and then in `PICS`:
 ./darklands --start Hamburg
 ./darklands --load DKSAVE0.SAV
 ./darklands --select            # a new game, the party chosen first
+./darklands --create            # make a character: his family, his occupations
 
 # Browse the images of a catalog (left/right arrow keys)
 ./darklands EINFO.CAT
@@ -258,6 +260,7 @@ src/formats/        Readers for the game's files (no SDL)
 src/game/           Game state and rules (no screen)
   GameData.*        Access to the game's data files from one data directory
   Character.*       A character (554-byte records) and the party
+  CharacterCreation.* The life of a new character: family, occupations, EPs
   GameTime.*        The game's date and time (monastic hours, Julian calendar)
   Travel.*          Paths across the world map
   BattlePath.*      Paths across a battlefield map
@@ -272,6 +275,7 @@ src/ui/             Screens and drawing
                     Gate, Guards, Prison, World, Quests, Encounters
   CardView.*        A menu card on screen: frame, text, options
   PartySelectView.* The party selection screen: the characters, 8 buttons
+  CreationView.*    The creation of a character: the life simulation
   InfoView.*        The party and character information screens
   PartySidebar.*    The character boxes on the left of the screens
   TradeView.*       Buying and selling with a merchant

@@ -43,6 +43,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ```sh
 ./darklands [--start Köln]           # the game (Game): city cards + map
 ./darklands --load DKSAVE1.SAV       # the game, from a saved game
+./darklands --create                 # the creation of a character (CHARGEN.PIC)
 ./darklands EINFO.CAT                # browse a catalog's images
 ./darklands --extract EINFO.CAT out/ # export them as BMP (out/ must exist)
 ./darklands --extract E00C.CAT out/  # battle sprites, as sheets
@@ -63,7 +64,7 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 
 The sources are in `src/`: `src/formats/` the readers of the game's
 files (no SDL), `src/game/` the game state and rules (`GameData`,
-`Character`, `GameTime`, `Travel`, `BattlePath`, `Combat`), `src/ui/` the screens and drawing,
+`Character`, `CharacterCreation`, `GameTime`, `Travel`, `BattlePath`, `Combat`), `src/ui/` the screens and drawing,
 `src/darklands.cpp` the command line. The folders are all on the
 include path: include headers by name (`#include "CityFile.h"`).
 
@@ -135,7 +136,14 @@ include path: include headers by name (`#include "CityFile.h"`).
   `MapViewer`, `TradeView`, `ResidenceView` and `BattleView` have
   `SetMenuBar()`. `Game` owns it and the settings, and loads games.
 - `PartySelectView`: the party selection screen (CRETSCR3.PIC), used by
-  `Game` (`--select`) and by `CityVisit` at the inn.
+  `Game` (`--select`) and by `CityVisit` at the inn; "Create a Character"
+  opens `CreationView` (not at the inn). CRETSCRN.PIC, with eleven
+  buttons (heraldry, image, colors), is another party screen: not done.
+- `CharacterCreation` (`src/game/`): the rules of the life simulation
+  (six family backgrounds, 37 occupations, EPs on attributes and skills,
+  which occupations are offered, what they give); `CreationView` shows
+  it on CHARGEN.PIC. The tables are `ExeData::Families()` /
+  `Occupations()` / `Aging()`.
 - `ListFile` (DARKLAND.LST): item definitions; a character's item code
   indexes it, its equipment slots hold item *types*; `item_flag` for
   the categories.

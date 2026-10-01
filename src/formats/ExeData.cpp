@@ -50,6 +50,16 @@ static const size_t kJobCount		= 31;
 static const size_t kJobSize		= 18;
 static const uint32 kJobNameTable	= 0x219B;
 static const size_t kJobNameCount	= 32;
+// The life of a character: the far pointers to the game's texts are at
+// 290E:1D43 (index 218..223 the families, 105..141 the occupations),
+// the records after the textual data (docs/exe.md)
+static const uint32 kTextTable		= 0x1D43;
+static const size_t kFamilyNameIndex = 218;
+static const size_t kOccupationNameIndex = 105;
+static const uint32 kFamilyTable	= 0x2B65;
+static const uint32 kOccupationTable = 0x2CC1;
+static const uint32 kAgingTable		= 0x3521;
+static const size_t kLifeRecordSize	= 58;
 
 
 static uint16
@@ -140,6 +150,30 @@ ReadSaint(const std::vector<uint8>& data, size_t function)
 }
 
 
+static std::vector<exe_life_stage>
+ReadLifeStages(const std::vector<uint8>& data, uint32 table, size_t count,
+    size_t firstName)
+{
+    const std::vector<std::string> names = ReadNames(data,
+        kTextTable + uint32(firstName) * 4, count);
+    const size_t start = kNamesSegment * 16 + kDataBase + table;
+    if (start + count * kLifeRecordSize > data.size())
+        throw std::runtime_error("ExeData: life table past the end");
+    std::vector<exe_life_stage> stages;
+    for (size_t i = 0; i < count; i++) {
+        const uint8* record = &data[start + i * kLifeRecordSize];
+        exe_life_stage stage;
+        stage.name = names[i];
+        stage.points = WordAt(data, start + i * kLifeRecordSize);
+        memcpy(stage.attributes, record + 2, 6);
+        memcpy(stage.skills, record + 8, kLifeSkillCount);
+        memcpy(stage.limits, record + 27, kLifeSkillCount);
+        stages.push_back(stage);
+    }
+    return stages;
+}
+
+
 ExeData::ExeData(const std::string& exePath)
 {
     std::ifstream file(exePath.c_str(), std::ios::binary);
@@ -150,6 +184,14 @@ ExeData::ExeData(const std::string& exePath)
     fMale = ReadNames(data, kMaleTable, kMaleCount);
     fFemale = ReadNames(data, kFemaleTable, kFemaleCount);
     fSurnames = ReadNames(data, kSurnameTable, kSurnameCount);
+    fFamilies = ReadLifeStages(data, kFamilyTable, kFamilyCount,
+        kFamilyNameIndex);
+    fOccupations = ReadLifeStages(data, kOccupationTable, kOccupationCount,
+        kOccupationNameIndex);
+    const size_t aging = kNamesSegment * 16 + kDataBase + kAgingTable;
+    if (aging + kAgingCount * 6 > data.size())
+        throw std::runtime_error("ExeData: aging table past the end");
+    memcpy(fAging, &data[aging], sizeof(fAging));
 
     const std::vector<std::string> jobNames = ReadNames(data, kJobNameTable,
         kJobNameCount);
@@ -233,6 +275,17 @@ ExeData::MaleName(uint16 seed) const
     MscRandom random(seed);
     random.Below(1000);
     const std::string& first = fMale[random.Below(int(fMale.size()))];
+    return first + " " + fSurnames[random.Below(int(fSurnames.size()))];
+}
+
+
+// 1367:0DB4, kind 1: the same with a woman's first name
+std::string
+ExeData::FemaleName(uint16 seed) const
+{
+    MscRandom random(seed);
+    random.Below(1000);
+    const std::string& first = fFemale[random.Below(int(fFemale.size()))];
     return first + " " + fSurnames[random.Below(int(fSurnames.size()))];
 }
 

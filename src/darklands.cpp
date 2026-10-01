@@ -7,6 +7,7 @@
 #include "CityFile.h"
 #include "CityLabels.h"
 #include "CityVisit.h"
+#include "CreationView.h"
 #include "EnemyFile.h"
 #include "EventFile.h"
 #include "ExeData.h"
@@ -33,6 +34,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <string>
 
 #include <SDL.h>
@@ -526,6 +528,36 @@ ExtractAll(GameData& data, const Catalog& catalog,
 }
 
 
+// The creation of a character on its own: the life simulation, then the
+// character it made
+static int
+CreateCharacter(GameData& data)
+{
+    std::mt19937 random((std::random_device())());
+    CreationView view(data, [&](int n) { return int(random() % uint32(n)); });
+    GameWindow window("Darklands");
+    if (view.Run(window) != CreationView::RESULT_CREATED) {
+        std::cerr << "no character made" << std::endl;
+        return 1;
+    }
+    const character& made = view.Created();
+    std::cout << made.fullName << " (" << made.shortName << "), "
+        << (made.female ? "woman" : "man") << ", age " << made.age << "\n"
+        << "  END STR AGL PER INT CHR DF:";
+    for (int i = 0; i < ATTRIBUTE_COUNT; i++)
+        std::cout << " " << int(made.attributes[i]);
+    std::cout << "\n  skills:";
+    for (int i = 0; i < kSkillCount; i++)
+        std::cout << " " << int(made.skills[i]);
+    std::cout << "\n  items:";
+    for (const item& carried : made.items)
+        std::cout << " " << data.Lists().Items()[carried.code].name << " x"
+            << int(carried.quantity) << ";";
+    std::cout << std::endl;
+    return 0;
+}
+
+
 static void
 Usage()
 {
@@ -533,6 +565,7 @@ Usage()
         "  (no command)                  play, from a random city\n"
         "  --start <city>                play, from a city (name or index)\n"
         "  --select [city]               play a new game, the party chosen first\n"
+        "  --create                      create a character, living his life\n"
         "  --load <save>                 play, from a saved game (e.g. DKSAVE0.SAV)\n"
         "  <catalog>                     dump a catalog's entries\n"
         "  --extract <catalog> <outdir>  export a catalog's images as BMP (the\n"
@@ -664,6 +697,8 @@ int main(int argc, char **argv)
             game.Run();
             return 0;
         }
+        if (command == "--create")
+            return CreateCharacter(data);
         if (command == "--load") {
             if (extra < 1) {
                 Usage();

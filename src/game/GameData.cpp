@@ -3,6 +3,7 @@
 #include "Catalog.h"
 #include "CityFile.h"
 #include "EnemyFile.h"
+#include "ExeData.h"
 #include "DescriptionFile.h"
 #include "FileStream.h"
 #include "FontFile.h"
@@ -117,6 +118,15 @@ GameData::Lists()
     if (!fLists)
         fLists.reset(new ListFile(PathFor("DARKLAND.LST")));
     return *fLists;
+}
+
+
+const ExeData&
+GameData::Exe()
+{
+    if (!fExe)
+        fExe.reset(new ExeData(PathFor("DARKLAND.EXE")));
+    return *fExe;
 }
 
 

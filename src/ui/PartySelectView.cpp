@@ -5,6 +5,7 @@
 #include "PartySelectView.h"
 
 #include "Bitmap.h"
+#include "CreationView.h"
 #include "FileStream.h"
 #include "GameData.h"
 #include "InfoView.h"
@@ -127,7 +128,8 @@ PartySelectView::PartySelectView(GameData& data)
     fSelected(-1),
     fTop(0),
     fHot(-1),
-    fPressed(-1)
+    fPressed(-1),
+    fRandom(std::random_device()())
 {
     memset(fPalette.colors, 0, sizeof(fPalette.colors));
     for (int i = 0; i < 256; i++)
@@ -241,6 +243,7 @@ PartySelectView::IsEnabled(action what) const
     const bool chosen = fSelected >= 0 && fSelected < int(fRoster.size());
     switch (what) {
         case ACTION_CREATE:
+            return !fInCity;
         case ACTION_IMAGE:
             return false;				// not reproduced
         case ACTION_EXAMINE:
@@ -267,6 +270,8 @@ PartySelectView::Do(action what, GameWindow* window)
 {
     if (!IsEnabled(what))
         return false;
+    if (what == ACTION_CREATE)
+        return window != NULL && _Create(*window);
     const size_t chosen = size_t(fSelected);
     switch (what) {
         case ACTION_EXAMINE:
@@ -301,6 +306,28 @@ PartySelectView::Do(action what, GameWindow* window)
         default:
             return false;
     }
+}
+
+
+// A new person: the life simulation, then he waits with the others
+bool
+PartySelectView::_Create(GameWindow& window)
+{
+    CreationView creation(fData, [this](int n) {
+        return int(fRandom() % uint32(n));
+    });
+    if (creation.Run(window) != CreationView::RESULT_CREATED)
+        return false;
+    roster_entry entry;
+    entry.member = creation.Created();
+    // the picture is chosen apart (Select Character Image): until then
+    // the pictures of the game's own characters, by sex (*inferred*)
+    entry.image = entry.member.female ? "F60" : "F01";
+    entry.inParty = false;
+    entry.city = -1;
+    fRoster.push_back(entry);
+    Select(int(fRoster.size()) - 1);
+    return true;
 }
 
 

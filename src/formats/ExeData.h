@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+static const int kLifeSkillCount = 19;
+
 // A job, as the residence offers it (DS:3ACE, 18-byte records): the
 // best paid one a member qualifies for
 struct exe_job {
@@ -66,6 +68,21 @@ struct exe_saint {
     uint16 unknown6;			// mode 6: always 1
 };
 
+// A stage of a character's life (DARKLAND.EXE, 58-byte records at
+// 290E:2B65 for the six family backgrounds and 290E:2CC1 for the 37
+// occupations; docs/exe.md, "Character creation")
+struct exe_life_stage {
+    std::string name;			// "Nobility", "Knight"... (UTF-8)
+    uint16 points;				// experience points (EPs) it gives
+    int8 attributes[6];			// changes of END STR AGL PER INT CHR
+    uint8 skills[kLifeSkillCount];	// skill points it gives
+    uint8 limits[kLifeSkillCount];	// the most EPs that can go on a skill
+};
+
+static const int kFamilyCount		= 6;
+static const int kOccupationCount	= 37;
+static const int kAgingCount		= 9;
+
 class ExeData {
 public:
     explicit		ExeData(const std::string& exePath);	// throws on error
@@ -73,6 +90,8 @@ public:
     // A man's name, "Albrecht Behaim", as the game makes it for `seed`
     // (the game's seed global plus a number for the person)
     std::string		MaleName(uint16 seed) const;
+    // The same for a woman (1367:0DB4, kind 1)
+    std::string		FemaleName(uint16 seed) const;
 
     const std::vector<std::string>& MaleNames() const	{ return fMale; }
     const std::vector<std::string>& FemaleNames() const	{ return fFemale; }
@@ -80,6 +99,12 @@ public:
     const std::vector<exe_job>& Jobs() const	{ return fJobs; }
     const std::vector<exe_weapon>& Weapons() const	{ return fWeapons; }
     const std::vector<exe_saint>& Saints() const	{ return fSaints; }
+    // The life of a character: kFamilyCount family backgrounds,
+    // kOccupationCount occupations, and what each five years past 30 do
+    // to END STR AGL PER INT CHR (kAgingCount rows)
+    const std::vector<exe_life_stage>& Families() const		{ return fFamilies; }
+    const std::vector<exe_life_stage>& Occupations() const	{ return fOccupations; }
+    const int8*		Aging(int row) const	{ return fAging[row]; }
     // The strength of an armor, by item type (0 for none; 67..84 the
     // armors, 85..91 the monsters' hides)
     int				ArmorStrength(int type) const;
@@ -91,6 +116,9 @@ private:
     std::vector<exe_job>		fJobs;
     std::vector<exe_weapon>		fWeapons;
     std::vector<exe_saint>		fSaints;
+    std::vector<exe_life_stage>	fFamilies;
+    std::vector<exe_life_stage>	fOccupations;
+    int8						fAging[kAgingCount][6];
     std::vector<uint8>			fArmor;
 };
 
