@@ -387,6 +387,11 @@ public:
         SCREEN_MEDICI_REWARD,	// paid
         SCREEN_ROBBER_AVENGED,	// $RAUBI01: the banker avenged (5), the
         SCREEN_ROBBER_REASON,	// light of reason (8)
+        SCREEN_DOCKS_ICE,		// the docks at night in the cold months
+        SCREEN_SWIM_ALL,		// swimming away: $DOCKS01 cards 2 (all
+        SCREEN_SWIM_LOST,		// make it), 3 (one is lost), 4 (the first
+        SCREEN_SWIM_ONE,		// ashore), 5 (the next ones)
+        SCREEN_SWIM_FOLLOW,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -620,6 +625,11 @@ private:
     int				_ResolveGateBattle(int outcome);
     bool			_HasHorses() const;
     void			_LeaveHorses();
+    void			_DropItems(uint32 flags);
+    void			_LoseItems(int keepPercent);
+    bool			_ColdWater() const;
+    int				_Swim();
+    bool			_SwimNext();
     uint32			_InnerWallBribe() const;
     int				_SewerChance(int* member) const;
     int				_WallStealth(int* member) const;
@@ -805,6 +815,17 @@ private:
     };
     int				fBattleKind;	// a battle_kind
     std::vector<foes> fFoes;
+    // swimming away from the docks: the cards still to show, with the
+    // names they use, and who is lost when they are over
+    struct swim_step {
+        int screen;
+        std::string first;		// $ChosenOneName
+        std::string second;		// $ChosenTwoName
+        std::string lost;		// $ChosenThreeName
+        bool female;			// of the one the pronouns are for
+    };
+    std::vector<swim_step> fSwimSteps;
+    std::vector<int> fSwimLost;
     int				fCell;			// 0..3, as the game's DS:8DEE
     int				fTunnel;		// how far the tunnel is dug, in %
     int				fTortures;

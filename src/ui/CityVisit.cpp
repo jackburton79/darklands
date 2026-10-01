@@ -698,6 +698,11 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
             return true;
+        case ACTION_SWIM:
+            _Show(_Swim());
+            return true;
+        case ACTION_SWIM_NEXT:
+            return _SwimNext();
         case ACTION_AFTER_CARD:
             if (fAfterCard < 0)
                 return false;			// back to the map (state 0xC)
@@ -935,6 +940,24 @@ CityVisit::_Show(int screen, bool withScene)
         fShellReturn = screen;
         screen = SCREEN_SHELL_GAME;
     }
+    // the docks at night: the river freezes in the cold months (file 0xA9893:
+    // November to May the swimming options are not offered, card 1)
+    if (screen == SCREEN_DOCKS && fNight && _ColdWater())
+        screen = SCREEN_DOCKS_ICE;
+    // swimming away: the names on the cards
+    if (screen >= SCREEN_SWIM_ALL && screen <= SCREEN_SWIM_FOLLOW
+            && !fSwimSteps.empty()) {
+        const swim_step& step = fSwimSteps.front();
+        fVariables["ChosenOneName"] = step.first;
+        fVariables["ChosenTwoName"] = step.second;
+        fVariables["ChosenThreeName"] = step.lost;
+        fVariables["he"] = step.female ? "she" : "he";
+        fVariables["He"] = step.female ? "She" : "He";
+        fVariables["his"] = step.female ? "her" : "his";
+        fVariables["His"] = step.female ? "Her" : "His";
+        fVariables["him"] = step.female ? "her" : "him";
+        fVariables["himself"] = step.female ? "herself" : "himself";
+    }
     // a wanted party is not welcome at the inn (DARKLAND.EXE: a
     // reputation of -40 or less)
     if (screen == SCREEN_INN && _Reputation() <= -40)
@@ -1117,6 +1140,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fParty == NULL || TotalPfennigs(fParty->cash) / 10 < 10;
         else if (rule.needs == kNeedsBadReputation)
             hide = _Reputation() > -10;
+        else if (rule.needs == kNeedsSwimMounted)
+            hide = !_HasHorses();
+        else if (rule.needs == kNeedsSwimOnFoot)
+            hide = _HasHorses();
         else if (rule.needs == kNeedsInnPrice)
             hide = fParty == NULL || TotalPfennigs(fParty->cash) < InnPrice();
         else if (rule.needs == kNeedsCache)

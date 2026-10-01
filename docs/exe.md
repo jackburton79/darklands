@@ -866,6 +866,25 @@ patron gives them. **verified** (code) unless marked.
   surrender, result 4, has no BattleView outcome); the speed is the
   agility; 09C0:20F3 and the potions are not reproduced; card 13 of
   $SELEC01 (St. Reinold) is never shown by this code.
+- **The docks at night** (state 0x20, $Docks01, file 0xA9820; its options
+  are the handlers of a table at file 0xA99F2): option 0 (the boats) goes
+  to the docks' day state 0x1F; options 3 and 4 the main and side streets
+  (states 6 / 8 and 9 / 0xA). Options 1 and 2 are the same code, file
+  0xA9ABC: the first is shown when the party has mounts (0E76:1326(5)),
+  the second when not, and from June to October only (the month, DS:00E4,
+  0-based, over 4 and under 10; else card 1, the ice, with both blank):
+  the horses (09C0:202B(−2, 0x2000, 0)), all armor (flags 0x40 and
+  0x04000000) and each other item but three in ten (09C0:2021(−2, 30):
+  18E7:0AB8, random(100) over 30 loses a whole stack) are left; random(4)
+  + 4 hours pass ($Number1). The weakest member's Strength
+  (0E76:164A(1)) at 10 or more: card 2, everyone ashore. Else each member
+  in turn: with a Strength under 10 and random(100) over it, card 3 and
+  the member leaves the party (09C0:18B5); else card 4 for the first one
+  ashore ($ChosenOneName), card 5 for the others ($ChosenTwoName, after
+  $ChosenOneName). Then state 0xC, the map. **verified** (code). The
+  original removes the member at once, which shifts the party while the
+  loop goes on; here the lost leave when the cards are over.
+  Reproduced in `CityVisit`; not the boats.
 
 ## Saints
 

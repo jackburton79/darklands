@@ -383,6 +383,19 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // The docks at night in the cold months (file 0xA9893: from November to
+    // May): the swimming options are blank
+    { CityVisit::SCREEN_DOCKS_ICE, "DOCKS01", 1, "XDOCK.PIC", {
+        TODO,								// which boats are sailing
+        HIDE, HIDE,
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
+    // Swimming away from the docks: one card after the other, then the map
+    { CityVisit::SCREEN_SWIM_ALL, "DOCKS01", 2, NULL, { DO(ACTION_SWIM_NEXT) } },
+    { CityVisit::SCREEN_SWIM_LOST, "DOCKS01", 3, NULL, { DO(ACTION_SWIM_NEXT) } },
+    { CityVisit::SCREEN_SWIM_ONE, "DOCKS01", 4, NULL, { DO(ACTION_SWIM_NEXT) } },
+    { CityVisit::SCREEN_SWIM_FOLLOW, "DOCKS01", 5, NULL, { DO(ACTION_SWIM_NEXT) } },
     // "Trudging along back streets and alleys, you head for..."
     { CityVisit::SCREEN_OTHER, "OTHER00", 0, NULL, {
         HIDE, HIDE,							// the homes of people you met
@@ -1160,7 +1173,8 @@ static const screen_rules kNightScreens[] = {
     // "Some activity still proceeds on the docks of $PlaceName..."
     { CityVisit::SCREEN_DOCKS, "DOCKS01", 0, "XDOCK.PIC", {
         TODO,								// which boats are sailing
-        TODO, TODO,							// escape by boat
+        { ACTION_SWIM, 0, kNeedsSwimMounted, 0 },	// abandoning the mounts
+        { ACTION_SWIM, 0, kNeedsSwimOnFoot, 0 },	// swimming away
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },

@@ -125,6 +125,8 @@ enum option_action {
     ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_SWIM,				// the docks at night: escape by water
+    ACTION_SWIM_NEXT,			// the next card of the swim, or the map
     ACTION_AFTER_CARD,			// fAfterCard, or the map
     ACTION_SLUM_LODGING,		// live very cheaply in the slum
     ACTION_SLUM_CAMP,			// then the residence screen
@@ -256,6 +258,9 @@ static const int kNeedsTutoring		= -47;
 // a bank's reward for a robber knight (0E76:3404(3, patron, location))
 static const int kNeedsFuggerReward	= -45;
 static const int kNeedsMediciReward	= -46;
+// the docks at night: swimming away with or without mounts (0E76:1326(5))
+static const int kNeedsSwimMounted	= -48;
+static const int kNeedsSwimOnFoot	= -49;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

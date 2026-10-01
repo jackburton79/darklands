@@ -783,9 +783,26 @@ CityVisit::_HasHorses() const
 }
 
 
-// The horses left behind (09C0:202B(-2, 0x2000, 0))
+// What was in use and is gone is no longer in use
+static void
+ClearGoneEquipment(character& member)
+{
+    for (uint8& slot : member.equipment) {
+        if (slot == kNoEquipment)
+            continue;
+        bool left = false;
+        for (const item& carried : member.items)
+            left = left || carried.type == slot;
+        if (!left)
+            slot = kNoEquipment;
+    }
+}
+
+
+// The items with any of the flags are left behind, whole stacks
+// (09C0:202B(-2, lo, hi): the horses are 0x2000)
 void
-CityVisit::_LeaveHorses()
+CityVisit::_DropItems(uint32 flags)
 {
     if (fParty == NULL)
         return;
@@ -794,11 +811,117 @@ CityVisit::_LeaveHorses()
         std::vector<item> kept;
         for (const item& carried : member.items) {
             const size_t code = carried.code & 0x0FFF;
-            if (code >= items.size() || (items[code].flags & ITEM_HORSE) == 0)
+            if (code >= items.size() || (items[code].flags & flags) == 0)
                 kept.push_back(carried);
         }
         member.items = kept;
+        ClearGoneEquipment(member);
     }
+}
+
+
+// The horses left behind (09C0:202B(-2, 0x2000, 0))
+void
+CityVisit::_LeaveHorses()
+{
+    _DropItems(ITEM_HORSE);
+}
+
+
+// Each item (a whole stack) is lost if random(100) is over the percent
+// (09C0:2021(-2, percent): file 0x666E8, the loop of 18E7:0B02)
+void
+CityVisit::_LoseItems(int keepPercent)
+{
+    if (fParty == NULL)
+        return;
+    for (character& member : fParty->members) {
+        for (int i = int(member.items.size()) - 1; i >= 0; i--) {
+            if (int(fRandom() % 100) > keepPercent)
+                member.items.erase(member.items.begin() + i);
+        }
+        ClearGoneEquipment(member);
+    }
+}
+
+
+// The river is frozen, or nearly, from November to May (file 0xA9893:
+// the month, 0-based, is 10 or more or 4 or less)
+bool
+CityVisit::_ColdWater() const
+{
+    if (fClock == NULL)
+        return false;
+    return fClock->Month() >= 10 || fClock->Month() <= 4;
+}
+
+
+// Swimming away from the docks at night (file 0xA9ABC, the options 1 and
+// 2 of $DOCKS01 card 0; the same code): the horses, the armor (the item
+// flags 0x40 and 0x04000000) and then each item but three in ten (the
+// 2021 call with 30) are left; four to seven hours pass ($Number1).
+// If the weakest member has a Strength of 10 or more, card 2 and all are
+// out. Else each member in turn: with a Strength under 10 and random(100)
+// over it, card 3 and the member is lost (09C0:18B5); else card 4 for the
+// first one ashore, card 5 for the others. Then the map (state 0xC).
+// The members lost leave the party when the cards are over.
+int
+CityVisit::_Swim()
+{
+    fSwimSteps.clear();
+    fSwimLost.clear();
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_SWIM_ALL;
+    _DropItems(ITEM_HORSE);
+    _DropItems(ITEM_METAL_ARMOR | ITEM_ARMOR);
+    _LoseItems(30);
+    const int hours = 4 + int(fRandom() % 4);
+    if (fClock != NULL)
+        fClock->AddHours(uint32(hours));
+    fVariables["Number1"] = std::to_string(hours);
+
+    int weakest = 99;
+    for (const character& member : fParty->members)
+        weakest = std::min<int>(weakest, member.attributes[ATTRIBUTE_STRENGTH]);
+    if (weakest >= 10) {
+        fSwimSteps.push_back({ SCREEN_SWIM_ALL, "", "", "", false });
+        return SCREEN_SWIM_ALL;
+    }
+    int first = -1;
+    for (int i = 0; i < int(fParty->members.size()); i++) {
+        const character& member = fParty->members[size_t(i)];
+        const int strength = member.attributes[ATTRIBUTE_STRENGTH];
+        if (strength < 10 && int(fRandom() % 100) > strength) {
+            fSwimSteps.push_back({ SCREEN_SWIM_LOST, "", "", member.shortName,
+                member.female });
+            fSwimLost.push_back(i);
+            continue;
+        }
+        if (first < 0)
+            first = i;
+        const character& leader = fParty->members[size_t(first)];
+        fSwimSteps.push_back({ first == i ? SCREEN_SWIM_ONE : SCREEN_SWIM_FOLLOW,
+            leader.shortName, member.shortName, "", leader.female });
+    }
+    return fSwimSteps.front().screen;
+}
+
+
+// A card of the swim is over: the next one, or the members lost leave the
+// party and the party is on the map (false); true if nobody is left
+bool
+CityVisit::_SwimNext()
+{
+    if (!fSwimSteps.empty())
+        fSwimSteps.erase(fSwimSteps.begin());
+    if (!fSwimSteps.empty()) {
+        _Show(fSwimSteps.front().screen);
+        return true;
+    }
+    for (int i = int(fSwimLost.size()) - 1; i >= 0; i--)
+        RemoveMember(*fParty, size_t(fSwimLost[size_t(i)]));
+    fSwimLost.clear();
+    return fParty != NULL && fParty->members.empty();
 }
 
 
