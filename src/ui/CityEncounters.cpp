@@ -80,11 +80,14 @@ CityVisit::_MeetThieves()
             warned = true;
     }
     if (!warned && int(fRandom() % 100) > perception) {
+        // in a city the fight at once, on the map card 0 first
+        if (fOnMap)
+            return SCREEN_THIEVES_STRUCK;
         _FightThieves();
         return fScreen;
     }
     _SetChosen(best);
-    return SCREEN_THIEVES;
+    return fOnMap ? SCREEN_THIEVES_MAP : SCREEN_THIEVES;
 }
 
 
@@ -100,7 +103,8 @@ CityVisit::_ThievesTalkChance() const
     const character& leader = fParty->members[size_t(fParty->leader)];
     return std::max(leader.attributes[ATTRIBUTE_INTELLIGENCE],
             leader.attributes[ATTRIBUTE_CHARISMA])
-        + (leader.skills[kSkillWoodwise] + leader.skills[kSkillSpeakCommon]) / 2;
+        + (leader.skills[fOnMap ? kSkillStreetwise : kSkillWoodwise]
+            + leader.skills[kSkillSpeakCommon]) / 2;
 }
 
 
@@ -194,14 +198,16 @@ CityVisit::_RunFromThieves()
 
 // The fight (file 0xAC416): enemy 7 (the bandits) at variant s / 4 + 1,
 // clamp(party size, 8, random(s)) of them, s the party's strength
-// (09C0:1C1B, not reproduced: 0); the battlefield (by the street, and
+// (09C0:1C1B, PartyStrength()); the battlefield (by the street, and
 // whether the thieves struck first) is not reproduced
 void
 CityVisit::_FightThieves()
 {
     fFoes.clear();
     const int size = fParty != NULL ? int(fParty->members.size()) : 1;
-    fFoes.push_back(foes{ 7, 1, std::max(1, std::min(size, 8)) });
+    const int strength = fParty != NULL ? PartyStrength(*fParty) : 1;
+    const int count = std::max(size, std::min(8, int(fRandom() % uint32(strength))));
+    fFoes.push_back(foes{ 7, strength / 4 + 1, count });
     fBattleKind = BATTLE_WITH_THIEVES;
     fPendingBattle = true;
 }
@@ -215,6 +221,8 @@ CityVisit::_ResolveThievesBattle(int outcome)
 {
     if (outcome == BATTLE_WON) {
         _ChangeReputation(1, 5);
+        if (fOnMap)
+            return SCREEN_THIEVES_SLAIN;
         static const int kThanks[3] = { SCREEN_THIEVES_SLAIN,
             SCREEN_THIEVES_THANKED, SCREEN_THIEVES_BLESSED };
         return kThanks[fRandom() % 3];
@@ -303,19 +311,33 @@ CityVisit::_BanditsSneak()
 }
 
 
-// The fight (file 0x137E50, 0E76:2278): enemy 7 (the bandits) with a
-// leader, enemy 0x12 (a brigand sergeant) for MEETB01 and 0x16 (a robber
-// captain) for MEETB02 (the card's soldiers); how many (the party's
-// strength, 09C0:1C1B) is not decoded: the party's size and up to two
-// more, at most 8
+// The fight (files 0x137F4A and 0x138EDC, 0E76:2278), s the party's
+// strength (PartyStrength()). The bandits: enemy 7 at variant
+// random(2) + s / 4 + 1, clamp(party size, 7, random(5) + s / 3 + 1) of
+// them, and enemy 0x16 (a robber captain) if s is over 5, else 0x12 (a
+// brigand sergeant) at variant s % 3 + 1. The soldiers: enemy 0xF (a
+// mercenary) at variant random(3) + s / 4 + 1, clamp(size, 7, random(4)
+// + s / 3 + 1) of them, and a captain, enemy 0x25 if s is over 6, else
+// 0x16, at variant s / 4 + 1. **verified** (code)
 void
 CityVisit::_FightBandits()
 {
     fFoes.clear();
     const int size = fParty != NULL ? int(fParty->members.size()) : 1;
-    const int count = std::max(3, std::min(8, size + int(fRandom() % 3)));
-    fFoes.push_back(foes{ 7, fBanditsSoldiers ? 2 : 1, count });
-    fFoes.push_back(foes{ fBanditsSoldiers ? 0x16 : 0x12, 1, 1 });
+    const int s = fParty != NULL ? PartyStrength(*fParty) : 1;
+    if (fBanditsSoldiers) {
+        const int variant = int(fRandom() % 3) + s / 4 + 1;
+        const int count = std::max(size, std::min(7,
+            int(fRandom() % 4) + s / 3 + 1));
+        fFoes.push_back(foes{ 0xF, variant, count });
+        fFoes.push_back(foes{ s > 6 ? 0x25 : 0x16, s / 4 + 1, 1 });
+    } else {
+        const int variant = int(fRandom() % 2) + s / 4 + 1;
+        const int count = std::max(size, std::min(7,
+            int(fRandom() % 5) + s / 3 + 1));
+        fFoes.push_back(foes{ 7, variant, count });
+        fFoes.push_back(foes{ s > 5 ? 0x16 : 0x12, s % 3 + 1, 1 });
+    }
     fBattleKind = BATTLE_WITH_BANDITS;
     fPendingBattle = true;
 }
@@ -344,10 +366,10 @@ CityVisit::_ResolveBanditsBattle(int outcome)
 }
 
 
-// The battlefield (the wilderness maps of IMAPS.CAT, IWILDGEN.1xx; which
-// one the game picks is not decoded)
+// The battlefield of a meeting on the map (the wilderness maps of
+// IMAPS.CAT, IWILDGEN.1xx; which one the game picks is not decoded)
 std::string
-CityVisit::_BanditsMap()
+CityVisit::_WildMap()
 {
     static const int kMaps[12] = { 101, 102, 103, 104, 105, 106, 111, 112,
         113, 114, 115, 116 };

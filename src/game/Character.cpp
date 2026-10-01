@@ -323,3 +323,36 @@ KnowsSaint(const character& member, int saint)
         return false;
     return (member.saints[saint >> 3] & (0x80 >> (saint & 7))) != 0;
 }
+
+
+int
+PartyStrength(const party& members)
+{
+    const int count = int(members.members.size());
+    if (count == 0)
+        return 1;
+    int bestMissile = 0;
+    int bestWeapons = 0;
+    int virtue = 0;
+    int alchemy = 0;
+    for (const character& member : members.members) {
+        int best = 0;
+        for (int skill = 0; skill < kWeaponSkillCount; skill++) {
+            best = std::max(best, int(member.skills[skill]));
+            if (skill >= 4)
+                bestMissile = std::max(bestMissile, int(member.skills[skill]));
+        }
+        bestWeapons += best;
+        virtue += member.skills[9];
+        alchemy += member.skills[kSkillAlchemy];
+    }
+    int strength = (bestMissile + bestWeapons / count + virtue / count
+        + alchemy / count) / 37;
+    if (count == 1)
+        strength -= 2;
+    else if (count == 2)
+        strength -= 1;
+    else if (count == 5)
+        strength += 1;
+    return std::max(1, std::min(10, strength));
+}

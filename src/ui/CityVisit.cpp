@@ -110,6 +110,7 @@ CityVisit::CityVisit(GameData& data)
     fAfterCard(-1),
     fSlumCamp(false),
     fThievesReturn(SCREEN_SLUM),
+    fOnMap(false),
     fBanditsSoldiers(false),
     fBanditsTerrain(0),
     fBanditsReturn(SCREEN_BANDITS_WARNING),
@@ -182,6 +183,14 @@ CityVisit::result
 CityVisit::Run(GameWindow& window, int cityIndex, int screen)
 {
     Enter(cityIndex, screen);
+    if (fPendingBattle) {
+        // a meeting that starts with the fight
+        _RunBattle(window);
+        if (fPartyLost) {
+            fPartyLost = false;
+            return PARTY_LOST;
+        }
+    }
     for (;;) {
         const int option = fView.Run(window);
         if (option == CardView::kSaveRequested) {
@@ -661,6 +670,8 @@ CityVisit::Choose(int option)
             _FightThieves();
             return true;
         case ACTION_THIEVES_RETURN:
+            if (fThievesReturn < 0)
+                return false;			// the map
             _Show(fThievesReturn);
             return true;
         case ACTION_BANDITS_IGNORE:
@@ -1050,6 +1061,11 @@ CityVisit::_Show(int screen, bool withScene)
     }
     if (screen == SCREEN_BANDITS_MEET)
         screen = _MeetBandits();
+    if (screen == SCREEN_THIEVES_MAP_MEET) {
+        fThievesReturn = -1;
+        screen = _MeetThieves();
+        fScreen = screen;
+    }
     // arriving at the monastery
     if (screen == SCREEN_MONASTERY && !_InMonastery(previous))
         screen = _EnterMonastery();

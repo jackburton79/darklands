@@ -1031,6 +1031,19 @@ static const screen_rules kDayScreens[] = {
         TODO,								// alchemy
         DO(ACTION_THIEVES_FIGHT)			// attack them first
     } },
+    // on the map (file 0xAC140, DS:A891 = 3): card 2 without the saints
+    // and the alchemy, or card 0 when they strike first
+    { CityVisit::SCREEN_THIEVES_MAP_MEET, "CITYT00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_THIEVES_MAP, "CITYT00", 2, NULL, {
+        DO(ACTION_THIEVES_GROVEL),
+        DO(ACTION_THIEVES_TALK),
+        DO(ACTION_THIEVES_SCARE),
+        HIDE,
+        DO(ACTION_THIEVES_RUN),
+        HIDE,
+        DO(ACTION_THIEVES_FIGHT)
+    } },
+    { CityVisit::SCREEN_THIEVES_STRUCK, "CITYT00", 0, NULL, { DO(ACTION_THIEVES_FIGHT) } },
     { CityVisit::SCREEN_THIEVES_ROBBED, "CITYT00", 3, NULL, { DO(ACTION_THIEVES_RETURN) } },	// robbed
     { CityVisit::SCREEN_THIEVES_TALKED, "CITYT00", 4, NULL, { DO(ACTION_THIEVES_RETURN) } },
     { CityVisit::SCREEN_THIEVES_UNCONVINCED, "CITYT00", 5, NULL, { DO(ACTION_THIEVES_FIGHT) } },

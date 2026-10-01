@@ -111,7 +111,7 @@ include path: include headers by name (`#include "CityFile.h"`).
   `CityQuests` (the banks' tasks, the robber knight's tower), `CityLord`
   (the audience at the fortress and the town hall) and `CityParty` (the
   party's composition: members who retire) `CitySanctuary` and `CityCathedral` and
-  `CityEncounters` (the slum, thieves, the grove, the bandits of the map: `MapViewer` rolls the meeting, `Game` runs `CityVisit` from `SCREEN_BANDITS_MEET`). A new screen goes in
+  `CityEncounters` (the slum, thieves, the grove, the bandits of the map: `MapViewer` rolls the hazard, `Encounters.h` is the chooser, `Game` runs `CityVisit` from `SCREEN_BANDITS_MEET` / `SCREEN_THIEVES_MAP_MEET`). A new screen goes in
   the enum (`CityVisit.h`), gets a row in `CityScreens.cpp` (also a night
   row if it has one) and its code in the file of its subject. `CardView` hides the
   cards' placeholder options itself. `MapViewer::Run()` returns

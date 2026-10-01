@@ -76,7 +76,8 @@ MapViewer::MapViewer(GameData& data)
     fDestinationPlace(-1),
     fPlace(-1),
     fWeariness(0),
-    fEncounterPlace(-1)
+    fEncounterPlace(-1),
+    fEncounterState(0)
 {
     // load everything up front, so missing files are reported right away
     const WorldMap& map = fData.Map();
@@ -146,7 +147,8 @@ MapViewer::Run(GameWindow& window)
                 const int place = fEncounterPlace;
                 fEncounterPlace = -1;
                 const int result = fEncounterHandler(window, place,
-                    fData.Map().TileTypeAt(fParty.x, fParty.y));
+                    fData.Map().TileTypeAt(fParty.x, fParty.y),
+                    fEncounterState);
                 if (result != 0)
                     return result;
                 _KeepPartyVisible();
@@ -492,10 +494,15 @@ MapViewer::Tick()
             const int place = NearestPlace();
             if (place >= 0 && fRandom(1000)
                     <= EncounterChance(terrain, place) * (fWeariness + 1)) {
-                fPath.clear();
-                fDestinationPlace = -1;
-                fWeariness = 0;
-                fEncounterPlace = place;
+                const int state = fEncounterChooser
+                    ? fEncounterChooser(terrain) : 0;
+                if (state >= 0) {
+                    fPath.clear();
+                    fDestinationPlace = -1;
+                    fWeariness = 0;
+                    fEncounterPlace = place;
+                    fEncounterState = state;
+                }
             }
         }
     }

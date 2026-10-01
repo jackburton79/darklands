@@ -335,6 +335,9 @@ public:
         SCREEN_SLUM_ROOM,		// (2) or a shanty (3) to live in, the
         SCREEN_SLUM_SHANTY,		// rest disturbed (7)
         SCREEN_SLUM_DISTURBED,
+        SCREEN_THIEVES_MAP_MEET,	// the thieves met on the map (SetOnMap()):
+        SCREEN_THIEVES_MAP,		// the start, the warning (2) or the
+        SCREEN_THIEVES_STRUCK,	// ambush at once (0)
         SCREEN_THIEVES,			// $CITYT00: the thieves in ambush (1)
         SCREEN_THIEVES_ROBBED,	// the party submits (3)
         SCREEN_THIEVES_TALKED,	// talked into leaving (4)
@@ -480,6 +483,9 @@ public:
     // (for the saints and the battlefield). Enter(place, SCREEN_BANDITS_MEET)
     // then starts the encounter; `place` is the nearest place of the map,
     // whose reputation it changes.
+    // The meetings of the map (the bandits, the thieves): the fights are
+    // on the wilderness maps, and the cards end by leaving
+    void			SetOnMap(bool onMap)		{ fOnMap = onMap; }
     void			SetBandits(bool soldiers, int terrain)
                         { fBanditsSoldiers = soldiers; fBanditsTerrain = terrain; }
     // The members who retired, waiting in the cities (not owned; NULL: none)
@@ -832,7 +838,7 @@ private:
     int				_BanditsSneak();
     void			_FightBandits();
     int				_ResolveBanditsBattle(int outcome);
-    std::string		_BanditsMap();
+    std::string		_WildMap();
     void			_Robbed();
     bool			_FeastNear() const;
     int				_PlayShells(int shell);
@@ -965,6 +971,7 @@ private:
                                     // -1 the map
     bool			fSlumCamp;		// the pending residence is in the slum
     int				fThievesReturn;	// where the thieves' cards end
+    bool			fOnMap;			// a meeting of the map
     bool			fBanditsSoldiers;	// MEETB02, not MEETB01
     int				fBanditsTerrain;	// the tile type under the party
     int				fBanditsReturn;	// where an unanswered prayer leads back

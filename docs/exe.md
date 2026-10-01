@@ -1784,7 +1784,7 @@ their content comes from the game's events. **verified** (code)
   territory: the state +0x0E (the castles' 0x92, the robber knight's
   land, $RAUBI02); else a random encounter (file 0x5E1DB: the dragon's
   and other events', then by the terrain, DS:D843). **verified**
-  (code); the bandits' encounters are (see "Bandits on the map"), the
+  (code); the bandits' and the thieves' are (see "Meetings on the map"), the
   others are not.
 
 ## Camping in the wilderness
@@ -1845,48 +1845,109 @@ encounters.
   the fight won (7), the escape (8, 10) or the defeat (9). The states' own code (overlay
   at file 0x17AF90..) is not decoded.
 
-## Bandits on the map
+## Meetings on the map
 
-The random meeting of the map's step (see "Places" above) can be the
-bandits' ambush: states 0x102 ($MeetB01, "bandits", file 0x137C26) and
-0x103 ($MeetB02, "bandit-soldiers", file 0x138BD8; the same cards and
-code), the only way the party's reputation goes up without the cities.
+The map's step (file 0x5EDA0, see "Places" above) draws the hazard, then
+the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
 
-- **The meeting** (the step at file 0x5EDA0): water (tile types 1 and 2)
-  never; DS:E488 grows by one if random(500) <= 9 (up to 10); a meeting
-  if random(1000) <= (DS:E488 + 1) · chance, the chance being file
-  0x607E4: 3 for tile types 4, 5, 16, 17, 20, 21, 2 for 6, 7, 14, 15, 18,
-  19, 22, 23, else 1, plus the nearest place's word +0x0A (1, 5, 9 or 10
-  in DARKLAND.LOC). **verified** (code). Which meeting it is (a table by
-  tile type, the choosers at file 0x5E1DB..) is not decoded: the program
-  takes half of them for the bandits, the soldiers' deck at random, and
-  resets DS:E488 after a meeting (*inferred*).
-- **The cards** (verified from the decks, the options by position, as in
-  the thieves': a placeholder holds its place): card 0 (a member's
-  Perception warned the party: $ChosenOneName is the best one) offers
-  press onward (the ambush, card 1), bluff, a potion, a saint, surrender,
-  sneak away and scout (card 14, an hour; which then has a charge, 17).
-  Card 1, the ambush, offers bluff, a potion, a saint, surrender and the
-  fight. 2 bluffed, 3 not (the fight), 4/5 the potion, 6 a prayer
-  unanswered, 7/8/9 answered (9 is Saint Hubert's), 10 the surrender
-  (stripped of arms, armor and valuables), 11 the bandits beaten, 12
-  eluded, 13 the party beaten (robbed), 15/16 members left behind
-  (not reproduced).
-- **The saints** (file 0x137C8D, *verified*): 101, 102, 54, 61 and 131,
-  and 69 (Hubert) when the tile type under the party is 12..17.
-- **The fight** (file 0x137E50, 0E76:2278): enemy 7 (the bandits) and a
-  leader, enemy 0x12 (a brigand sergeant) or 0x16 (a robber captain);
-  a win calls 0E76:19D0(nearest place, 0, 5): the reputation of the
-  *nearest place* rises (by chance 100 − |reputation| %), which is what
-  makes the places' lords and banks offer tasks. The camp's ambushes
-  ($CampB00 and $CampJ00) do not change it.
+- **The hazard**: water (tile types 1 and 2) never; DS:E488 grows by one
+  if random(500) <= 9 (up to 10); a meeting if random(1000) <= (DS:E488 +
+  1) · chance, the chance being file 0x607E4: 3 for tile types 4, 5, 16,
+  17, 20, 21, 2 for 6, 7, 14, 15, 18, 19, 22, 23, else 1, plus the nearest
+  place's word +0x0A (1, 5, 9 or 10 in DARKLAND.LOC). **verified** (code).
+  The program rolls it once per tile and resets DS:E488 after a meeting
+  (*inferred*; where the game does it is not known).
+- **The chooser** (**verified**, code): with mark 0x5F (a camp) the camp's
+  ambushes (0x169/0x16A); with a place within reach of its own states
+  (the territories, see "Places"), at night with an event, or with a
+  strong party at night, states not decoded. Else by the tile type under
+  the party (DS:D843) a random number, which picks the state from a table
+  (file 0x5E4DA..); a number past the table gives the thieves (0x24), or
+  the hut (0x122) for the tile types 4..6. `kWinter` is the check of
+  file 0x5E48A: DS:E4 (the month, 0 = January) 3..9 nothing, else 0x117
+  (the blizzard). `ChooseEncounter()` has the tables:
+
+  | tile type | random(n) | the table, in order |
+  |---|---|---|
+  | 3 | 9 | 2 × 0x112; 3 × winter; 2 × 0x116; 2 × 0x11B |
+  | 4 | 17 | 0x112 ×2, winter ×3, 0x116 ×2, 0xA0 ×2, 0x102 ×2, 0x103 ×2, 0x111; the rest 0x122 |
+  | 5, 6 | 17 | 0x112 ×2, 0xA5 ×2, 0x107 ×2, 0xA0 ×2, 0x102 ×2, 0x103 ×2, 0x111, 0x118; the rest 0x122 |
+  | 7, 8 | 26 | 0xA0 ×2, 0x102 ×2, 0x103 ×2, 0x106 ×3, 0x107 ×2, 0x7F ×3, 0x104 ×4, 0x105 ×2, 0x108 ×3, winter ×2 |
+  | 9, 10 | 17 | 0xA0 ×2, 0xA5 ×2, 0x102 ×2, 0x103 ×2, 0x106 ×3, 0x107 ×2, 0x112, winter ×2 |
+  | 11..14 | 16 | 0xA0 ×2, 0xA5 ×2, 0x102 ×2, 0x103 ×2, 0x113, 0x112, 0x122, winter ×2, 0x118 |
+  | 15, 16 | 16 | 0xA0 ×2, 0xA5 ×2, 0x111, 0x113, 0x112 ×2, 0x122 ×2, winter ×3, 0x118 |
+  | 17..20 | 15 | 0xA0 ×2, 0x102 ×2, 0x103 ×2, 0x111, 0x112 ×2, winter ×3, 0x118 |
+  | 21, 22 | 9 | 0..2 0xF0; 3 0x111; else 0x117 before April and after August, else nothing |
+  | 23 | 29 | 0xA0 ×2, 0xA6 ×2, 0xA7 ×2, 0x3D, 0xC3, 0x102 ×2, 0x103 ×2, 0x106 ×3, 0x107 ×2, 0x7F ×2, 0x104 ×2.. (see the code) |
+
+  Tile types 0..2 and over 23 give nothing.
+- **The states and their decks** (the deck names are DGROUP strings,
+  found next to each state's code; **verified**): 0x3D $MeetG00
+  (gargoyles), 0x7F $MeetG01 (a friar's indulgences), 0xA6/0xA7 $MeetA00,
+  $MeetA01 (a traveling alchemist, friendly or armed), 0xB3 $MeetI00 (the
+  emperor's messenger), 0xC3 $MeetJ00 (a knight going to a tournament),
+  0xF0 $MeetC00 (a cave), 0x102 $MeetB01 (bandits), 0x103 $MeetB02
+  (bandit-soldiers), 0x104 $MeetM00 (a caravan), 0x106 $MeetP00
+  (pilgrims), 0x107 $MeetP01 (refugees), 0x108 $MeetV00 (a bishop's
+  tithe), 0x109 and 0x117 $MeetB03 (a blizzard), 0x10A $MeetA02 (an
+  army), 0x10B $MeetA03 (soldiers in ambush), 0x111 $MeetT00
+  (tatzelwurms), 0x112 $MeetG02 (spiders), 0x113 $MeetS00 (schrats),
+  0x116 $MeetP02 (a peat bog), 0x118 $MeetH00 (a hermit), 0x119
+  $MeetH01 (Hussites), 0x11A $MeetR00 (river pirates), 0x11B $MeetS01 (a
+  flood), 0x11C and 0x11D $MeetS02, $MeetS03 (saints' lists), 0x122
+  $MeetW01 (a hut), 0x163 $MeetH02 (a toll), 0x169 $CampJ00, 0x16A
+  $CampB00. States 0xA0, 0xA5 and 0x105 are in the tables of every
+  terrain and have no deck string next to them: they are probably the
+  wolves ($meetw00) and the boars ($meetb00), and a third not known.
+- **The party's strength** (09C0:1C1B = 1462:0470 of overlay 0x27, file
+  0x80E10; `PartyStrength()`): (the best missile skill, skills 4..6, of
+  all + the average best weapon skill (0E76:01C0) + the average of skills
+  9 and 7 (0E76:1600)) / 37, less 2 for one member, 1 for two, + 1 for
+  five, clamped 1..10. 0E76:060E is the average of the members' agility,
+  by their encumbrance (0E76:013A: all, 2/3, 2/3, 1). **verified**
+- **The fights** (0E76:2278(field, seed −1, then three groups of enemy
+  type, variant, number; s the strength). The field is 0x2F or 0x30 by
+  the argument of the fight's function (not decoded; the tatzelwurms and
+  the schrats 0x2E or 0x2F). The tatzelwurms (state 0x111): enemy 0x3B at
+  variant 1, s / 3 + 1 of them; the spiders (0x112): enemy 0x39 at
+  variant 1, random(3) + 2 · (s / 5); the schrats (0x113): enemy 0x3E at
+  variant random(3) + s, random(5) + 3 of them. A win calls 0E76:19D0(the
+  nearest place of the map (09C0:1FA9 from the tile of the meeting,
+  DS:E3D0/E3D2), a, b): the tatzelwurms' is (1, 1) after card 11 and an
+  hour. **verified** (code)
+- **The thieves on the map** (state 0x24 with DS:A891 = 3): as in the
+  city (see "Encounters in the city") but card 2 for the options (no
+  saints nor alchemy), card 0 when they strike first (then the fight),
+  Streetwise for the talk, only card 15 when won; the program plays it
+  (`SCREEN_THIEVES_MAP_MEET`).
+- **Bandits and soldiers** (states 0x102, 0x103: files 0x137C26 and
+  0x138BD8, the same code): the cards (verified from the decks, the
+  options by position, as in the thieves': a placeholder holds its
+  place): card 0 (a member's Perception warned the party: $ChosenOneName
+  is the best one) offers press onward (the ambush, card 1), bluff, a
+  potion, a saint, surrender, sneak away and scout (card 14, an hour;
+  which then has a charge, 17). Card 1, the ambush, offers bluff, a
+  potion, a saint, surrender and the fight. 2 bluffed, 3 not (the fight),
+  4/5 the potion, 6 a prayer unanswered, 7/8/9 answered (9 is Saint
+  Hubert's), 10 the surrender (stripped of arms, armor and valuables), 11
+  the bandits beaten, 12 eluded, 13 the party beaten (robbed), 15/16
+  members left behind (not reproduced). The saints (file 0x137C8D): 101,
+  102, 54, 61, 131, and 69 (Hubert) when the tile type is 12..17. The
+  fight (files 0x137F4A, 0x138EDC): the bandits, enemy 7 at variant
+  random(2) + s / 4 + 1, clamp(party size, 7, random(5) + s / 3 + 1) of
+  them and enemy 0x16 (s over 5) or 0x12 at variant s % 3 + 1; the
+  soldiers, enemy 0xF at random(3) + s / 4 + 1, clamp(size, 7, random(4)
+  + s / 3 + 1) of them and enemy 0x25 (s over 6) or 0x16 at variant s / 4
+  + 1. A win: the reputation of the nearest place up (0E76:19D0), which is
+  what makes the places' lords and banks offer tasks. The camp's ambushes
+  ($CampB00 and $CampJ00) do not change it. **verified**
 - **Not decoded, *inferred* in the program**: the Perception chance of
   the warning (as the thieves'), the bluff's chance (the leader's
   Charisma + Speak Common), the sneaking's (the party's average of
-  Stealth and Woodwise), the number of bandits (the party's size + 0..2,
-  at most 8; the party's strength 09C0:1C1B is not known), the wilderness
-  map (IWILDGEN.101..106, 111..116), the loss's reputation (−2..−1),
-  the potions (not offered) and the members left behind.
+  Stealth and Woodwise), the wilderness map (IWILDGEN.101..106,
+  111..116), the win's reputation (+1..+5, as the thieves'), the loss's
+  (−2..−1), the potions (not offered) and the members left behind; and
+  every other state's code: the program skips them (`IsEncounterPlayed()`).
 
 ## The church
 

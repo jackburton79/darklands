@@ -4,6 +4,7 @@
 #include "CharacterFile.h"
 #include "CityFile.h"
 #include "CityVisit.h"
+#include "Encounters.h"
 #include "GameData.h"
 #include "InfoView.h"
 #include "LocationFile.h"
@@ -207,17 +208,20 @@ Game::Run()
         camp.SetCamp(3 * int(fParty.members.size()) + terrain);
         camp.Run(where);
     });
-    // The meetings on the way (the hazard is MapViewer's): half of them
-    // are the bandits of states 0x102 and 0x103 (*inferred*: the game's
-    // other meetings are not done), the reputation of the nearest place
-    // is what a win raises
-    map.SetEncounterHandler([&](GameWindow& where, int place, int terrain) {
-        if (fRandom() % 2 == 0)
-            return 0;
-        visit.SetBandits(fRandom() % 2 == 0, terrain);
+    // The meetings on the way: the hazard is MapViewer's, the state the
+    // chooser's (Encounters.h); the ones that are not played are skipped.
+    // The reputation of the nearest place is what a win raises
+    map.SetEncounterHandler([&](GameWindow& where, int place, int terrain,
+            int state) {
+        int screen = CityVisit::SCREEN_THIEVES_MAP_MEET;
+        if (state == ENCOUNTER_BANDITS || state == ENCOUNTER_SOLDIERS) {
+            visit.SetBandits(state == ENCOUNTER_SOLDIERS, terrain);
+            screen = CityVisit::SCREEN_BANDITS_MEET;
+        }
         meeting = true;
-        const CityVisit::result result = visit.Run(where, place,
-            CityVisit::SCREEN_BANDITS_MEET);
+        visit.SetOnMap(true);
+        const CityVisit::result result = visit.Run(where, place, screen);
+        visit.SetOnMap(false);
         meeting = false;
         if (result == CityVisit::LOAD_GAME)
             return MapViewer::kLoadRequested;
@@ -227,6 +231,10 @@ Game::Run()
             return -1;
         }
         return result == CityVisit::QUIT ? -1 : 0;
+    }, [&](int terrain) {
+        const int state = ChooseEncounter(terrain, int(fTime.Month()),
+            [this](int n) { return int(fRandom() % uint32(n)); });
+        return IsEncounterPlayed(state) ? state : -1;
     }, [this](int n) { return int(fRandom() % uint32(n)); });
     visit.SetOrderHandler(order);
     map.SetOrderHandler(order);

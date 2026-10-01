@@ -70,14 +70,21 @@ public:
                         const std::function<void(GameWindow&, int)>& handler)
                         { fCampHandler = handler; }
     // Called by Run() when the party meets someone on the way (the hazard
-    // of DARKLAND.EXE's map step, file 0x5EDA0, see EncounterChance()): with
-    // the place nearest to the party and the tile type under it; it returns 0 to
-    // go on, else the value Run() then returns (-1 quit, kLoadRequested).
-    // `random(n)` is 0..n-1. Not set: no encounters.
-    void			SetEncounterHandler(
-                        const std::function<int(GameWindow&, int, int)>& handler,
+    // of DARKLAND.EXE's map step, file 0x5EDA0, see EncounterChance()):
+    // with the place nearest to the party, the tile type under it and the
+    // state the chooser gave; it returns 0 to go on, else the value Run()
+    // then returns (-1 quit, kLoadRequested). `choose(terrain)` gives the
+    // state of the meeting, or a negative number for none (the hazard then
+    // goes on); `random(n)` is 0..n-1. Not set: no encounters.
+    typedef std::function<int(GameWindow&, int, int, int)> encounter_handler;
+    void			SetEncounterHandler(const encounter_handler& handler,
+                        const std::function<int(int)>& choose,
                         const std::function<int(int)>& random)
-                        { fEncounterHandler = handler; fRandom = random; }
+                        {
+                            fEncounterHandler = handler;
+                            fEncounterChooser = choose;
+                            fRandom = random;
+                        }
     // The chance in a thousand, per step, of the base chance of the place
     // (file 0x607E4: 3, 2 or 1 by the terrain, + the nearest place's weight,
     // DARKLAND.LOC +0x0A), times the party's weariness + 1
@@ -88,6 +95,8 @@ public:
     // The weariness (DS:E488, 0..10) grows slowly (10 in 500 per step,
     // file 0x5F0CC); a meeting resets it (*inferred*)
     int				Weariness() const		{ return fWeariness; }
+    // The place of a meeting waiting for Run() to play it, or -1
+    int				PendingEncounter() const	{ return fEncounterPlace; }
 
     // What the place adds to the danger of a camp (DARKLAND.EXE, file
     // 0x6005E; the party's size comes on top, 3 each): a city within 5
@@ -161,7 +170,8 @@ private:
     std::function<bool(GameWindow&)> fLoadHandler;
     std::function<void(GameWindow&)> fOrderHandler;
     std::function<void(GameWindow&, int)> fCampHandler;
-    std::function<int(GameWindow&, int, int)> fEncounterHandler;
+    encounter_handler fEncounterHandler;
+    std::function<int(int)> fEncounterChooser;
     std::function<int(int)> fRandom;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
@@ -179,6 +189,7 @@ private:
     int				fPlace;				// place the party reached, or -1
     int				fWeariness;
     int				fEncounterPlace;	// to meet at the next Run() step, or -1
+    int				fEncounterState;
 
     uint8			fBlack;
     uint8			fWhite;

@@ -95,6 +95,13 @@ struct party {
     uint16 philosopherStone;			// quality, 0: none
 };
 
+// The party's strength, 1..10 (09C0:1C1B = 1462:0470 of overlay 0x27, file
+// 0x80E10): the best missile skill (skills 4..6) of the members + their
+// average best weapon skill + the averages of skills 9 and 7, over 37,
+// less 2, 1 for a party of one, two, + 1 for five. The encounters take
+// the number and quality of the foes from it.
+int PartyStrength(const party& members);
+
 // A member who retired from the party (the inn's "composition of your
 // party"): he waits in the city, with his possessions, to rejoin
 struct retired_member {
