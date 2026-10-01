@@ -78,6 +78,19 @@ public:
     void			SelectTutor(int tutor);
     int				Tutor() const			{ return fTutor; }
     int				TutorOf(int member) const;
+    // Camping in the wilderness (CAMPWILD.PIC, DARKLAND.EXE's camp of
+    // type 1): no inn, nothing to pay, and members may guard the camp.
+    // `base` is the camp's danger a day, less what the guards take off
+    // (docs/exe.md, "Camping in the wilderness"). Before each day the
+    // camp may be found: Interrupted(), then Guard() is the member who
+    // was guarding (-1: none).
+    void			SetCamp(int base);
+    bool			IsCamp() const			{ return fCamp; }
+    int				Danger() const			{ return fDanger; }
+    int				Guard() const			{ return fGuard; }
+    // What the guards of the party take off the danger of a day
+    int				GuardedDanger() const;
+
     // Living in the slum (DARKLAND.EXE, file 0x6FDBE): before each day,
     // if random(100) is at least `safe`, thieves come and the party
     // leaves (Interrupted()); -1, as SetPlace() leaves it: never.
@@ -125,6 +138,7 @@ private:
     };
 
     int				_Random(int n);
+    void			_WaitForKey(GameWindow& window);
     int				_BestHealing() const;
     void			_UpdateValues();
     void			_FindJob(int member);
@@ -142,7 +156,9 @@ private:
     std::unique_ptr<PartySidebar> fSidebar;
     std::unique_ptr<ExeData> fExe;
     raw_picture		fBackground;
+    raw_picture		fWildBackground;	// CAMPWILD.PIC
     GFX::Palette	fPalette;
+    GFX::Palette	fWildPalette;
     std::mt19937	fRandom;
 
     party*			fParty;
@@ -163,6 +179,10 @@ private:
     int				fDays;
     std::string		fMessage;
     int				fAmbushSafe;
+    bool			fCamp;
+    int				fCampBase;
+    int				fDanger;
+    int				fGuard;
     bool			fInterrupted;
     GFX::point		fMouse;
     bool			fCursorVisible;

@@ -11,6 +11,7 @@
 #include "MenuBar.h"
 #include "MsgFile.h"
 #include "PartySelectView.h"
+#include "ResidenceView.h"
 #include "SaveFile.h"
 #include "ScreenSupport.h"
 #include "TextSupport.h"
@@ -190,6 +191,17 @@ Game::Run()
         visit.SetParty(&fParty);
         info.SetParty(&fParty);
     };
+    // C on the map: the camp of the wilderness (file 0x5E9A6): the danger
+    // of a day starts at 3 for each member, plus the place's
+    ResidenceView camp(fData);
+    camp.SetClock(&fTime);
+    camp.SetInfoView(&info);
+    camp.SetMenuBar(&menu);
+    map.SetCampHandler([&](GameWindow& where, int terrain) {
+        camp.SetParty(&fParty);
+        camp.SetCamp(3 * int(fParty.members.size()) + terrain);
+        camp.Run(where);
+    });
     visit.SetOrderHandler(order);
     map.SetOrderHandler(order);
     visit.SetLoadHandler(load);

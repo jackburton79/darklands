@@ -63,6 +63,17 @@ public:
     void			SetOrderHandler(
                         const std::function<void(GameWindow&)>& handler)
                         { fOrderHandler = handler; }
+    // Called by Run() for the C key (make camp), the party stopped: with
+    // the terrain's part of the camp's danger (CampDanger()); not set:
+    // nothing happens
+    void			SetCampHandler(
+                        const std::function<void(GameWindow&, int)>& handler)
+                        { fCampHandler = handler; }
+    // What the place adds to the danger of a camp (DARKLAND.EXE, file
+    // 0x6005E; the party's size comes on top, 3 each): a city within 5
+    // tiles, and the terrain under the party
+    int				CampDanger() const;
+
     // Called by Run() for Ctrl+S (not set: nothing happens)
     void			SetSaveHandler(
                         const std::function<void(GameWindow&)>& handler)
@@ -129,6 +140,7 @@ private:
     std::function<void(GameWindow&)> fSaveHandler;
     std::function<bool(GameWindow&)> fLoadHandler;
     std::function<void(GameWindow&)> fOrderHandler;
+    std::function<void(GameWindow&, int)> fCampHandler;
     Bitmap*			fBuffer;
     std::unique_ptr<Font>	fLabelFont;
     std::unique_ptr<Font>	fTextFont;

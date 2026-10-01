@@ -100,6 +100,10 @@ ResidenceView::ResidenceView(GameData& data)
     fMember(0),
     fDays(0),
     fAmbushSafe(-1),
+    fCamp(false),
+    fCampBase(0),
+    fDanger(0),
+    fGuard(-1),
     fInterrupted(false),
     fMouse(0, 0),
     fCursorVisible(false)
@@ -116,6 +120,16 @@ ResidenceView::ResidenceView(GameData& data)
     fBackground.width = image.Width();
     fBackground.height = image.Height();
     fBackground.pixels = image.RawBytes();
+
+    FileStream wild(fData.PathFor("CAMPWILD.PIC").c_str(),
+        FileStream::READ_ONLY);
+    PICImage wildImage(&wild);
+    GFX::Palette wildPalette = PICImage::EGAPalette();
+    wildImage.ApplyPalette(wildPalette);
+    fWildPalette = wildPalette;
+    fWildBackground.width = wildImage.Width();
+    fWildBackground.height = wildImage.Height();
+    fWildBackground.pixels = wildImage.RawBytes();
 
     fBuffer = new Bitmap(320, 200, 8);
 }
@@ -155,8 +169,48 @@ ResidenceView::SetPlace(int cityIndex, int reputation, uint32 innPrice,
     fDays = 0;
     fMessage.clear();
     fAmbushSafe = -1;
+    fCamp = false;
+    fDanger = 0;
+    fGuard = -1;
     fInterrupted = false;
     _UpdateValues();
+}
+
+
+void
+ResidenceView::SetCamp(int base)
+{
+    SetPlace(-1, 0, 0);
+    fCamp = true;
+    fCampBase = base;
+}
+
+
+// File 0x70C10: the camp's base danger a day, less for each member
+// guarding: 3, 2 or 1 by Woodwise (70, 30), 2 or 1 by Stealth (70, 30),
+// and 1 if a weapon skill but Impact is 30 or more; kept within 1..15
+int
+ResidenceView::GuardedDanger() const
+{
+    int danger = fCampBase;
+    if (fParty != NULL) {
+        for (size_t i = 0; i < fParty->members.size(); i++) {
+            if (fActivities[i] != ACTIVITY_GUARD)
+                continue;
+            const character& member = fParty->members[i];
+            const int woods = member.skills[18];
+            const int stealth = member.skills[kSkillStealth];
+            danger -= woods >= 70 ? 3 : woods >= 30 ? 2 : 1;
+            danger -= stealth >= 70 ? 2 : stealth >= 30 ? 1 : 0;
+            for (int skill = 0; skill < kWeaponSkillCount; skill++) {
+                if (skill != 1 && member.skills[skill] >= 30) {
+                    danger--;
+                    break;
+                }
+            }
+        }
+    }
+    return std::max(1, std::min(15, danger));
 }
 
 
@@ -207,8 +261,11 @@ ResidenceView::Run(GameWindow& window)
                 if (key >= SDLK_1 && key <= SDLK_5)
                     SelectMember(int(key - SDLK_1));
                 else if (key == SDLK_s) {
-                    if (!SpendDay() && fInterrupted)
+                    if (!SpendDay() && fInterrupted) {
+                        if (fCamp)
+                            _WaitForKey(window);
                         return;
+                    }
                 }
                 else {
                     for (int i = 0; i < ACTIVITY_COUNT; i++) {
@@ -230,8 +287,11 @@ ResidenceView::Run(GameWindow& window)
                     const int member = fSidebar->MemberAt(point);
                     if (member >= 0 && fInfo != NULL)
                         fInfo->Run(window, member);
-                    else if (!Clicked(point))
+                    else if (!Clicked(point)) {
+                        if (fCamp && fInterrupted)
+                            _WaitForKey(window);
                         return;
+                    }
                     dirty = true;
                 }
                 break;
@@ -242,6 +302,27 @@ ResidenceView::Run(GameWindow& window)
                 break;
             default:
                 break;
+        }
+    }
+}
+
+
+// The camp was found: the message stays until a key or a click
+void
+ResidenceView::_WaitForKey(GameWindow& window)
+{
+    window.Show(Draw());
+    for (;;) {
+        SDL_Event event;
+        if (SDL_WaitEvent(&event) == 0)
+            return;
+        if (event.type == SDL_KEYDOWN || event.type == SDL_MOUSEBUTTONUP) {
+            return;
+        } else if (event.type == SDL_QUIT) {
+            SDL_PushEvent(&event);
+            return;
+        } else if (event.type == SDL_WINDOWEVENT) {
+            window.Show(Draw());
         }
     }
 }
@@ -284,6 +365,8 @@ ResidenceView::Available(activity what) const
                 < member.maxAttributes[ATTRIBUTE_DIVINE_FAVOR];
         case ACTIVITY_EARN:
             return fCity >= 0;
+        case ACTIVITY_GUARD:
+            return fCamp;
         case ACTIVITY_TRAIN:
             for (size_t i = 0; i < fTutors.size(); i++) {
                 if (_TutorAvailable(int(i)))
@@ -368,6 +451,34 @@ ResidenceView::SpendDay()
         fInterrupted = true;
         return false;
     }
+    // file 0x6FDFC: in the wilderness the camp may be found first, by
+    // chance against the danger so far; the guard is the first member
+    // on guard
+    if (fCamp && _Random(50) + _Random(50) <= fDanger) {
+        fGuard = -1;
+        for (size_t i = 0; i < fActivities.size() && fGuard < 0; i++) {
+            if (fActivities[i] == ACTIVITY_GUARD)
+                fGuard = int(i);
+        }
+        fInterrupted = true;
+        // the encounter is the soldiers' or the bandits' (file 0x5E1E5,
+        // random(2)); the texts are the first cards of $CampJ00 and
+        // $CampB00 (the encounters themselves are not reproduced)
+        const bool soldiers = _Random(2) == 0;
+        if (fGuard >= 0) {
+            fMessage = fParty->members[size_t(fGuard)].shortName
+                + (soldiers ? " spots a party of soldiers headed toward the "
+                    "camp. Alas, someone has discovered your presence here."
+                : " spots a party of bandits headed your way. Alas, someone "
+                    "has discovered your presence here.");
+        } else {
+            fMessage = soldiers ? "You are surprised by a party of soldiers, "
+                "led by a stern woodsman. \"Leave or pay rent,\" he says."
+                : "Suddenly wild screams erupt around you! Dirty bandits "
+                "leap forward from all directions. No one guarded the camp!";
+        }
+        return false;
+    }
     const int32 cost = NetCost();
     if (cost > 0 && int64(TotalPfennigs(fParty->cash)) < cost) {
         fMessage = "Not Enough Money";
@@ -415,6 +526,8 @@ ResidenceView::SpendDay()
                         random);
                 }
                 break;
+            case ACTIVITY_GUARD:
+                break;
             default:
                 fActivities[i] = ACTIVITY_RELAX;
                 break;
@@ -437,6 +550,8 @@ ResidenceView::SpendDay()
                 fActivities[i] = ACTIVITY_RELAX;
         }
     }
+    if (fCamp)
+        fDanger += GuardedDanger();
     fDays++;
     _UpdateValues();
     return true;
@@ -539,10 +654,11 @@ ResidenceView::Clicked(const GFX::point& point)
 Bitmap*
 ResidenceView::Draw()
 {
-    fBuffer->SetColors(fPalette.colors, 0, 256);
-    for (int y = 0; y < fBackground.height; y++) {
-        for (int x = 0; x < fBackground.width; x++)
-            fBuffer->PutPixel(x, y, fBackground.pixels[size_t(y) * fBackground.width + x]);
+    const raw_picture& background = fCamp ? fWildBackground : fBackground;
+    fBuffer->SetColors((fCamp ? fWildPalette : fPalette).colors, 0, 256);
+    for (int y = 0; y < background.height; y++) {
+        for (int x = 0; x < background.width; x++)
+            fBuffer->PutPixel(x, y, background.pixels[size_t(y) * background.width + x]);
     }
     fSidebar->Draw(fBuffer, false);
     if (fParty == NULL || fParty->members.empty())
@@ -554,7 +670,12 @@ ResidenceView::Draw()
     const uint32 purse = TotalPfennigs(fParty->cash);
     const int groschen = int(fInnPrice / 12);
     const int pfennigs = int(fInnPrice % 12);
-    if (cost > 0 && int64(purse) < cost) {
+    if (fCamp) {
+        // file 0x70364
+        snprintf(text, sizeof(text), "You live off the land, but the lord "
+            "may be upset if you are caught. After %d days the risk is %d",
+            fDays, fDanger / 5);
+    } else if (cost > 0 && int64(purse) < cost) {
         snprintf(text, sizeof(text), "You consider staying here today, at "
             "%dgr, %dpf.  But, you do not have enough money.   For the day "
             "you will:", groschen, pfennigs);
@@ -595,6 +716,9 @@ ResidenceView::Draw()
                         kSkillNames[tutor.skill], tutor.fee);
                 } else
                     snprintf(text, sizeof(text), "Train or Study");
+                break;
+            case ACTIVITY_GUARD:
+                snprintf(text, sizeof(text), "Maintain camp, food");
                 break;
             default:
                 snprintf(text, sizeof(text), "Relaxes");

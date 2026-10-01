@@ -178,7 +178,8 @@ Game files are looked up by name, in that directory and then in `PICS`:
 # as the first free SAVES/DKSAVEn.SAV, which --load reads. The menu bar:
 # hold the right mouse button (or tap F10, the cursor keys, Return); Alt+S
 # saves, Alt+L loads, Alt+Q quits.
-# Map: click to travel there (clicking a city goes there and shows it),
+# Map: C makes camp (days pass, members guard it; the camp may be found),
+# click to travel there (clicking a city goes there and shows it),
 # middle click a city for its details, arrow keys (shift: faster) or drag
 # to scroll, space to center on the party, Esc to go back or quit
 ./darklands --data /path/to/DARKLAND

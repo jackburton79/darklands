@@ -1790,8 +1790,29 @@ their content comes from the game's events. **verified** (code)
 
 The bandits and the soldiers who find a camp ($CampB00, $CampJ00) come
 from the camp screen on the map, not from a city (for the grove, see
-"Encounters in the city"). **verified** (code); not
-reproduced.
+"Encounters in the city"). **verified** (code); the camp is reproduced
+(`ResidenceView::SetCamp()`, `MapViewer::CampDanger()`), not the
+encounters.
+
+- **How it starts**: the **C** key on the map (the key chain at file
+  0x5E78A: 0x2E43 and 0x2E63, "C" and "c", go to file 0x5E9A6; A, the
+  ambush the manual calls F7, is at 0x5E9F2) computes the danger's base
+  (file 0x6005E), starts the camp (0x9C0:1FF9) and, if the mark 0x5F
+  (an encounter pending) runs, returns 1000 to the map. The screen is
+  the residence's with CAMPWILD.PIC: no price, "Guard the camp" for
+  the members, and the text "You live off the land, but the lord may be
+  upset if you are caught. After %d days the risk is %d" (file 0x70364:
+  the days, DS:8A34 / 5).
+- **The base** (file 0x6005E, **verified** but for the window): 3 for
+  each member of the party (DS:A67E), plus the terrain of the party's
+  tile (tile types: 4, 5, 15, 19: −1; 16, 20: −2; 17, 21: −3; 22: −5;
+  23: −6; 24: +1; 8, 9: +2), plus |d − 6| for a city (type 29) in the 10
+  x 10 tiles around, d the smaller of its distances along the axes (0
+  adds nothing); *inferred*: the code reads the screen's own tile
+  buffer, taken here as the tiles around the party. Each day adds the
+  base less the guards' share (clamped 1..15), see below.
+- Not reproduced: the encounters (the soldiers' or the bandits' cards,
+  the fight): the camp ends with a message, taken from their first cards.
 
 - **The danger** of a camp: the map (file 0x5E9C5) calls 0x9C0:1FF9
   with a base computed at file 0x6005E: 3 · [DS:A67E],

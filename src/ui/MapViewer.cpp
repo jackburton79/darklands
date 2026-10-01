@@ -173,6 +173,13 @@ MapViewer::Run(GameWindow& window)
                         case SDLK_UP:		ScrollBy(0, -step); break;
                         case SDLK_DOWN:		ScrollBy(0, step); break;
                         case SDLK_SPACE:	CenterOnParty(); break;
+                        case SDLK_c:
+                            if (fCampHandler) {
+                                // the party stops to camp
+                                fPath.clear();
+                                fCampHandler(window, CampDanger());
+                            }
+                            break;
                         case SDLK_F1: case SDLK_F2: case SDLK_F3:
                         case SDLK_F4: case SDLK_F5: case SDLK_F6:
                             if (fInfo != NULL) {
@@ -389,6 +396,61 @@ MapViewer::Escape()
         return true;
     }
     return false;
+}
+
+
+// File 0x6005E. The terrain under the party: marshes, light forest and
+// rock take 1 off, thicker ones 2, 3, 5 and 6, a road adds 1, farmland 2.
+// A city (tile type 29) in the 10 x 10 tiles around adds |d - 6|, d being
+// the smaller of its distances along the two axes (none if 0), the last
+// column's city counting: *inferred* from the code, whose window is the
+// screen's own buffer.
+int
+MapViewer::CampDanger() const
+{
+    const WorldMap& map = fData.Map();
+    int danger = 0;
+    const int here = map.TileTypeAt(fParty.x, fParty.y);
+    switch (here) {
+        case 4: case 5: case 15: case 19:
+            danger -= 1;
+            break;
+        case 16: case 20:
+            danger -= 2;
+            break;
+        case 17: case 21:
+            danger -= 3;
+            break;
+        case 22:
+            danger -= 5;
+            break;
+        case 23:
+            danger -= 6;
+            break;
+        case 24:
+            danger += 1;
+            break;
+        case 8: case 9:
+            danger += 2;
+            break;
+        default:
+            break;
+    }
+    int near = 0;
+    for (int dx = -5; dx < 5; dx++) {
+        for (int dy = -5; dy < 5; dy++) {
+            const int x = int(fParty.x) + dx;
+            const int y = int(fParty.y) + dy;
+            if (x < 0 || y < 0 || x >= map.Width() || y >= map.Height()
+                    || map.TileTypeAt(uint16(x), uint16(y)) != 29)
+                continue;
+            near = std::min(std::abs(dx), std::abs(dy));
+            break;
+        }
+    }
+    if (near != 0)
+        danger += std::abs(near - 6);
+    return danger;
 }
 
 
