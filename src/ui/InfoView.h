@@ -75,12 +75,25 @@ public:
     // Down, Home and End, and Esc (closes the scroll) are its keys.
     bool			KeyPressed(int key, bool shift);
 
-    // The equipment scroll of the character page (the Equipment button):
-    // the items the character carries, 14 rows at a time
+    // The scrolls of the character page, unrolled by the Equipment,
+    // Formulae and Saints buttons: the items the character carries, the
+    // formulae and the saints he knows, 14 rows at a time. One is open at
+    // a time; each keeps, for each character, its first row and its cursor.
+    enum scroll_kind {
+        SCROLL_EQUIPMENT = 0,
+        SCROLL_FORMULAE,
+        SCROLL_SAINTS,
+        SCROLL_KINDS
+    };
     bool			IsScrollOpen() const	{ return fScrollOpen; }
-    void			OpenScroll(bool open);
-    int				ScrollCursor() const;		// index into the items, or -1
+    int				ScrollKind() const		{ return fScrollKind; }
+    void			OpenScroll(bool open);			// the equipment's
+    void			OpenScroll(int kind, bool open);
+    int				ScrollCursor() const;		// index into the rows, or -1
     void			SetScrollCursor(int index);
+    // The rows of the open scroll, and the text of one
+    int				ScrollCount() const;
+    std::string		ScrollText(int index) const;
     static const int kScrollRows = 14;
 
     // The city shown in the "map information" panel: the one under the
@@ -106,7 +119,8 @@ private:
     int				_NearestCity(const map_position& position) const;
     void			_DrawPartyPage();
     void			_DrawCharacterPage();
-    void			_DrawEquipmentScroll();
+    void			_DrawScroll();
+    int				_ScrollTop() const;
     void			_ClampScroll();
     int				_ScrollRowAt(const GFX::point& point) const;
     void			_Drop(const GFX::point& point);
@@ -132,8 +146,9 @@ private:
     map_position	fPosition;
     int				fPage;
     bool			fScrollOpen;
-    int				fTop[5];		// first item shown, by member
-    int				fCursor[5];		// the highlighted item, by member
+    int				fScrollKind;	// the scroll that is open
+    int				fTop[SCROLL_KINDS][5];		// first row shown, by member
+    int				fCursor[SCROLL_KINDS][5];	// the highlighted row
     raw_picture		fScrolls[6];	// ARMBRSH8.PIC .. ARMBRS13.PIC
     raw_picture		fHand;			// HANDICON.PIC: over the scroll
     raw_picture		fGrip;			// HANDICN2.PIC: dragging an item

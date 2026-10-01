@@ -26,7 +26,6 @@ enum {
     ITEM_FIRST_POTION	= 0x5F			// one per alchemical formula
 };
 static const int kSaintCount	= 136;
-static const int kFormulaCount	= 22;
 
 // What an occupation gives besides skills (S2:3748)
 enum reward {

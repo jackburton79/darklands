@@ -356,3 +356,13 @@ PartyStrength(const party& members)
         strength += 1;
     return std::max(1, std::min(10, strength));
 }
+
+
+int
+FormulaVersions(const character& member, int formula)
+{
+    const size_t offset = 0x94 + size_t(formula);
+    if (formula < 0 || formula >= kFormulaCount || member.record.size() <= offset)
+        return 0;
+    return member.record[offset] & 7;
+}

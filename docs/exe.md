@@ -482,6 +482,22 @@ segment, **18E7** (file base 0x65C30, the one of the trade). **verified**
   dragging. Reproduced in `InfoView::Pressed()`; the equipment's own
   scroll (a click on that board), where a row is a slot, is not.
   The formulae and the saints have their scrolls too (records 10, 11).
+- **The Formulae and Saints buttons** (records 10 and 11, x 196, y 165 and
+  181, 61 x 13): the same scroll (14 rows, the same pictures and colors, the
+  same keys for the cursor: no A, U, D, 1..5, the flag 0x10 of the drag is
+  clear) unrolled at x 62 and y 46 and 62 (the equipment's is at 30). The
+  board code (overlay 1462 file 0x613E0, the switch at 2B14 / 397A by the
+  board's number, 3..11) lists: the formulae (1462:35C8) for each of the 22
+  potions the bits 1, 2, 4 of the byte at the member's record + 0x94, one
+  row each, the name that of the far string (potion · 3 + bit,
+  `ListFile::Formulae()`); the saints (1462:37FE) for each of 17 bytes
+  (record + 0x80, the bit 0x80 first) the saints known, `ListFile::Saints()`;
+  each row at x + 9, y + 9 + 8 · (row − the first), dark gray, the cursor's
+  row recolored (1462:4DC replaces color 8 by 9 in a 8-pixel high
+  band, as the equipment's). The number of rows goes to DS:E7A4.
+  **verified** (code). Reproduced in `InfoView` (`ScrollCount()`,
+  `ScrollText()`, one first row and cursor for each member and each
+  scroll).
 - **What is in use**: five slots, each a type and a quality in the
   record: weapon +0x51 / +0x58, vitals armor +0x4B / +0x4F, limbs armor
   +0x4C / +0x50, shield +0x5C / +0x5B, missile weapon +0x22 / +0x5A.

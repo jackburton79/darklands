@@ -95,6 +95,12 @@ struct party {
     uint16 philosopherStone;			// quality, 0: none
 };
 
+// The alchemical formulae a character knows: a byte for each of the 22
+// potions (the record's bytes 0x94..0xA9), one bit for each of the three
+// authors' versions (1, 2, 4); 0 for a character without a record
+static const int kFormulaCount = 22;
+int FormulaVersions(const character& member, int formula);
+
 // The party's strength, 1..10 (09C0:1C1B = 1462:0470 of overlay 0x27, file
 // 0x80E10): the best missile skill (skills 4..6) of the members + their
 // average best weapon skill + the averages of skills 9 and 7, over 37,

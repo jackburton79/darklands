@@ -78,9 +78,14 @@ static const int kSkillsPerBox[3] = { 7, 6, 6 };
 
 // The Equipment button, and the scroll that unrolls over the figure
 // (DARKLAND.EXE's panel table, 290E:3559: record 9)
-static const GFX::rect kEquipmentButton(196, 149, 61, 13);
+// and the Formulae and Saints buttons (records 10 and 11), whose scrolls
+// unroll 16 and 32 pixels lower
+static const GFX::rect kScrollButtons[3] = {
+    GFX::rect(196, 149, 61, 13), GFX::rect(196, 165, 61, 13),
+    GFX::rect(196, 181, 61, 13)
+};
 static const int kScrollLeft		= 62;
-static const int kScrollTop			= 30;
+static const int kScrollTops[3]		= { 30, 46, 62 };
 static const int kScrollTextLeft	= 9;
 static const int kScrollTextTop		= 9;
 static const int kScrollRowHeight	= 8;
@@ -167,6 +172,7 @@ InfoView::InfoView(GameData& data)
     fPosition{ 0, 0 },
     fPage(kPartyPage),
     fScrollOpen(false),
+    fScrollKind(0),
     fDragging(false),
     fDragItem(-1),
     fDragAll(false),
@@ -187,8 +193,10 @@ InfoView::InfoView(GameData& data)
         "ARMBRS10.PIC", "ARMBRS11.PIC", "ARMBRS12.PIC", "ARMBRS13.PIC" };
     for (int i = 0; i < 6; i++)
         fScrolls[i] = _LoadPicture(kScrollNames[i], &fCharacterPalette);
-    for (int i = 0; i < 5; i++)
-        fTop[i] = fCursor[i] = 0;
+    for (int kind = 0; kind < SCROLL_KINDS; kind++) {
+        for (int i = 0; i < 5; i++)
+            fTop[kind][i] = fCursor[kind][i] = 0;
+    }
     fHand = _LoadPicture("HANDICON.PIC", &fCharacterPalette);
     fGrip = _LoadPicture("HANDICN2.PIC", &fCharacterPalette);
 
@@ -321,11 +329,14 @@ InfoView::Clicked(const GFX::point& point)
         Show(member);
         return true;
     }
-    if (point.x >= kEquipmentButton.x && point.y >= kEquipmentButton.y
-            && point.x < kEquipmentButton.x + int(kEquipmentButton.w)
-            && point.y < kEquipmentButton.y + int(kEquipmentButton.h)) {
-        OpenScroll(!fScrollOpen);
-        return true;
+    for (int kind = 0; kind < SCROLL_KINDS; kind++) {
+        const GFX::rect& button = kScrollButtons[kind];
+        if (point.x >= button.x && point.y >= button.y
+                && point.x < button.x + int(button.w)
+                && point.y < button.y + int(button.h)) {
+            OpenScroll(kind, !(fScrollOpen && fScrollKind == kind));
+            return true;
+        }
     }
     if (fScrollOpen && fParty != NULL) {
         const int index = _ScrollRowAt(point);
@@ -343,14 +354,13 @@ InfoView::_ScrollRowAt(const GFX::point& point) const
     if (!fScrollOpen || fParty == NULL || fPage < 0
             || fPage >= int(fParty->members.size()))
         return -1;
-    const int row = (point.y - kScrollTop - kScrollTextTop) / kScrollRowHeight;
+    const int row = (point.y - _ScrollTop() - kScrollTextTop) / kScrollRowHeight;
     if (point.x < kScrollLeft || point.x >= kScrollLeft + kScrollWidth
-            || point.y < kScrollTop + kScrollTextTop || row < 0
+            || point.y < _ScrollTop() + kScrollTextTop || row < 0
             || row >= kScrollRows)
         return -1;
-    const int index = fTop[fPage] + row;
-    return index < int(fParty->members[size_t(fPage)].items.size())
-        ? index : -1;
+    const int index = fTop[fScrollKind][fPage] + row;
+    return index < ScrollCount() ? index : -1;
 }
 
 
@@ -362,6 +372,8 @@ InfoView::Pressed(const GFX::point& point, bool shift)
     if (index < 0)
         return;
     SetScrollCursor(index);
+    if (fScrollKind != SCROLL_EQUIPMENT)
+        return;			// the lists are only read
     fDragging = true;
     fDragItem = index;
     fDragAll = shift;
@@ -399,19 +411,32 @@ InfoView::_Drop(const GFX::point& point)
 void
 InfoView::OpenScroll(bool open)
 {
-    fScrollOpen = open && fPage != kPartyPage;
-    if (fScrollOpen)
-        _ClampScroll();
+    OpenScroll(SCROLL_EQUIPMENT, open);
 }
 
 
+void
+InfoView::OpenScroll(int kind, bool open)
+{
+    if (kind < 0 || kind >= SCROLL_KINDS)
+        return;
+    fScrollOpen = open && fPage != kPartyPage;
+    if (fScrollOpen) {
+        fScrollKind = kind;
+        fDragging = false;
+        _ClampScroll();
+    }
+}
+
+
+// The row of the open scroll the cursor is on, or -1
 int
 InfoView::ScrollCursor() const
 {
     if (fParty == NULL || fPage < 0 || fPage >= int(fParty->members.size())
-            || fCursor[fPage] >= int(fParty->members[size_t(fPage)].items.size()))
+            || fCursor[fScrollKind][fPage] >= ScrollCount())
         return -1;
-    return fCursor[fPage];
+    return fCursor[fScrollKind][fPage];
 }
 
 
@@ -420,20 +445,103 @@ InfoView::SetScrollCursor(int index)
 {
     if (fPage < 0 || fPage >= 5)
         return;
-    fCursor[fPage] = index;
+    fCursor[fScrollKind][fPage] = index;
     _ClampScroll();
 }
 
 
-// The cursor on an item, and the rows shown holding it
+// The rows of the open scroll: the items; the formulae known, a row for
+// each version (DARKLAND.EXE 1462:35C8); the saints known (1462:37FE)
+int
+InfoView::ScrollCount() const
+{
+    if (fParty == NULL || fPage < 0 || fPage >= int(fParty->members.size()))
+        return 0;
+    const character& member = fParty->members[size_t(fPage)];
+    int count = 0;
+    switch (fScrollKind) {
+        case SCROLL_EQUIPMENT:
+            return int(member.items.size());
+        case SCROLL_FORMULAE:
+            for (int k = 0; k < kFormulaCount; k++) {
+                const int versions = FormulaVersions(member, k);
+                for (int bit = 0; bit < 3; bit++)
+                    count += (versions >> bit) & 1;
+            }
+            return count;
+        default:
+            for (int saint = 0; saint < 136; saint++) {
+                if (KnowsSaint(member, saint))
+                    count++;
+            }
+            return count;
+    }
+}
+
+
+// The text of a row of the open scroll
+std::string
+InfoView::ScrollText(int index) const
+{
+    if (fParty == NULL || fPage < 0 || fPage >= int(fParty->members.size())
+            || index < 0)
+        return "";
+    const character& member = fParty->members[size_t(fPage)];
+    int row = 0;
+    if (fScrollKind == SCROLL_EQUIPMENT) {
+        if (index >= int(member.items.size()))
+            return "";
+        const std::vector<item_definition>& definitions = fData.Lists().Items();
+        const item& carried = member.items[size_t(index)];
+        const std::string name = carried.code < definitions.size()
+            ? definitions[carried.code].name : "?";
+        char text[96];
+        snprintf(text, sizeof(text), "%s %02dq (%d)", name.c_str(),
+            carried.quality, carried.quantity);
+        return text;
+    }
+    if (fScrollKind == SCROLL_FORMULAE) {
+        const std::vector<std::string>& names = fData.Lists().Formulae();
+        for (int k = 0; k < kFormulaCount; k++) {
+            const int versions = FormulaVersions(member, k);
+            for (int bit = 0; bit < 3; bit++) {
+                if (((versions >> bit) & 1) == 0)
+                    continue;
+                if (row++ == index) {
+                    const size_t name = size_t(3 * k + bit);
+                    return name < names.size() ? names[name] : "?";
+                }
+            }
+        }
+        return "";
+    }
+    const std::vector<std::string>& names = fData.Lists().Saints();
+    for (int saint = 0; saint < 136; saint++) {
+        if (!KnowsSaint(member, saint))
+            continue;
+        if (row++ == index)
+            return size_t(saint) < names.size() ? names[size_t(saint)] : "?";
+    }
+    return "";
+}
+
+
+int
+InfoView::_ScrollTop() const
+{
+    return kScrollTops[fScrollKind];
+}
+
+
+// The cursor on a row, and the rows shown holding it
 void
 InfoView::_ClampScroll()
 {
     if (fParty == NULL || fPage < 0 || fPage >= int(fParty->members.size()))
         return;
-    const int count = int(fParty->members[size_t(fPage)].items.size());
-    int& cursor = fCursor[fPage];
-    int& top = fTop[fPage];
+    const int count = ScrollCount();
+    int& cursor = fCursor[fScrollKind][fPage];
+    int& top = fTop[fScrollKind][fPage];
     cursor = std::max(0, std::min(cursor, count - 1));
     top = std::max(0, std::min(top, std::max(0, count - kScrollRows)));
     if (cursor < top)
@@ -450,8 +558,9 @@ InfoView::KeyPressed(int key, bool shift)
             || fPage >= int(fParty->members.size()))
         return false;
     character& member = fParty->members[size_t(fPage)];
-    const int count = int(member.items.size());
-    const int cursor = fCursor[fPage];
+    const int count = ScrollCount();
+    const int cursor = fCursor[fScrollKind][fPage];
+    const bool items = fScrollKind == SCROLL_EQUIPMENT;
     switch (key) {
         case SDLK_ESCAPE:
             fScrollOpen = false;
@@ -475,17 +584,21 @@ InfoView::KeyPressed(int key, bool shift)
             SetScrollCursor(count - 1);
             break;
         case SDLK_a:
-            ReadyItem(member, size_t(cursor), fData.Lists().Items());
+            if (items)
+                ReadyItem(member, size_t(cursor), fData.Lists().Items());
             break;
         case SDLK_u:
-            UnreadyItem(member, size_t(cursor));
+            if (items)
+                UnreadyItem(member, size_t(cursor));
             break;
         case SDLK_d:
-            DropItem(member, size_t(cursor), shift);
-            _ClampScroll();
+            if (items) {
+                DropItem(member, size_t(cursor), shift);
+                _ClampScroll();
+            }
             break;
         default:
-            if (key >= SDLK_1 && key <= SDLK_5) {
+            if (items && key >= SDLK_1 && key <= SDLK_5) {
                 const int target = key - SDLK_1;
                 if (target < int(fParty->members.size())) {
                     GiveItem(member, size_t(cursor),
@@ -824,39 +937,33 @@ InfoView::_DrawCharacterPage()
     _DrawText(std::to_string(std::min(weight, kMaxWeightInUse))
         + " lbs in use", kLoadBox, 0, 1, kValueColor);
     if (fScrollOpen)
-        _DrawEquipmentScroll();
+        _DrawScroll();
 }
 
 
-// The items carried, "Short Sword 25q (1)", over the figure; the picture
-// is the scroll that fits the rows (ARMBRSH8..13)
+// The scroll that fits the rows (ARMBRSH8..13), over the figure: the items
+// carried ("Short Sword 25q (1)"), the formulae or the saints known; the
+// row of the cursor in blue
 void
-InfoView::_DrawEquipmentScroll()
+InfoView::_DrawScroll()
 {
-    const character& member = fParty->members[size_t(fPage)];
-    const std::vector<item_definition>& definitions = fData.Lists().Items();
-    const int count = int(member.items.size());
+    const int count = ScrollCount();
     const int rows = std::min(count, kScrollRows);
     int which = 0;
     while (which < 5 && fScrolls[which].height < kScrollTextTop + 12
             + rows * kScrollRowHeight)
         which++;
-    _DrawPicture(fScrolls[which], kScrollLeft - 1, kScrollTop, 0);
-    const int top = fTop[fPage];
+    _DrawPicture(fScrolls[which], kScrollLeft - 1, _ScrollTop(), 0);
+    const int top = fTop[fScrollKind][fPage];
     for (int row = 0; row < rows; row++) {
         const int index = top + row;
         if (index >= count)
             break;
-        const item& carried = member.items[size_t(index)];
-        std::string name = carried.code < definitions.size()
-            ? definitions[carried.code].name : "?";
-        char text[96];
-        snprintf(text, sizeof(text), "%s %02dq (%d)", name.c_str(),
-            carried.quality, carried.quantity);
-        fFont->RenderString(Font::ToGameCharset(text), fBuffer,
-            GFX::point(kScrollLeft + kScrollTextLeft, kScrollTop
+        fFont->RenderString(Font::ToGameCharset(ScrollText(index)), fBuffer,
+            GFX::point(kScrollLeft + kScrollTextLeft, _ScrollTop()
                 + kScrollTextTop + row * kScrollRowHeight),
-            index == fCursor[fPage] ? kScrollCursorColor : kScrollTextColor,
+            index == fCursor[fScrollKind][fPage] ? kScrollCursorColor
+                : kScrollTextColor,
             kScrollWidth - 2 * kScrollTextLeft);
     }
 }
