@@ -259,6 +259,9 @@ src/game/           Game state and rules (no screen)
 src/ui/             Screens and drawing
   Game.*            The game: new or loaded, cities and the world map in turn
   CityVisit.*       The party in a city: which card follows which
+  CityScreens.cpp   The city screens' tables (day and night)
+  City*.cpp         The rest of CityVisit by subject: Church, Services,
+                    Gate, Guards, Prison, World, Quests, Encounters
   CardView.*        A menu card on screen: frame, text, options
   InfoView.*        The party and character information screens
   PartySidebar.*    The character boxes on the left of the screens

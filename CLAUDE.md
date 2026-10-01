@@ -96,7 +96,18 @@ include path: include headers by name (`#include "CityFile.h"`).
   `CityVisit` has night variants of its screens, `kNightScreens`).
   `CityVisit`: the tables of city screens, by day and by night (deck,
   card, scene, what each option does, which options need a place); a
-  constructor check catches a miscounted table. `CardView` hides the
+  constructor check catches a miscounted table. The class is split by
+  subject over several files: `CityVisit.cpp` (running, choosing an
+  option, the card shown, the hidden options), `CityScreens.cpp` (the
+  tables and their macros; `CityVisitInternal.h` has what the files
+  share: the option actions and the conditions' constants), and
+  `CityChurch` (church, monastery, saints), `CityServices` (inn, banks,
+  physician, alchemist), `CityGate` (night market, gate, walls),
+  `CityGuards` (the watch, guards, chases), `CityPrison` (dungeon,
+  court, execution, the priest), `CityWorld` (news, events, places),
+  `CityQuests` (the banks' tasks, the robber knight's tower) and
+  `CityEncounters` (the slum, thieves, the grove). A new screen goes in
+  the enum, in both tables and in the file of its subject. `CardView` hides the
   cards' placeholder options itself. `MapViewer::Run()` returns
   when the party reaches a place of DARKLAND.LOC; `CityVisit` also
   runs the other places (the castles' robber knight's tower) from
