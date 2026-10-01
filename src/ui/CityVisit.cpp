@@ -726,6 +726,18 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
             return true;
+        case ACTION_CATHEDRAL_MASS:
+            _Show(_CathedralMass());
+            return true;
+        case ACTION_CATHEDRAL_PRELATE:
+            _Show(_CathedralPrelate());
+            return true;
+        case ACTION_CATHEDRAL_GIFT:
+            _Show(_CathedralGift());
+            return true;
+        case ACTION_CATHEDRAL_RELIC:
+            _Show(_CathedralRelic());
+            return true;
         case ACTION_SANCTUARY:
             _Show(SCREEN_SANCTUARY);
             return true;
@@ -1027,6 +1039,9 @@ CityVisit::_Show(int screen, bool withScene)
     // November to May the swimming options are not offered, card 1)
     if (screen == SCREEN_DOCKS && fNight && _ColdWater())
         screen = SCREEN_DOCKS_ICE;
+    // the cathedral: $Money1 is a third of the purse
+    if (screen == SCREEN_CATHEDRAL && fParty != NULL)
+        fVariables["Money1"] = MoneyText(TotalPfennigs(fParty->cash) / 3);
     // the sanctuary: the captain of the guard (1367:0DB4, the city's seed +
     // 0x156)
     if (screen == SCREEN_SANCTUARY || (screen >= SCREEN_SANCTUARY_FREE
@@ -1256,6 +1271,10 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = true;
             if (rule.needs == kNeedsLordSaint && !_SaintKnown(screen))
                 hide = true;
+        } else if (rule.needs == kNeedsCathedralGift) {
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < 7200;
+        } else if (rule.needs == kNeedsRelic) {
+            hide = !_FindRelic(NULL, NULL);
         } else if (rule.needs == kNeedsPartyRoom) {
             hide = fParty == NULL || fParty->members.size() >= 4;
         } else if (rule.needs == kNeedsPartyRetire) {

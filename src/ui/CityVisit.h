@@ -418,6 +418,19 @@ public:
         SCREEN_SANCTUARY_STUMBLE,
         SCREEN_SANCTUARY_ESCAPED,
         SCREEN_SANCTUARY_SURRENDER,
+        SCREEN_CATHEDRAL_NO_MASS,	// $CATHE00: the next Mass (1), Mass (2), a
+        SCREEN_CATHEDRAL_MASS,	// prelate (3), turned away (21), the gifts
+        SCREEN_CATHEDRAL_PRELATE,	// (9..12), a relic given (18)
+        SCREEN_CATHEDRAL_TURNED_AWAY,
+        SCREEN_CATHEDRAL_GIFT,
+        SCREEN_CATHEDRAL_GIFT_MORE,
+        SCREEN_CATHEDRAL_GIFT_BIG,
+        SCREEN_CATHEDRAL_GIFT_GRAND,
+        SCREEN_CATHEDRAL_RELIC,
+        SCREEN_CATHEDRAL_NIGHT_NO_MASS,	// $CATHE01 cards 1, 2, 3, 10
+        SCREEN_CATHEDRAL_NIGHT_MASS,
+        SCREEN_CATHEDRAL_NIGHT_PRELATE,
+        SCREEN_CATHEDRAL_NIGHT_RELIC,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -710,6 +723,13 @@ private:
     int				_SanctuarySneak();
     int				_SanctuarySurrender();
     int				_ResolveSanctuaryBattle(int outcome);
+    // The cathedral (DARKLAND.EXE, state 0x32 file 0xB6A28, 0x33 file
+    // 0xB7960)
+    int				_CathedralMass();
+    int				_CathedralPrelate();
+    int				_CathedralGift();
+    int				_CathedralRelic();
+    bool			_FindRelic(size_t* member, size_t* index) const;
     int				_LordChance() const;
     int				_LordRequest(bool clerk);
     int				_LordGrant(int card);

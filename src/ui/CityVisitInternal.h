@@ -126,6 +126,10 @@ enum option_action {
     ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_CATHEDRAL_MASS,		// the cathedral
+    ACTION_CATHEDRAL_PRELATE,
+    ACTION_CATHEDRAL_GIFT,
+    ACTION_CATHEDRAL_RELIC,
     ACTION_SANCTUARY,			// into the sanctuary (state 0x81)
     ACTION_SANCTUARY_REST,		// until `target` o'clock
     ACTION_SANCTUARY_SURRENDER,
@@ -293,6 +297,10 @@ static const int kNeedsPartyRetire	= -54;
 // the sanctuary's rests: by day (to nightfall), by night (to daybreak)
 static const int kNeedsByDay		= -55;
 static const int kNeedsByNight		= -56;
+// the cathedral's gift: a third of a purse of 30 florins or more; a relic
+// to give (an item of flag 0x1000)
+static const int kNeedsCathedralGift = -57;
+static const int kNeedsRelic		= -58;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

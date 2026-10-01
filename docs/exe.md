@@ -290,6 +290,47 @@ marked.
   lost when the game is saved and loaded, or closed. New people to hire
   are not made (without any, "not implemented").
 
+## The cathedral
+
+By day state 0x32 ($CATHE00, file 0xB6A28; the handlers through a switch
+at file 0xB6CF0, the preconditions of each option in a table at DS:EA14,
+base 0xB6A20), at night 0x33 ($CATHE01, file 0xB7960). **verified** (code)
+
+- **The options**: dim until set: the gift needs a purse of 7200
+  pfennigs (30 florins; $Money1 is a third of the purse, 6A1:2D28 is a
+  signed long division); the patron saint (option 3) needs the
+  location's word +0x1A (property 0x26) not 0, and the relic from the
+  canon (4) +0x1C (property 0x25) not 0 and no task of the bishop's: both
+  words are 0 in the game data and the saved games (but one record), so
+  neither is ever offered; giving a relic needs an item of flag 0x1000
+  (0E76:0DD8(−2, 0x1000, 0)); the sanctuary as for the church; the
+  bishop's reward needs one due (kinds 3 or 10, patron 3: never).
+- **Mass** (file 0xB6D74; night 0xB7BA2): by day at bell b = 1367:07EE:
+  bell 2 always, 3 in cities of size 6 or more, 4: 7, 5: 8, 6: 5, 7: 7,
+  never at 1 and 8; at night only at bell 7 from size 7. Each member
+  gains divine favor Religion / 60 + Speak Latin / 40 + 1 (0E76:0A72), the
+  party waits until hour (b + 1) · 3, card 2. Else card 1 names the next
+  Mass (1FB8(0, hour, 3)): 18 (Vespers) by day at bells 3..5 above size 3,
+  1 (Matins) at night at bell 1 from size 8, else 6 (Prime).
+- **A priest** (file 0xB6F34; 0xB7D30): an hour. By day, with unrest here
+  (an event of kind 2: 0E76:3470) and rebels (0E76:3742(2, 0, location))
+  the priests judge whether the party is worth their superior's ear
+  (card 20, state 0x6F) if random(100) is under the chance the game
+  passes, which is the stub's −1 (the table's second entry is the same
+  stub as the Mass's): never, card 21. Else the prelate speaks: card 3,
+  4, 5 by the relics' word and 6, 7, 8 with a chapel, none of which the
+  data have: card 3.
+- **A gift** (file 0xB71DC): a third of the purse; the leader's divine
+  favor + gift / 200 within 0..30 and a lesson in Virtue
+  (09C0:1F63(−1, 9, 7, 10, 0)); an hour; card 9 under 240 pfennigs, 10
+  under 1440, 11 under 3600, else 12.
+- **Giving a relic** (file 0xB768E; 0xB7F20): the reputation + 30
+  (0E76:19D0(location, 30, 30)), every member's divine favor + 99, the
+  relic is left (09C0:203F finds it, 2035 removes it; $NamedOneName is
+  its name, $ChosenOneName the leader), three hours, card 18 (night 10).
+- Not reproduced: the politics (0x6F, $CLERI00), the patron saint, the
+  relic from the canon and the bishop's task, the reward.
+
 ## Sanctuary
 
 State 0x81 ($SANCT00, 187B:0000 of overlay 0x4C, file 0xF5EF0; the church's

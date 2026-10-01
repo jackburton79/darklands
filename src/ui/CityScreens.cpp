@@ -273,7 +273,12 @@ static const screen_rules kDayScreens[] = {
     } },
     // "Gargoyles leer overhead as you approach the famed $cathedral."
     { CityVisit::SCREEN_CATHEDRAL, "CATHE00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO, TODO,	// mass, priest, donate...
+        DO(ACTION_CATHEDRAL_MASS),
+        DO(ACTION_CATHEDRAL_PRELATE),
+        DO_IF(ACTION_CATHEDRAL_GIFT, kNeedsCathedralGift),
+        HIDE, HIDE,							// the patron saint, a relic: no
+                                            // city has the data for them
+        DO_IF(ACTION_CATHEDRAL_RELIC, kNeedsRelic),
         { ACTION_SANCTUARY, 0, kNeedsBadReputation, 0 },
         GO(SCREEN_CHURCHES),				// leave the cathedral
         HIDE								// a relic as a quest reward
@@ -391,6 +396,20 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // The cathedral's answers, back to it
+    { CityVisit::SCREEN_CATHEDRAL_NO_MASS, "CATHE00", 1, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_MASS, "CATHE00", 2, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_PRELATE, "CATHE00", 3, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_TURNED_AWAY, "CATHE00", 21, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_GIFT, "CATHE00", 9, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_GIFT_MORE, "CATHE00", 10, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_GIFT_BIG, "CATHE00", 11, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_GIFT_GRAND, "CATHE00", 12, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_RELIC, "CATHE00", 18, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_NIGHT_NO_MASS, "CATHE01", 1, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_NIGHT_MASS, "CATHE01", 2, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_NIGHT_PRELATE, "CATHE01", 3, NULL, { GO(SCREEN_CATHEDRAL) } },
+    { CityVisit::SCREEN_CATHEDRAL_NIGHT_RELIC, "CATHE01", 10, NULL, { GO(SCREEN_CATHEDRAL) } },
     // The way into the sanctuary from the church, by day and by night
     { CityVisit::SCREEN_CHURCH_SANCTUARY, "CITYC00", 8, NULL, { DO(ACTION_SANCTUARY) } },
     { CityVisit::SCREEN_CHURCH_NIGHT_SANCTUARY, "CITYC01", 4, NULL, { DO(ACTION_SANCTUARY) } },
@@ -1158,7 +1177,9 @@ static const screen_rules kNightScreens[] = {
     } },
     // "...votive candles cast the only light"
     { CityVisit::SCREEN_CATHEDRAL, "CATHE01", 0, NULL, {
-        TODO, TODO, TODO,					// mass, priest, relic
+        DO(ACTION_CATHEDRAL_MASS),
+        DO(ACTION_CATHEDRAL_PRELATE),
+        DO_IF(ACTION_CATHEDRAL_RELIC, kNeedsRelic),
         { ACTION_SANCTUARY, 0, kNeedsBadReputation, 0 },
         GO(SCREEN_CHURCHES),				// leave the cathedral
         HIDE								// a relic as a quest reward
