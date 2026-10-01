@@ -176,6 +176,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveMenBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_AT_CAMP) {
+        _Show(_ResolveCampBattle(outcome));
+        return;
+    }
     if (fBattleKind == BATTLE_WITH_CARAVAN) {
         _Show(_ResolveCaravanBattle(outcome));
         return;

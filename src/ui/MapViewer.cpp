@@ -191,7 +191,10 @@ MapViewer::Run(GameWindow& window)
                             if (fCampHandler) {
                                 // the party stops to camp
                                 fPath.clear();
-                                fCampHandler(window, CampDanger());
+                                const int result = fCampHandler(window,
+                                    CampDanger());
+                                if (result != 0)
+                                    return result;
                             }
                             break;
                         case SDLK_F1: case SDLK_F2: case SDLK_F3:

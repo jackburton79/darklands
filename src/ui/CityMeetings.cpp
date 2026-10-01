@@ -859,3 +859,178 @@ CityVisit::_ResolveRefugeesBattle(int outcome)
     }
     return SCREEN_REFUGEES_ELUDED;
 }
+
+
+// The soldiers who find a camp (state 0x169, file 0x17AF90): the huntsman
+// asks random(24) + 36 pfennigs ($Money1), a party's worth of that
+// ($Money2), a week; with a guard on watch they are seen first (card 0,
+// $Money1), else they surprise the camp (card 1, $Money2)
+int
+CityVisit::_MeetCampSoldiers()
+{
+    fCampSoldiers = true;
+    fCampIgnored = false;
+    fPleaFailed = false;
+    const uint32 money1 = uint32(fRandom() % 24) + 36;
+    const uint32 size = fParty != NULL ? uint32(fParty->members.size()) : 1;
+    fVariables["Money1"] = MoneyText(money1);
+    fVariables["Money2"] = MoneyText(money1 * size);
+    const bool guarded = fCampGuard >= 0
+        && fParty != NULL && size_t(fCampGuard) < fParty->members.size();
+    fMeetMoney = guarded ? money1 : money1 * size;
+    if (guarded)
+        _SetChosen(fCampGuard);
+    else if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(fParty->leader);
+    return guarded ? SCREEN_CAMPJ : SCREEN_CAMPJ_SURPRISED;
+}
+
+
+// Ignoring them (file 0x17B332): with a guard's warning the huntsman comes
+// (card 2); else one time in six they pass, knowing the party (card 12,
+// and a week without danger), else they are angry (card 11) and attack
+int
+CityVisit::_CampSoldiersIgnore()
+{
+    fCampIgnored = true;
+    if (fCampGuard >= 0 && fScreen == SCREEN_CAMPJ)
+        return SCREEN_CAMPJ_HUNTSMAN;
+    if (fRandom() % 6 == 0) {
+        _Mark(kMarkCampSafe, 168);
+        return SCREEN_CAMPJ_KNOWN;
+    }
+    return SCREEN_CAMPJ_ANGRY;
+}
+
+
+// Talking (file 0x17B41C): if random(100) is at most the leader's Speak
+// Common / 3 + 3/4 of Charisma + 3/4 of Intelligence (1..99), an hour, a
+// week without danger, card 3; else card 4 and no more talk
+int
+CityVisit::_CampSoldiersTalk()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CAMPJ_UNMOVED;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = std::max(1, std::min(99,
+        leader.skills[kSkillSpeakCommon] / 3
+        + leader.attributes[ATTRIBUTE_CHARISMA] * 3 / 4
+        + leader.attributes[ATTRIBUTE_INTELLIGENCE] * 3 / 4));
+    if (int(fRandom() % 100) <= chance) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _Mark(kMarkCampSafe, 168);
+        return SCREEN_CAMPJ_TALKED;
+    }
+    fPleaFailed = true;
+    return SCREEN_CAMPJ_UNMOVED;
+}
+
+
+// The bandits (state 0x16A, file 0x17B8A0): unguarded the camp is raided
+// at once (card 1), else the guard sees them (card 0)
+int
+CityVisit::_MeetCampBandits()
+{
+    fCampSoldiers = false;
+    fPrayerFailed = false;
+    const bool guarded = fCampGuard >= 0
+        && fParty != NULL && size_t(fCampGuard) < fParty->members.size();
+    if (guarded) {
+        _SetChosen(fCampGuard);
+        return SCREEN_CAMPB;
+    }
+    if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(fParty->leader);
+    return SCREEN_CAMPB_RAID;
+}
+
+
+// Laying an ambush (file 0x17BD28): if random(100) is at most the party's
+// average speed + Intelligence / 8 + the average Stealth / 3 + the best
+// Woodwise / 3 (1..99), random(5) + 1 hours, card 3; else the same hours,
+// the slowest member stumbles (card 4); both ways the fight
+int
+CityVisit::_CampBanditsAmbush()
+{
+    int speed = 0;
+    int stealth = 0;
+    int woodwise = 0;
+    int slowest = 0;
+    if (fParty != NULL && !fParty->members.empty()) {
+        for (size_t i = 0; i < fParty->members.size(); i++) {
+            const character& member = fParty->members[i];
+            speed += member.attributes[ATTRIBUTE_AGILITY];
+            stealth += member.skills[kSkillStealth];
+            woodwise = std::max(woodwise, int(member.skills[kSkillWoodwise]));
+            if (member.attributes[ATTRIBUTE_AGILITY]
+                    < fParty->members[size_t(slowest)].attributes[ATTRIBUTE_AGILITY])
+                slowest = int(i);
+        }
+        const int size = int(fParty->members.size());
+        speed /= size;
+        stealth /= size;
+    }
+    const character* leader = fParty != NULL && !fParty->members.empty()
+        ? &fParty->members[size_t(fParty->leader)] : NULL;
+    const int chance = std::max(1, std::min(99, speed
+        + (leader != NULL ? leader->attributes[ATTRIBUTE_INTELLIGENCE] / 8 : 0)
+        + stealth / 3 + woodwise / 3));
+    if (fClock != NULL)
+        fClock->AddHours(uint32(fRandom() % 5 + 1));
+    if (int(fRandom() % 100) <= chance)
+        return SCREEN_CAMPB_AMBUSH;
+    if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(slowest);
+    return SCREEN_CAMPB_STUMBLE;
+}
+
+
+// The fight (files 0x17B22C and 0x17BAEE; s the party's strength). The
+// soldiers: enemy 15 at variant random(2) + s / 4 + 1, clamp(party size, 7,
+// random(4) + s / 3 + 1) of them, and the huntsman (enemy 1, a sergeant
+// 0x12 if s is 5 or less) at variant s % 3 + 1. The bandits: enemy 7 at
+// variant random(2) + s / 4 + 1, clamp(size, 7, random(4) + s / 3 + 2) of
+// them and enemy 0x16 (s over 5) or 0x12 at variant s % 3 + 1.
+void
+CityVisit::_FightAtCamp(bool soldiers)
+{
+    fFoes.clear();
+    const int size = fParty != NULL ? int(fParty->members.size()) : 1;
+    const int s = fParty != NULL ? PartyStrength(*fParty) : 1;
+    const int variant = int(fRandom() % 2) + s / 4 + 1;
+    const int count = std::max(size, std::min(7,
+        int(fRandom() % 4) + s / 3 + (soldiers ? 1 : 2)));
+    if (soldiers) {
+        fFoes.push_back(foes{ 15, variant, count });
+        fFoes.push_back(foes{ s > 5 ? 1 : 0x12, s % 3 + 1, 1 });
+    } else {
+        fFoes.push_back(foes{ 7, variant, count });
+        fFoes.push_back(foes{ s > 5 ? 0x16 : 0x12, s % 3 + 1, 1 });
+    }
+    fCampSoldiers = soldiers;
+    fBattleKind = BATTLE_AT_CAMP;
+    fPendingBattle = true;
+}
+
+
+// The fight's end: won, a week without danger and an hour, card 8 (the
+// bandits' 7); retreated, an hour, card 9 (8); lost, an hour, card 10
+// (the bandits' 9, also a week without danger; the soldiers search the
+// party, *inferred* for the bandits' too)
+int
+CityVisit::_ResolveCampBattle(int outcome)
+{
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    if (outcome == BATTLE_WON) {
+        _Mark(kMarkCampSafe, 168);
+        return fCampSoldiers ? SCREEN_CAMPJ_WON : SCREEN_CAMPB_WON;
+    }
+    if (outcome != BATTLE_LOST)
+        return fCampSoldiers ? SCREEN_CAMPJ_FLED : SCREEN_CAMPB_FLED;
+    _Search();
+    if (!fCampSoldiers)
+        _Mark(kMarkCampSafe, 168);
+    return fCampSoldiers ? SCREEN_CAMPJ_BEATEN : SCREEN_CAMPB_BEATEN;
+}

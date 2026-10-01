@@ -64,10 +64,11 @@ public:
                         const std::function<void(GameWindow&)>& handler)
                         { fOrderHandler = handler; }
     // Called by Run() for the C key (make camp), the party stopped: with
-    // the terrain's part of the camp's danger (CampDanger()); not set:
-    // nothing happens
+    // the terrain's part of the camp's danger (CampDanger()); it returns 0
+    // to go on, else the value Run() then returns (-1 quit, kLoadRequested);
+    // not set: nothing happens
     void			SetCampHandler(
-                        const std::function<void(GameWindow&, int)>& handler)
+                        const std::function<int(GameWindow&, int)>& handler)
                         { fCampHandler = handler; }
     // Called by Run() when the party meets someone on the way (the hazard
     // of DARKLAND.EXE's map step, file 0x5EDA0, see EncounterChance()):
@@ -173,7 +174,7 @@ private:
     std::function<void(GameWindow&)> fSaveHandler;
     std::function<bool(GameWindow&)> fLoadHandler;
     std::function<void(GameWindow&)> fOrderHandler;
-    std::function<void(GameWindow&, int)> fCampHandler;
+    std::function<int(GameWindow&, int)> fCampHandler;
     encounter_handler fEncounterHandler;
     std::function<int(int)> fEncounterChooser;
     std::function<int(int)> fRandom;

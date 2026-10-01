@@ -446,6 +446,30 @@ public:
         SCREEN_REFUGEES_ANGRY,
         SCREEN_REFUGEES_UNANSWERED,
         SCREEN_REFUGEES_NOANSWER,	// card 2, back to the warning
+        SCREEN_CAMPJ_MEET,		// $CampJ00, the soldiers who find a camp (state
+        SCREEN_CAMPJ,			// 0x169): the start, card 0 (a guard saw
+        SCREEN_CAMPJ_SURPRISED,	// them), 1 (no guard), 2 (the huntsman
+        SCREEN_CAMPJ_HUNTSMAN,	// asks), 3..7 (talked, not, paid, a saint
+        SCREEN_CAMPJ_TALKED,	// answers or not), 8..10 (the fight won,
+        SCREEN_CAMPJ_UNMOVED,	// fled, lost), 11 (angry), 12 (he knows
+        SCREEN_CAMPJ_PAID,		// them)
+        SCREEN_CAMPJ_BLESSED,
+        SCREEN_CAMPJ_UNANSWERED,
+        SCREEN_CAMPJ_WON,
+        SCREEN_CAMPJ_FLED,
+        SCREEN_CAMPJ_BEATEN,
+        SCREEN_CAMPJ_ANGRY,
+        SCREEN_CAMPJ_KNOWN,
+        SCREEN_CAMPB_MEET,		// $CampB00, the bandits (state 0x16A)
+        SCREEN_CAMPB,			// 0, 1 (no guard: the raid), 2 (a saint),
+        SCREEN_CAMPB_RAID,		// 3 and 4 (the ambush laid or botched), 6
+        SCREEN_CAMPB_PRAYED,	// (no answer), 7..9 (won, fled, lost)
+        SCREEN_CAMPB_AMBUSH,
+        SCREEN_CAMPB_STUMBLE,
+        SCREEN_CAMPB_UNANSWERED,
+        SCREEN_CAMPB_WON,
+        SCREEN_CAMPB_FLED,
+        SCREEN_CAMPB_BEATEN,
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
         SCREEN_SHELL_LOST_RIGHT,	// pea under the right-hand (1), middle
         SCREEN_SHELL_LOST_MIDDLE,	// (2) or left-hand shell (3), the
@@ -563,6 +587,12 @@ public:
     // The meetings of the map (the bandits, the thieves): the fights are
     // on the wilderness maps, and the cards end by leaving
     void			SetOnMap(bool onMap)		{ fOnMap = onMap; }
+    // The camp's guard (a member, or -1) for the soldiers or bandits who
+    // find the camp (Enter() with SCREEN_CAMPJ_MEET or SCREEN_CAMPB_MEET)
+    void			SetCampGuard(int member)	{ fCampGuard = member; }
+    // Whether the camp is safe for the week after such a meeting (the mark
+    // 0x60 of DARKLAND.EXE)
+    bool			CampSafe() const;
     // The bishop's tithe (false) or the nobleman's toll (true)
     void			SetToll(bool toll)			{ fToll = toll; }
     void			SetBandits(bool soldiers, int terrain)
@@ -958,6 +988,13 @@ private:
     int				_RefugeesSurrender();
     void			_FightRefugees();
     int				_ResolveRefugeesBattle(int outcome);
+    int				_MeetCampSoldiers();
+    int				_CampSoldiersIgnore();
+    int				_CampSoldiersTalk();
+    int				_MeetCampBandits();
+    int				_CampBanditsAmbush();
+    void			_FightAtCamp(bool soldiers);
+    int				_ResolveCampBattle(int outcome);
     bool			_AllMounted() const;
     int				_BestHorse(const character& member) const;
     void			_PayMeetingMoney();
@@ -1047,6 +1084,7 @@ private:
         BATTLE_WITH_FRIAR,
         BATTLE_WITH_CARAVAN,
         BATTLE_WITH_REFUGEES,
+        BATTLE_AT_CAMP,
         BATTLE_AT_SANCTUARY
     };
     struct foes {
@@ -1107,6 +1145,9 @@ private:
     bool			fPrayerFailed;
     bool			fCaravanTrap;	// the caravan is the devil-man's band
     int				fMeetBack;		// where a message goes back to
+    int				fCampGuard;		// the member who guarded the camp, or -1
+    bool			fCampIgnored;
+    bool			fCampSoldiers;	// $CampJ00, not $CampB00
     bool			fBanditsSoldiers;	// MEETB02, not MEETB01
     int				fBanditsTerrain;	// the tile type under the party
     int				fBanditsReturn;	// where an unanswered prayer leads back

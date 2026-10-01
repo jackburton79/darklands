@@ -562,6 +562,13 @@ CityVisit::_SaintsFor(int screen) const
         saints = { 93, 37, 17, 67 };
     if (screen == SCREEN_REFUGEES_AMBUSH)
         saints = { 54, 61, 131 };
+    // the camp's soldiers (file 0x17B06D): Genevieve, Godfrey, Hubert; the
+    // bandits (0x17B931): Genevieve, Godfrey, Dismas
+    if (screen == SCREEN_CAMPJ || screen == SCREEN_CAMPJ_SURPRISED
+            || screen == SCREEN_CAMPJ_HUNTSMAN)
+        saints = { 54, 61, 69 };
+    if (screen == SCREEN_CAMPB || screen == SCREEN_CAMPB_UNANSWERED)
+        saints = { 54, 61, 35 };
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -780,6 +787,15 @@ CityVisit::_SaintAnswered(int screen, int index)
             return SCREEN_THIEVES_SAINT;			// card 8 (file 0xACA1A)
         case SCREEN_TITHE:
             return SCREEN_TITHE_BLESSED;			// card 2 (file 0x13DAF6)
+        case SCREEN_CAMPJ:
+        case SCREEN_CAMPJ_SURPRISED:
+        case SCREEN_CAMPJ_HUNTSMAN:
+            _Mark(kMarkCampSafe, 168);
+            return SCREEN_CAMPJ_BLESSED;			// card 6 (file 0x17B598)
+        case SCREEN_CAMPB:
+        case SCREEN_CAMPB_UNANSWERED:
+            _Mark(kMarkCampSafe, 168);
+            return SCREEN_CAMPB_PRAYED;				// card 2 (file 0x17BCBB)
         case SCREEN_CARAVAN:
             // the devil-man's band seen (card 6), else an honest caravan
             // (card 4)
@@ -887,6 +903,14 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_REFUGEES_NOANSWER;
         case SCREEN_REFUGEES_AMBUSH:
             return SCREEN_REFUGEES_UNANSWERED;
+        case SCREEN_CAMPJ:
+        case SCREEN_CAMPJ_SURPRISED:
+        case SCREEN_CAMPJ_HUNTSMAN:
+            fMeetBack = SCREEN_CAMPJ_HUNTSMAN;		// card 7, then card 2
+            return SCREEN_CAMPJ_UNANSWERED;
+        case SCREEN_CAMPB:
+        case SCREEN_CAMPB_UNANSWERED:
+            return SCREEN_CAMPB_UNANSWERED;			// card 6, the menu again
         case SCREEN_TITHE:
             fPrayerFailed = true;
             return SCREEN_TITHE_PRAYED;				// card 3, no more prayers

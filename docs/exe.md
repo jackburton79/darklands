@@ -1807,9 +1807,9 @@ their content comes from the game's events. **verified** (code)
 
 The bandits and the soldiers who find a camp ($CampB00, $CampJ00) come
 from the camp screen on the map, not from a city (for the grove, see
-"Encounters in the city"). **verified** (code); the camp is reproduced
-(`ResidenceView::SetCamp()`, `MapViewer::CampDanger()`), not the
-encounters.
+"Encounters in the city"). **verified** (code); the camp and the
+encounters are reproduced (`ResidenceView::SetCamp()`,
+`MapViewer::CampDanger()`, `CityMeetings.cpp`).
 
 - **How it starts**: the **C** key on the map (the key chain at file
   0x5E78A: 0x2E43 and 0x2E63, "C" and "c", go to file 0x5E9A6; A, the
@@ -1828,8 +1828,37 @@ encounters.
   adds nothing); *inferred*: the code reads the screen's own tile
   buffer, taken here as the tiles around the party. Each day adds the
   base less the guards' share (clamped 1..15), see below.
-- Not reproduced: the encounters (the soldiers' or the bandits' cards,
-  the fight): the camp ends with a message, taken from their first cards.
+- **The soldiers** (state 0x169, file 0x17AF90, $CampJ00): DS:E7D8 is the
+  guard (-1 if none); $Money1 = random(24) + 36 pfennigs, $Money2 = that ·
+  the party's size; the demand is $Money1 with a guard (card 0), else
+  $Money2 (card 1, the camp surprised); saints Genevieve, Godfrey, Hubert.
+  The options: *ignore* (file 0x17B332: disabled after it; with a guard
+  the huntsman comes, card 2; else one time in six they know the party,
+  card 12 and a week safe, else card 11 and the fight), *leave*, *talk*
+  (0x17B41C: random(100) at most Speak Common / 3 + 3/4 Charisma + 3/4
+  Intelligence of the leader (1..99): an hour, a week safe, card 3; else
+  card 4 and no more), *pay* ($Money1 or $Money2: a week safe, card 5; not
+  offered to a short purse), *a saint* (a week safe, card 6; else card 7,
+  back to card 2), *fight*. The fight (0x17B22C, field 0x2F, 0x30 when the
+  argument is 1): enemy 15 at variant random(2) + s / 4 + 1, clamp(size, 7,
+  random(4) + s / 3 + 1) of them, and the huntsman (enemy 1; enemy 0x12 if
+  s is 5 or less) at variant s % 3 + 1. Won: a week safe, an hour, card 8;
+  retreated: an hour, card 9; lost: the search, an hour, card 10.
+- **The bandits** (state 0x16A, file 0x17B8A0, $CampB00): with no guard card 1
+  and the fight at once; else card 0 and *ignore* (card 1, the fight),
+  *leave*, *a saint* (Genevieve, Godfrey, Dismas: a week safe, card 2; else
+  card 6 and the menu again) or *ambush* (0x17BD28: random(5) + 1 hours;
+  random(100) at most the party's average speed + the leader's
+  Intelligence / 8 + the average Stealth / 3 + the best Woodwise / 3
+  (1..99): card 3, else the slowest member stumbles, card 4; both ways the
+  fight). The fight (0x17BAEE): enemy 7 at variant random(2) + s / 4 + 1,
+  clamp(size, 7, random(4) + s / 3 + 2) of them, and enemy 0x16 (s over 5)
+  or 0x12 at variant s % 3 + 1. Won: a week safe, an hour, card 7;
+  retreated: an hour, card 8; lost: a week safe, an hour, card 9. **No
+  reputation changes.** *Inferred*: the bandits' search on a defeat (the
+  text says it, the code shows no call).
+- **A week safe** is the mark 0x60 (0E76:2930(0x60, 168)): while it runs
+  the camp's danger does not grow (`ResidenceView::SetSafe()`).
 
 - **The danger** of a camp: the map (file 0x5E9C5) calls 0x9C0:1FF9
   with a base computed at file 0x6005E: 3 · [DS:A67E],

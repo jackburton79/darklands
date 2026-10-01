@@ -1266,6 +1266,46 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_REFUGEES_ANGRY, "MEETP01", 13, NULL, { DO(ACTION_REFUGEES_FIGHT) } },
     { CityVisit::SCREEN_REFUGEES_UNANSWERED, "MEETP01", 14, NULL, { DO(ACTION_REFUGEES_FIGHT) } },
     { CityVisit::SCREEN_REFUGEES_NOANSWER, "MEETP01", 2, NULL, { DO(ACTION_MEET_BACK) } },
+    // The soldiers who find a camp (state 0x169, file 0x17AF90)
+    { CityVisit::SCREEN_CAMPJ_MEET, "CAMPJ00", 0, NULL, { LEAVE } },
+#define CAMPJ_OPTIONS \
+    DO_IF(ACTION_CAMPJ_IGNORE, kNeedsCampIgnore), \
+    LEAVE, \
+    DO_IF(ACTION_CAMPJ_TALK, kNeedsPlea), \
+    DO_IF(ACTION_CAMPJ_PAY, kNeedsMeetMoney), \
+    DO_IF(ACTION_SAINT, kNeedsFreshSaint), \
+    DO(ACTION_CAMPJ_FIGHT)
+    { CityVisit::SCREEN_CAMPJ, "CAMPJ00", 0, NULL, { CAMPJ_OPTIONS } },
+    { CityVisit::SCREEN_CAMPJ_SURPRISED, "CAMPJ00", 1, NULL, { CAMPJ_OPTIONS } },
+    { CityVisit::SCREEN_CAMPJ_HUNTSMAN, "CAMPJ00", 2, NULL, { CAMPJ_OPTIONS } },
+#undef CAMPJ_OPTIONS
+    { CityVisit::SCREEN_CAMPJ_TALKED, "CAMPJ00", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_UNMOVED, "CAMPJ00", 4, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_CAMPJ_PAID, "CAMPJ00", 5, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_BLESSED, "CAMPJ00", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_UNANSWERED, "CAMPJ00", 7, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_CAMPJ_WON, "CAMPJ00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_FLED, "CAMPJ00", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_BEATEN, "CAMPJ00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPJ_ANGRY, "CAMPJ00", 11, NULL, { DO(ACTION_CAMPJ_FIGHT) } },
+    { CityVisit::SCREEN_CAMPJ_KNOWN, "CAMPJ00", 12, NULL, { LEAVE } },
+    // The bandits (state 0x16A, file 0x17B8A0)
+    { CityVisit::SCREEN_CAMPB_MEET, "CAMPB00", 0, NULL, { LEAVE } },
+#define CAMPB_OPTIONS \
+    DO(ACTION_CAMPB_IGNORE), \
+    LEAVE, \
+    DO_IF(ACTION_SAINT, kNeedsFreshSaint), \
+    DO(ACTION_CAMPB_AMBUSH)
+    { CityVisit::SCREEN_CAMPB, "CAMPB00", 0, NULL, { CAMPB_OPTIONS } },
+    { CityVisit::SCREEN_CAMPB_UNANSWERED, "CAMPB00", 6, NULL, { CAMPB_OPTIONS } },
+#undef CAMPB_OPTIONS
+    { CityVisit::SCREEN_CAMPB_RAID, "CAMPB00", 1, NULL, { DO(ACTION_CAMPB_FIGHT) } },
+    { CityVisit::SCREEN_CAMPB_PRAYED, "CAMPB00", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPB_AMBUSH, "CAMPB00", 3, NULL, { DO(ACTION_CAMPB_FIGHT) } },
+    { CityVisit::SCREEN_CAMPB_STUMBLE, "CAMPB00", 4, NULL, { DO(ACTION_CAMPB_FIGHT) } },
+    { CityVisit::SCREEN_CAMPB_WON, "CAMPB00", 7, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPB_FLED, "CAMPB00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CAMPB_BEATEN, "CAMPB00", 9, NULL, { LEAVE } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },

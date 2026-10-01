@@ -105,6 +105,8 @@ ResidenceView::ResidenceView(GameData& data)
     fDanger(0),
     fGuard(-1),
     fInterrupted(false),
+    fSafe(false),
+    fEncounterFollows(false),
     fMouse(0, 0),
     fCursorVisible(false)
 {
@@ -262,7 +264,7 @@ ResidenceView::Run(GameWindow& window)
                     SelectMember(int(key - SDLK_1));
                 else if (key == SDLK_s) {
                     if (!SpendDay() && fInterrupted) {
-                        if (fCamp)
+                        if (fCamp && !fEncounterFollows)
                             _WaitForKey(window);
                         return;
                     }
@@ -288,7 +290,7 @@ ResidenceView::Run(GameWindow& window)
                     if (member >= 0 && fInfo != NULL)
                         fInfo->Run(window, member);
                     else if (!Clicked(point)) {
-                        if (fCamp && fInterrupted)
+                        if (fCamp && fInterrupted && !fEncounterFollows)
                             _WaitForKey(window);
                         return;
                     }
@@ -550,7 +552,7 @@ ResidenceView::SpendDay()
                 fActivities[i] = ACTIVITY_RELAX;
         }
     }
-    if (fCamp)
+    if (fCamp && !fSafe)
         fDanger += GuardedDanger();
     fDays++;
     _UpdateValues();

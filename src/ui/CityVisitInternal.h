@@ -201,6 +201,13 @@ enum option_action {
     ACTION_REFUGEES_BARGAIN,
     ACTION_REFUGEES_FIGHT,
     ACTION_REFUGEES_SURRENDER,
+    ACTION_CAMPJ_IGNORE,		// the camp's soldiers
+    ACTION_CAMPJ_TALK,
+    ACTION_CAMPJ_PAY,
+    ACTION_CAMPJ_FIGHT,
+    ACTION_CAMPB_IGNORE,		// the camp's bandits
+    ACTION_CAMPB_AMBUSH,
+    ACTION_CAMPB_FIGHT,
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
@@ -352,6 +359,8 @@ static const int kNeedsMounts		= -60;
 static const int kNeedsPlea			= -61;
 static const int kNeedsFreshSaint	= -62;
 static const int kNeedsMemberHere	= -63;
+static const int kNeedsCampIgnore	= -64;
+static const int kMarkCampSafe		= 0x60;	// 168 hours without danger
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

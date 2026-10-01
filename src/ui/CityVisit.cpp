@@ -119,6 +119,9 @@ CityVisit::CityVisit(GameData& data)
     fPrayerFailed(false),
     fCaravanTrap(false),
     fMeetBack(0),
+    fCampGuard(-1),
+    fCampIgnored(false),
+    fCampSoldiers(false),
     fBanditsSoldiers(false),
     fBanditsTerrain(0),
     fBanditsReturn(SCREEN_BANDITS_WARNING),
@@ -786,6 +789,30 @@ CityVisit::Choose(int option)
         case ACTION_REFUGEES_SURRENDER:
             _Show(_RefugeesSurrender());
             return true;
+        case ACTION_CAMPJ_IGNORE:
+            _Show(_CampSoldiersIgnore());
+            return true;
+        case ACTION_CAMPJ_TALK:
+            fMeetBack = fScreen;
+            _Show(_CampSoldiersTalk());
+            return true;
+        case ACTION_CAMPJ_PAY:
+            _PayMeetingMoney();
+            _Mark(kMarkCampSafe, 168);
+            _Show(SCREEN_CAMPJ_PAID);
+            return true;
+        case ACTION_CAMPJ_FIGHT:
+            _FightAtCamp(true);
+            return true;
+        case ACTION_CAMPB_IGNORE:
+            _Show(SCREEN_CAMPB_RAID);
+            return true;
+        case ACTION_CAMPB_AMBUSH:
+            _Show(_CampBanditsAmbush());
+            return true;
+        case ACTION_CAMPB_FIGHT:
+            _FightAtCamp(false);
+            return true;
         case ACTION_FRIAR_PAY:
             _PayMeetingMoney();
             _Show(SCREEN_FRIAR_PAID);
@@ -1196,6 +1223,10 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetCaravan();
     else if (screen == SCREEN_REFUGEES_MEET)
         screen = _MeetRefugees();
+    else if (screen == SCREEN_CAMPJ_MEET)
+        screen = _MeetCampSoldiers();
+    else if (screen == SCREEN_CAMPB_MEET)
+        screen = _MeetCampBandits();
     if (screen == SCREEN_THIEVES_MAP_MEET) {
         fThievesReturn = -1;
         screen = _MeetThieves();
@@ -1538,6 +1569,8 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fPleaFailed;
         } else if (rule.needs == kNeedsFreshSaint) {
             hide = fPrayerFailed || !_SaintKnown(screen);
+        } else if (rule.needs == kNeedsCampIgnore) {
+            hide = fCampIgnored;
         } else if (rule.needs == kNeedsMemberHere) {
             hide = fParty == NULL || size_t(rule.target) >= fParty->members.size();
         } else if (rule.needs == kNeedsSaint) {
@@ -1802,4 +1835,11 @@ CityVisit::_SetChosen(int member)
     fVariables["His"] = female ? "Her" : "His";
     fVariables["him"] = female ? "her" : "him";
     fVariables["himself"] = female ? "herself" : "himself";
+}
+
+
+bool
+CityVisit::CampSafe() const
+{
+    return _Marked(kMarkCampSafe);
 }

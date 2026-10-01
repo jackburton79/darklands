@@ -128,7 +128,7 @@ screen, sound, the other quests, and many places' options (they say
 - [x] The robber knight quest: the banks' task, the tower, the reward
 - [x] Random encounters in the city: thieves in the slum, the shell
       game
-- [x] Meetings on the map: the hazard and the game's chooser; the
+- [x] Meetings on the map and at the camp: the hazard and the game's chooser; the
       bandits (ambush, bluffing, saints, surrender, sneaking, the fight and
       the reputation it gives), the soldiers, the thieves, pilgrims, a
       hermit, the bishop's tithe, the nobleman's toll, a friar, a caravan and

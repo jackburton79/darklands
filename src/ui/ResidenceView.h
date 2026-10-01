@@ -88,6 +88,12 @@ public:
     bool			IsCamp() const			{ return fCamp; }
     int				Danger() const			{ return fDanger; }
     int				Guard() const			{ return fGuard; }
+    // The camp is safe (an event of category 0x60 runs: the soldiers or
+    // bandits were dealt with lately): no danger builds up. Not set: it does.
+    void			SetSafe(bool safe)		{ fSafe = safe; }
+    // The encounter follows an interrupted camp at once: no message, no key
+    void			SetEncounterFollows(bool follows)
+                        { fEncounterFollows = follows; }
     // What the guards of the party take off the danger of a day
     int				GuardedDanger() const;
 
@@ -184,6 +190,8 @@ private:
     int				fDanger;
     int				fGuard;
     bool			fInterrupted;
+    bool			fSafe;
+    bool			fEncounterFollows;
     GFX::point		fMouse;
     bool			fCursorVisible;
 };

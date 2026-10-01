@@ -206,7 +206,29 @@ Game::Run()
     map.SetCampHandler([&](GameWindow& where, int terrain) {
         camp.SetParty(&fParty);
         camp.SetCamp(3 * int(fParty.members.size()) + terrain);
+        camp.SetSafe(visit.CampSafe());
+        camp.SetEncounterFollows(true);
         camp.Run(where);
+        if (!camp.Interrupted())
+            return 0;
+        // found: the soldiers or the bandits, by chance (file 0x5E1E5)
+        visit.SetCampGuard(camp.Guard());
+        visit.SetToll(false);
+        meeting = true;
+        visit.SetOnMap(true);
+        const CityVisit::result result = visit.Run(where, map.NearestCity(),
+            fRandom() % 2 == 0 ? CityVisit::SCREEN_CAMPJ_MEET
+                : CityVisit::SCREEN_CAMPB_MEET);
+        visit.SetOnMap(false);
+        meeting = false;
+        if (result == CityVisit::LOAD_GAME)
+            return MapViewer::kLoadRequested;
+        if (result == CityVisit::PARTY_LOST) {
+            std::cout << "The whole party has died: the game is over."
+                << std::endl;
+            return -1;
+        }
+        return result == CityVisit::QUIT ? -1 : 0;
     });
     // The meetings on the way: the hazard is MapViewer's, the state the
     // chooser's (Encounters.h); the ones that are not played are skipped.
