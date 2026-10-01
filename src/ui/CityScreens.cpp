@@ -1198,6 +1198,74 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_FRIAR_FINED, "MEETG01", 10, NULL, { LEAVE } },
     { CityVisit::SCREEN_FRIAR_ROBBED, "MEETG01", 11, NULL, { LEAVE } },
     { CityVisit::SCREEN_FRIAR_CURSE, "MEETG01", 12, NULL, { LEAVE } },
+    // A caravan (state 0x104, file 0x13A084; "buying and selling" is not
+    // played: its stock is not decoded)
+    { CityVisit::SCREEN_CARAVAN_MEET, "MEETM00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN, "MEETM00", 0, NULL, {
+        DO(ACTION_CARAVAN_NEWS),
+        HIDE,
+        DO(ACTION_CARAVAN_TRAVEL),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_CARAVAN_AVOID)
+    } },
+    { CityVisit::SCREEN_CARAVAN_OFFER, "MEETM00", 1, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_CARAVAN_ACCEPT), DO(ACTION_CARAVAN_DECLINE) } },
+    { CityVisit::SCREEN_CARAVAN_UNINTERESTED, "MEETM00", 2, NULL, { DO(ACTION_MEET_TALK) } },
+    { CityVisit::SCREEN_CARAVAN_UNHEARD, "MEETM00", 3, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_CARAVAN_CALM, "MEETM00", 4, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_CARAVAN_AVOIDED, "MEETM00", 5, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN_DEVIL, "MEETM00", 6, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_CARAVAN_ATTACK), DO(ACTION_CARAVAN_AVOID) } },
+    { CityVisit::SCREEN_CARAVAN_SPRING, "MEETM00", 7, NULL, { DO(ACTION_CARAVAN_FIGHT) } },
+    { CityVisit::SCREEN_CARAVAN_WON, "MEETM00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN_ELUDED, "MEETM00", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN_BEATEN, "MEETM00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN_WARNED, "MEETM00", 12, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_CARAVAN_ATTACK), HIDE, DO(ACTION_CARAVAN_RUN) } },
+    { CityVisit::SCREEN_CARAVAN_TALK, "MEETM00", 13, NULL, {
+        HIDE, HIDE,
+        { ACTION_CARAVAN_TRAVEL, 0, kNeedsPlea, 0 },
+        HIDE,
+        DO(ACTION_CARAVAN_AVOID) } },
+    { CityVisit::SCREEN_CARAVAN_TRAVELED, "MEETM00", 14, NULL, { LEAVE } },
+    { CityVisit::SCREEN_CARAVAN_DECLINED, "MEETM00", 15, NULL, { LEAVE } },
+    // Refugees (state 0x107, file 0x13C222)
+    { CityVisit::SCREEN_REFUGEES_MEET, "MEETP01", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES, "MEETP01", 0, NULL, {
+        DO_IF(ACTION_REFUGEES_GIVE, kNeedsMeetMoney),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_REFUGEES_AVOID) } },
+    { CityVisit::SCREEN_REFUGEES_THANKED, "MEETP01", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_PRAYED, "MEETP01", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_CURED, "MEETP01", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_WARNED, "MEETP01", 4, NULL, {
+        HIDE, HIDE,
+        DO(ACTION_REFUGEES_IGNORE), DO(ACTION_REFUGEES_AVOID),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint) } },
+    { CityVisit::SCREEN_REFUGEES_AMBUSH, "MEETP01", 5, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_REFUGEES_BARGAIN),
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_REFUGEES_FIGHT),
+        DO(ACTION_REFUGEES_SURRENDER) } },
+    { CityVisit::SCREEN_REFUGEES_TERMS, "MEETP01", 6, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_REFUGEES_FIGHT), DO(ACTION_REFUGEES_SURRENDER) } },
+    { CityVisit::SCREEN_REFUGEES_PEACE, "MEETP01", 7, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_WON, "MEETP01", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_SURRENDERED, "MEETP01", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_BEATEN, "MEETP01", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_ELUDED, "MEETP01", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_REFUGEES_REVEALED, "MEETP01", 12, NULL, {
+        HIDE, HIDE,
+        DO(ACTION_REFUGEES_IGNORE), DO(ACTION_REFUGEES_AVOID), HIDE } },
+    { CityVisit::SCREEN_REFUGEES_ANGRY, "MEETP01", 13, NULL, { DO(ACTION_REFUGEES_FIGHT) } },
+    { CityVisit::SCREEN_REFUGEES_UNANSWERED, "MEETP01", 14, NULL, { DO(ACTION_REFUGEES_FIGHT) } },
+    { CityVisit::SCREEN_REFUGEES_NOANSWER, "MEETP01", 2, NULL, { DO(ACTION_MEET_BACK) } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },

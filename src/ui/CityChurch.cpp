@@ -551,6 +551,17 @@ CityVisit::_SaintsFor(int screen) const
         saints = { 61, 78, 36, 101, 102 };
     if (screen == SCREEN_FRIAR_CURSING)
         saints = { 61, 78, 115, 117, 101, 102 };
+    // a caravan (file 0x13A16A); refugees: the plague saints, Roch,
+    // Sebastian and one more (0x13C2E4), and against their ambush the ones
+    // that the warning (0x13C700) and the ambush (0x13C773) bring
+    if (screen == SCREEN_CARAVAN)
+        saints = { 17, 37, 67, 93 };
+    if (screen == SCREEN_REFUGEES)
+        saints = { 115, 117, 85 };
+    if (screen == SCREEN_REFUGEES_WARNED)
+        saints = { 93, 37, 17, 67 };
+    if (screen == SCREEN_REFUGEES_AMBUSH)
+        saints = { 54, 61, 131 };
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -769,6 +780,17 @@ CityVisit::_SaintAnswered(int screen, int index)
             return SCREEN_THIEVES_SAINT;			// card 8 (file 0xACA1A)
         case SCREEN_TITHE:
             return SCREEN_TITHE_BLESSED;			// card 2 (file 0x13DAF6)
+        case SCREEN_CARAVAN:
+            // the devil-man's band seen (card 6), else an honest caravan
+            // (card 4)
+            fMeetBack = SCREEN_CARAVAN;
+            return fCaravanTrap ? SCREEN_CARAVAN_DEVIL : SCREEN_CARAVAN_CALM;
+        case SCREEN_REFUGEES:
+            return _RefugeesSaint(true);
+        case SCREEN_REFUGEES_WARNED:
+            return SCREEN_REFUGEES_REVEALED;
+        case SCREEN_REFUGEES_AMBUSH:
+            return SCREEN_REFUGEES_PEACE;
         case SCREEN_FRIAR:
         case SCREEN_FRIAR_CURSING:
             return _FriarSaint(_SaintsFor(screen)[size_t(index)]);
@@ -853,6 +875,18 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_CARAVAN:
+            fPrayerFailed = true;
+            fMeetBack = SCREEN_CARAVAN;
+            return SCREEN_CARAVAN_UNHEARD;			// card 3
+        case SCREEN_REFUGEES:
+            return _RefugeesSaint(false);
+        case SCREEN_REFUGEES_WARNED:
+            fPrayerFailed = true;
+            fMeetBack = SCREEN_REFUGEES_WARNED;
+            return SCREEN_REFUGEES_NOANSWER;
+        case SCREEN_REFUGEES_AMBUSH:
+            return SCREEN_REFUGEES_UNANSWERED;
         case SCREEN_TITHE:
             fPrayerFailed = true;
             return SCREEN_TITHE_PRAYED;				// card 3, no more prayers

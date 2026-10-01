@@ -2006,6 +2006,47 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   card 9; retreated, the curse, card 8; lost, the search, card 11; all
   costing each member 2 of Virtue and 30 of divine favor. **verified**
   (the saints' places in the answers are *inferred*)
+- **A caravan** (state 0x104, file 0x13A084; $MeetM00): DS:E7D8 is the
+  trap, random(100) <= 8: the caravan is the band of a devil-man;
+  $Number1 is (random(4) + 1) · 2 days; $ChosenOneName the best
+  Perception; with event 0x57 running (talked to lately) it starts at card
+  13. Card 0: *greet* (file 0x13A694; its flag DS:EE76 is 0, hidden in the
+  game's table; the program offers it, *inferred*): the rumors (state
+  0x6E) and card 13; *trade* (0x13A71E, the stock by the party's row mod
+  10, 0E76:21AA: not played); *travel together* (0x13A824): random(100) at
+  most ((Speak Common / 2 + Charisma of the leader + the average Virtue) /
+  2, within 1..99): card 1 (accept: card 14, the days, a lesson in Virtue
+  (mode 7, 10), divine favor + Religion / 5 + the days; decline: card 15),
+  else card 2 and no more asking; *a saint* (17, 37, 67, 93): answered,
+  card 6 (the band seen: attack, or stay low, card 5 and three hours) if
+  it is the trap, else card 4; unanswered, card 3; *go on*: card 5, three
+  hours. Any talk with the trap (file 0x13A336): the best Perception +
+  random(20) under 60, the ambush (card 7 and the fight), else the
+  warning (card 12: attack, or run: random(100) at most the average speed
+  + the best Woodwise, within 1..99, until six in the evening, card 9; else
+  the fight). The fight (file 0x13A3EE, field 0x2F, 0x30 when sprung):
+  random(5) + 3 of enemy 15 (mercenaries) or 2 (archers) at variant
+  random(3) + s / 4 + 1, with enemy 22 or 2 at variant s % 3 + 1. Won: an
+  hour, card 8, a lesson in Virtue (7, 15); retreated, until six, card 9;
+  lost, the search, card 10 or 11, a member dead and the rest wounded (not
+  reproduced: the battle's own end). **verified**
+- **Refugees** (state 0x107, file 0x13C222; $MeetP01): they ask purse / 20
+  + 1 pfennigs (1..480). *Give* (file 0x13C61C): with random(100) at most
+  85 an hour, the money, card 1 and a lesson in Virtue (7, 10); else the
+  warning (card 4) if random(100) is at most the best Perception, or the
+  ambush (card 5). *A saint* (115, 117, 85): honest (85): unanswered card
+  2 and a lesson (0, 10), answered card 3 and (7, 25); else answered card
+  12 (the ambush shown), unanswered card 5. The warning offers *ignore*
+  (card 5), *heed* (an hour, on) and a saint (93, 37, 17, 67: card 12;
+  unanswered card 2, no more prayers). The ambush (card 5): *bargain*
+  (the leader's Speak Common + Charisma, 1..99: card 6, their terms, else
+  card 13 and the fight), *a saint* (54, 61, 131: card 7, peace; else card
+  14 and the fight), *fight*, *surrender* (the search, an hour, card 9). The
+  fight (file 0x13C4A4, field 0x30): random(5) + 3 of enemy 7 at variant
+  random(3) + s / 4 + 1 and enemy 0x16 (s over 5) or 0x12 at variant
+  s % 5. Won: an hour, card 8, **no** change of reputation; retreated: until
+  six and until five, card 11; lost: an hour, the search, card 10.
+  **verified**
 - **Not decoded, *inferred* in the program**: the Perception chance of
   the warning (as the thieves'), the bluff's chance (the leader's
   Charisma + Speak Common), the sneaking's (the party's average of

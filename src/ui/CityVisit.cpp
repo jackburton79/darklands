@@ -117,6 +117,8 @@ CityVisit::CityVisit(GameData& data)
     fMeetReturn(0),
     fPleaFailed(false),
     fPrayerFailed(false),
+    fCaravanTrap(false),
+    fMeetBack(0),
     fBanditsSoldiers(false),
     fBanditsTerrain(0),
     fBanditsReturn(SCREEN_BANDITS_WARNING),
@@ -734,6 +736,56 @@ CityVisit::Choose(int option)
         case ACTION_TITHE_RETURN:
             _Show(fMeetReturn);
             return true;
+        case ACTION_CARAVAN_NEWS:
+            _Show(_CaravanNews());
+            return true;
+        case ACTION_CARAVAN_TRAVEL:
+            _Show(_CaravanTravel());
+            return true;
+        case ACTION_CARAVAN_ACCEPT:
+            _Show(_CaravanAccept());
+            return true;
+        case ACTION_CARAVAN_DECLINE:
+            _Show(SCREEN_CARAVAN_DECLINED);
+            return true;
+        case ACTION_CARAVAN_AVOID:
+            _Show(_CaravanAvoid());
+            return true;
+        case ACTION_CARAVAN_ATTACK:
+            _FightCaravan(false);
+            return true;
+        case ACTION_CARAVAN_RUN:
+            _Show(_CaravanRun());
+            return true;
+        case ACTION_CARAVAN_FIGHT:
+            _FightCaravan(true);
+            return true;
+        case ACTION_MEET_BACK:
+            _Show(fMeetBack);
+            return true;
+        case ACTION_MEET_TALK:
+            _Show(SCREEN_CARAVAN_TALK);
+            return true;
+        case ACTION_REFUGEES_GIVE:
+            _Show(_RefugeesGive());
+            return true;
+        case ACTION_REFUGEES_AVOID:
+            // file 0x13CDB0: an hour, and on
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return false;
+        case ACTION_REFUGEES_IGNORE:
+            _Show(SCREEN_REFUGEES_AMBUSH);
+            return true;
+        case ACTION_REFUGEES_BARGAIN:
+            _Show(_RefugeesBargain());
+            return true;
+        case ACTION_REFUGEES_FIGHT:
+            _FightRefugees();
+            return true;
+        case ACTION_REFUGEES_SURRENDER:
+            _Show(_RefugeesSurrender());
+            return true;
         case ACTION_FRIAR_PAY:
             _PayMeetingMoney();
             _Show(SCREEN_FRIAR_PAID);
@@ -1140,6 +1192,10 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetTithe();
     else if (screen == SCREEN_FRIAR_MEET)
         screen = _MeetFriar();
+    else if (screen == SCREEN_CARAVAN_MEET)
+        screen = _MeetCaravan();
+    else if (screen == SCREEN_REFUGEES_MEET)
+        screen = _MeetRefugees();
     if (screen == SCREEN_THIEVES_MAP_MEET) {
         fThievesReturn = -1;
         screen = _MeetThieves();

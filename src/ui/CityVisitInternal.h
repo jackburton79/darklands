@@ -185,6 +185,22 @@ enum option_action {
     ACTION_FRIAR_REFUSE,
     ACTION_FRIAR_FIGHT,
     ACTION_FRIAR_LEAVE,			// ignore the curse
+    ACTION_CARAVAN_NEWS,		// the caravan
+    ACTION_CARAVAN_TRAVEL,
+    ACTION_CARAVAN_ACCEPT,
+    ACTION_CARAVAN_DECLINE,
+    ACTION_CARAVAN_AVOID,
+    ACTION_CARAVAN_ATTACK,
+    ACTION_CARAVAN_RUN,
+    ACTION_CARAVAN_FIGHT,		// when they spring the ambush
+    ACTION_MEET_BACK,			// back to the screen of the meeting
+    ACTION_MEET_TALK,			// the caravan's talk menu
+    ACTION_REFUGEES_GIVE,		// the refugees
+    ACTION_REFUGEES_AVOID,
+    ACTION_REFUGEES_IGNORE,
+    ACTION_REFUGEES_BARGAIN,
+    ACTION_REFUGEES_FIGHT,
+    ACTION_REFUGEES_SURRENDER,
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,

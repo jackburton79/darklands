@@ -544,3 +544,318 @@ CityVisit::_FriarSaint(int saint)
     }
     return screen;
 }
+
+
+// A caravan (state 0x104, file 0x13A084): one in eleven is the band of a
+// devil-man (random(100) <= 8); a journey together takes (random(4) + 1) *
+// 2 days ($Number1). The first option of card 0, news, is hidden in the
+// game's table (DS:EE76 is 0); the program offers it (*inferred*), and no
+// goods to trade.
+int
+CityVisit::_MeetCaravan()
+{
+    fCaravanTrap = int(fRandom() % 100) <= 8;
+    fMeetDays = (int(fRandom() % 4) + 1) * 2;
+    fVariables["Number1"] = std::to_string(fMeetDays);
+    fPrayerFailed = false;
+    fPleaFailed = false;
+    if (fParty != NULL && !fParty->members.empty()) {
+        int best = 0;
+        for (size_t i = 1; i < fParty->members.size(); i++) {
+            if (fParty->members[i].attributes[ATTRIBUTE_PERCEPTION]
+                    > fParty->members[size_t(best)].attributes[ATTRIBUTE_PERCEPTION])
+                best = int(i);
+        }
+        _SetChosen(best);
+    }
+    return SCREEN_CARAVAN;
+}
+
+
+// Their trick springs when the party talks to them (file 0x13A336): the
+// best Perception + random(20) under 60, the ambush (card 7, then the
+// fight); else the warning (card 12)
+int
+CityVisit::_CaravanSpring()
+{
+    int best = 0;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members)
+            best = std::max(best, int(member.attributes[ATTRIBUTE_PERCEPTION]));
+    }
+    if (best + int(fRandom() % 20) < 60)
+        return SCREEN_CARAVAN_SPRING;
+    return SCREEN_CARAVAN_WARNED;
+}
+
+
+// News (file 0x13A694): the rumors (state 0x6E), then card 13
+int
+CityVisit::_CaravanNews()
+{
+    if (fCaravanTrap)
+        return _CaravanSpring();
+    fNewsReturn = SCREEN_CARAVAN_TALK;
+    fNoticesFromSquare = false;
+    return SCREEN_NEWS;
+}
+
+
+// Asking to travel together (file 0x13A824): if random(100) is at most
+// ((Speak Common / 2 + Charisma of the leader + the party's average
+// Virtue) / 2, within 1..99) the offer (card 1), else card 2 and no more
+// asking
+int
+CityVisit::_CaravanTravel()
+{
+    if (fCaravanTrap)
+        return _CaravanSpring();
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_CARAVAN_UNINTERESTED;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    int virtue = 0;
+    for (const character& member : fParty->members)
+        virtue += member.skills[kSkillVirtue];
+    virtue /= int(fParty->members.size());
+    const int chance = std::max(1, std::min(99,
+        (leader.skills[kSkillSpeakCommon] / 2
+            + leader.attributes[ATTRIBUTE_CHARISMA] + virtue) / 2));
+    if (int(fRandom() % 100) <= chance)
+        return SCREEN_CARAVAN_OFFER;
+    fPleaFailed = true;
+    return SCREEN_CARAVAN_UNINTERESTED;
+}
+
+
+// Traveling together (file 0x13AABC): card 14, the days, a lesson in
+// Virtue for all (mode 7, 10) and divine favor + Religion / 5 + the days
+int
+CityVisit::_CaravanAccept()
+{
+    if (fClock != NULL)
+        fClock->AddHours(uint32(fMeetDays * 24));
+    if (fParty != NULL) {
+        const std::function<int(int)> random
+            = [this](int n) { return int(fRandom() % uint32(n)); };
+        TrainParty(*fParty, kSkillVirtue, 7, 10, random);
+        for (character& member : fParty->members) {
+            AddToAttribute(member, ATTRIBUTE_DIVINE_FAVOR,
+                member.skills[kSkillReligion] / 5 + fMeetDays);
+        }
+    }
+    return SCREEN_CARAVAN_TRAVELED;
+}
+
+
+// Going on (file 0x13AA38): card 5, three hours
+int
+CityVisit::_CaravanAvoid()
+{
+    if (fClock != NULL)
+        fClock->AddHours(3);
+    return SCREEN_CARAVAN_AVOIDED;
+}
+
+
+// Running (file 0x13AC96): if random(100) is at most the party's average
+// speed + its best Woodwise (within 1..99) card 9, until six in the
+// evening; else the fight
+int
+CityVisit::_CaravanRun()
+{
+    int speed = 0;
+    int woodwise = 0;
+    if (fParty != NULL && !fParty->members.empty()) {
+        for (const character& member : fParty->members) {
+            speed += member.attributes[ATTRIBUTE_AGILITY];
+            woodwise = std::max(woodwise, int(member.skills[kSkillWoodwise]));
+        }
+        speed /= int(fParty->members.size());
+    }
+    const int chance = std::max(1, std::min(99, speed + woodwise));
+    if (int(fRandom() % 100) <= chance) {
+        if (fClock != NULL)
+            fClock->AddHours(uint32(_HoursUntil(*fClock, 18)));
+        return SCREEN_CARAVAN_ELUDED;
+    }
+    _FightCaravan(false);
+    return fScreen;
+}
+
+
+// The fight (file 0x13A3EE; the field 0x2F, 0x30 when they spring it): one
+// time in two mercenaries (enemy 15) with a robber captain (22), else
+// archers (enemy 2) with an archer, random(5) + 3 of them at variant
+// random(3) + s / 4 + 1, the leader at s % 3 + 1
+void
+CityVisit::_FightCaravan(bool surprised)
+{
+    (void)surprised;
+    fFoes.clear();
+    const int s = fParty != NULL ? PartyStrength(*fParty) : 1;
+    const bool archers = fRandom() % 2 == 1;
+    fFoes.push_back(foes{ archers ? 2 : 15, int(fRandom() % 3) + s / 4 + 1,
+        int(fRandom() % 5) + 3 });
+    fFoes.push_back(foes{ archers ? 2 : 22, s % 3 + 1, 1 });
+    fBattleKind = BATTLE_WITH_CARAVAN;
+    fPendingBattle = true;
+}
+
+
+// The fight's end: won, an hour, card 8, a lesson in Virtue (mode 7, 15);
+// retreated, until six in the evening, card 9; lost, an hour, the search,
+// card 10 or 11 (the game also takes a member's life and wounds the rest,
+// which the battle's own end does here)
+int
+CityVisit::_ResolveCaravanBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        if (fParty != NULL) {
+            const std::function<int(int)> random
+                = [this](int n) { return int(fRandom() % uint32(n)); };
+            TrainParty(*fParty, kSkillVirtue, 7, 15, random);
+        }
+        return SCREEN_CARAVAN_WON;
+    }
+    if (outcome != BATTLE_LOST) {
+        if (fClock != NULL)
+            fClock->AddHours(uint32(_HoursUntil(*fClock, 18)));
+        return SCREEN_CARAVAN_ELUDED;
+    }
+    _Search();
+    if (fClock != NULL)
+        fClock->AddHours(uint32(_HoursUntil(*fClock, 18)));
+    return SCREEN_CARAVAN_BEATEN;
+}
+
+
+// Refugees (state 0x107, file 0x13C222): they ask purse / 20 + 1 pfennigs
+// (1..480); one time in seven they are bandits
+int
+CityVisit::_MeetRefugees()
+{
+    fPrayerFailed = false;
+    const uint32 purse = fParty != NULL ? TotalPfennigs(fParty->cash) : 0;
+    fMeetMoney = std::max(uint32(1), std::min(uint32(480), purse / 20 + 1));
+    fVariables["Money1"] = MoneyText(fMeetMoney);
+    if (fParty != NULL && !fParty->members.empty())
+        _SetChosen(fParty->leader);
+    return SCREEN_REFUGEES;
+}
+
+
+// Giving (file 0x13C61C): with random(100) at most 85 they are what they
+// seem: an hour, the money, card 1, a lesson in Virtue for all (mode 7,
+// 10). Else the best Perception warns the party if random(100) is at most
+// it (card 4), or the ambush springs (card 5)
+int
+CityVisit::_RefugeesGive()
+{
+    if (int(fRandom() % 100) <= 85) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _PayMeetingMoney();
+        if (fParty != NULL) {
+            const std::function<int(int)> random
+                = [this](int n) { return int(fRandom() % uint32(n)); };
+            TrainParty(*fParty, kSkillVirtue, 7, 10, random);
+        }
+        return SCREEN_REFUGEES_THANKED;
+    }
+    int best = 0;
+    if (fParty != NULL) {
+        for (const character& member : fParty->members)
+            best = std::max(best, int(member.attributes[ATTRIBUTE_PERCEPTION]));
+    }
+    return int(fRandom() % 100) <= best ? SCREEN_REFUGEES_WARNED
+        : SCREEN_REFUGEES_AMBUSH;
+}
+
+
+// A prayer in the first card (file 0x13C79A): the refugees are honest
+// with random(100) at most 85: unanswered, card 2 and a lesson of mode 0;
+// answered, card 3 (the cure) and a lesson of mode 7 (25). Bandits: the
+// prayer answered shows the ambush (card 12), unanswered it springs
+int
+CityVisit::_RefugeesSaint(bool answered)
+{
+    const std::function<int(int)> random
+        = [this](int n) { return int(fRandom() % uint32(n)); };
+    if (int(fRandom() % 100) <= 85) {
+        if (fParty != NULL)
+            TrainParty(*fParty, kSkillVirtue, answered ? 7 : 0,
+                answered ? 25 : 10, random);
+        return answered ? SCREEN_REFUGEES_CURED : SCREEN_REFUGEES_PRAYED;
+    }
+    return answered ? SCREEN_REFUGEES_REVEALED : SCREEN_REFUGEES_AMBUSH;
+}
+
+
+// Bargaining (file 0x13CB96): if random(100) is at most the leader's Speak
+// Common + Charisma (1..99) their terms (card 6), else card 13 and the fight
+int
+CityVisit::_RefugeesBargain()
+{
+    if (fParty == NULL || fParty->members.empty())
+        return SCREEN_REFUGEES_ANGRY;
+    const character& leader = fParty->members[size_t(fParty->leader)];
+    const int chance = std::max(1, std::min(99,
+        leader.skills[kSkillSpeakCommon]
+        + leader.attributes[ATTRIBUTE_CHARISMA]));
+    return int(fRandom() % 100) <= chance ? SCREEN_REFUGEES_TERMS
+        : SCREEN_REFUGEES_ANGRY;
+}
+
+
+// Surrender (file 0x13CD22): the search, an hour, card 9
+int
+CityVisit::_RefugeesSurrender()
+{
+    _Search();
+    if (fClock != NULL)
+        fClock->AddHours(1);
+    return SCREEN_REFUGEES_SURRENDERED;
+}
+
+
+// The fight (file 0x13C4A4, field 0x30): enemy 7 (bandits), random(5) + 3
+// of them at variant random(3) + s / 4 + 1, and a leader, enemy 0x16 if s
+// is over 5 else 0x12, at variant s % 5
+void
+CityVisit::_FightRefugees()
+{
+    fFoes.clear();
+    const int s = fParty != NULL ? PartyStrength(*fParty) : 1;
+    fFoes.push_back(foes{ 7, int(fRandom() % 3) + s / 4 + 1,
+        int(fRandom() % 5) + 3 });
+    fFoes.push_back(foes{ s > 5 ? 0x16 : 0x12, s % 5, 1 });
+    fBattleKind = BATTLE_WITH_REFUGEES;
+    fPendingBattle = true;
+}
+
+
+// The fight's end: won, an hour, card 8; retreated, until six in the
+// evening and until five in the morning, card 11; lost, an hour, the
+// search, card 10
+int
+CityVisit::_ResolveRefugeesBattle(int outcome)
+{
+    if (outcome == BATTLE_WON) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        return SCREEN_REFUGEES_WON;
+    }
+    if (outcome == BATTLE_LOST) {
+        if (fClock != NULL)
+            fClock->AddHours(1);
+        _Search();
+        return SCREEN_REFUGEES_BEATEN;
+    }
+    if (fClock != NULL) {
+        fClock->AddHours(uint32(_HoursUntil(*fClock, 18)));
+        fClock->AddHours(uint32(_HoursUntil(*fClock, 5)));
+    }
+    return SCREEN_REFUGEES_ELUDED;
+}

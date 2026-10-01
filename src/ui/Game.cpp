@@ -234,6 +234,12 @@ Game::Run()
             case ENCOUNTER_FRIAR:
                 screen = CityVisit::SCREEN_FRIAR_MEET;
                 break;
+            case ENCOUNTER_CARAVAN:
+                screen = CityVisit::SCREEN_CARAVAN_MEET;
+                break;
+            case ENCOUNTER_REFUGEES:
+                screen = CityVisit::SCREEN_REFUGEES_MEET;
+                break;
             default:
                 break;
         }

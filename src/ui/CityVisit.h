@@ -413,6 +413,39 @@ public:
         SCREEN_FRIAR_FINED,		// 10
         SCREEN_FRIAR_ROBBED,	// 11
         SCREEN_FRIAR_CURSE,		// 12
+        SCREEN_CARAVAN_MEET,	// $MeetM00, a caravan (state 0x104): the
+        SCREEN_CARAVAN,			// start, then card 0, the offer to travel
+        SCREEN_CARAVAN_OFFER,	// together (1), the refusal (2), a prayer
+        SCREEN_CARAVAN_UNINTERESTED,	// unanswered (3) or answered (4),
+        SCREEN_CARAVAN_UNHEARD,	// the caravan left behind (5), the devil-
+        SCREEN_CARAVAN_CALM,	// man's band seen (6), their ambush (7),
+        SCREEN_CARAVAN_AVOIDED,	// the fight won (8), the flight (9), the
+        SCREEN_CARAVAN_DEVIL,	// defeat (10, 11), the warning (12), the
+        SCREEN_CARAVAN_SPRING,	// talk (13), the journey together (14)
+        SCREEN_CARAVAN_WON,		// and its refusal (15)
+        SCREEN_CARAVAN_ELUDED,
+        SCREEN_CARAVAN_BEATEN,
+        SCREEN_CARAVAN_WARNED,
+        SCREEN_CARAVAN_TALK,
+        SCREEN_CARAVAN_TRAVELED,
+        SCREEN_CARAVAN_DECLINED,
+        SCREEN_REFUGEES_MEET,	// $MeetP01, refugees (state 0x107): the
+        SCREEN_REFUGEES,		// start, then card 0, thanks (1), a prayer
+        SCREEN_REFUGEES_THANKED,	// unanswered (2) or answered (3), the
+        SCREEN_REFUGEES_PRAYED,	// warning of an ambush (4), the ambush
+        SCREEN_REFUGEES_CURED,	// (5), their terms (6), a saint's peace
+        SCREEN_REFUGEES_WARNED,	// (7), the fight won (8), the surrender
+        SCREEN_REFUGEES_AMBUSH,	// (9), the defeat (10), the flight (11),
+        SCREEN_REFUGEES_TERMS,	// the prayer that shows the ambush (12),
+        SCREEN_REFUGEES_PEACE,	// their anger at the bargain (13) and at
+        SCREEN_REFUGEES_WON,	// a prayer unanswered (14)
+        SCREEN_REFUGEES_SURRENDERED,
+        SCREEN_REFUGEES_BEATEN,
+        SCREEN_REFUGEES_ELUDED,
+        SCREEN_REFUGEES_REVEALED,
+        SCREEN_REFUGEES_ANGRY,
+        SCREEN_REFUGEES_UNANSWERED,
+        SCREEN_REFUGEES_NOANSWER,	// card 2, back to the warning
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
         SCREEN_SHELL_LOST_RIGHT,	// pea under the right-hand (1), middle
         SCREEN_SHELL_LOST_MIDDLE,	// (2) or left-hand shell (3), the
@@ -909,6 +942,22 @@ private:
     void			_FightFriar();
     int				_ResolveFriarBattle(int outcome);
     int				_FriarSaint(int saint);
+    int				_MeetCaravan();
+    int				_CaravanSpring();
+    int				_CaravanNews();
+    int				_CaravanTravel();
+    int				_CaravanAccept();
+    int				_CaravanAvoid();
+    int				_CaravanRun();
+    void			_FightCaravan(bool surprised);
+    int				_ResolveCaravanBattle(int outcome);
+    int				_MeetRefugees();
+    int				_RefugeesGive();
+    int				_RefugeesBargain();
+    int				_RefugeesSaint(bool answered);
+    int				_RefugeesSurrender();
+    void			_FightRefugees();
+    int				_ResolveRefugeesBattle(int outcome);
     bool			_AllMounted() const;
     int				_BestHorse(const character& member) const;
     void			_PayMeetingMoney();
@@ -996,6 +1045,8 @@ private:
         BATTLE_WITH_BANDITS,
         BATTLE_WITH_TITHE_GUARDS,
         BATTLE_WITH_FRIAR,
+        BATTLE_WITH_CARAVAN,
+        BATTLE_WITH_REFUGEES,
         BATTLE_AT_SANCTUARY
     };
     struct foes {
@@ -1054,6 +1105,8 @@ private:
     int				fMeetReturn;	// where a failed plea or prayer goes
     bool			fPleaFailed;
     bool			fPrayerFailed;
+    bool			fCaravanTrap;	// the caravan is the devil-man's band
+    int				fMeetBack;		// where a message goes back to
     bool			fBanditsSoldiers;	// MEETB02, not MEETB01
     int				fBanditsTerrain;	// the tile type under the party
     int				fBanditsReturn;	// where an unanswered prayer leads back

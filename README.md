@@ -131,9 +131,10 @@ screen, sound, the other quests, and many places' options (they say
 - [x] Meetings on the map: the hazard and the game's chooser; the
       bandits (ambush, bluffing, saints, surrender, sneaking, the fight and
       the reputation it gives), the soldiers, the thieves, pilgrims, a
-      hermit, the bishop's tithe, the nobleman's toll and a friar
-- [ ] The other meetings (about 25 states: alchemists, a caravan,
-      refugees, tatzelwurms, a blizzard...): the chooser gives them, they
+      hermit, the bishop's tithe, the nobleman's toll, a friar, a caravan and
+      refugees
+- [ ] The other meetings (about 23 states: alchemists, tatzelwurms, a
+      blizzard...): the chooser gives them, they
       are skipped
 - [x] The monastery: prayers, the library and the abbess (asking)
 - [ ] What happens in the other places (training, audiences...), the

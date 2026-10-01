@@ -129,6 +129,8 @@ IsEncounterPlayed(int state)
         case ENCOUNTER_BISHOP:
         case ENCOUNTER_HERMIT:
         case ENCOUNTER_TOLL:
+        case ENCOUNTER_CARAVAN:
+        case ENCOUNTER_REFUGEES:
             return true;
         default:
             return false;
