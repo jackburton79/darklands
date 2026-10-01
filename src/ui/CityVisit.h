@@ -37,6 +37,7 @@ class GameWindow;
 class InfoView;
 class MenuBar;
 struct party;
+struct retired_member;
 
 class CityVisit {
 public:
@@ -405,6 +406,9 @@ public:
         SCREEN_LORD_SAINT_VAIN,
         SCREEN_ROBBER_LORD,		// $RAUBI00 card 1, $RAUBI01 card 0
         SCREEN_ROBBER_LORD_THANKS,
+        SCREEN_PARTY,			// the party's composition: $PARTY00 card 0, 6
+        SCREEN_PARTY_LOOKING,	// (looking for people), 7 (a member retires)
+        SCREEN_PARTY_RETIRED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -433,6 +437,9 @@ public:
     // the difficulty changes the fame of a task done
     void			SetSettings(const game_settings* settings)
                         { fSettings = settings; }
+    // The members who retired, waiting in the cities (not owned; NULL: none)
+    void			SetRetired(std::vector<retired_member>* retired)
+                        { fRetired = retired; }
     // The menu bar (not owned; NULL: none), also in the battles
     void			SetMenuBar(MenuBar* menu);
     // Called by Run() for the menu's Load Saved Game: true if a game was
@@ -684,6 +691,10 @@ private:
     int				_OfferQuest();
     // The city's lord (DARKLAND.EXE, state 0x1B file 0xA4B0E, 0x2B file
     // 0xB1A98)
+    // The party's composition (DARKLAND.EXE, state 0xAA, file 0x10D62E)
+    int				_PartyLooking();
+    void			_ShowRecruits();
+    int				_Retire(int slot);
     int				_LordChance() const;
     int				_LordRequest(bool clerk);
     int				_LordGrant(int card);
@@ -868,6 +879,10 @@ private:
     std::vector<world_event>* fEvents;
     std::vector<uint8>* fLocationFlags;
     std::vector<uint16>* fEnterStates;
+    std::vector<retired_member>* fRetired;
+    int				fPartyReturn;	// where the composition leads back to
+    bool			fChoosingRecruit;
+    std::vector<size_t> fRecruitChoices;	// into fRetired
     bool			fLordHall;		// the town hall's cards, not the fortress's
     std::vector<int> fLordQueue;	// the screens that follow the one in view
     int				fQuestReturn;	// where the offer leads back to, or -1

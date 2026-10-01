@@ -70,6 +70,7 @@ private:
     std::mt19937	fRandom;
     std::vector<int16> fReputations;	// by location of DARKLAND.LOC
     std::vector<world_event> fEvents;	// the game's events
+    std::vector<retired_member> fRetired;	// the members who retired
     std::vector<uint8> fLocationFlags;	// by location: its state (+0x14)
     std::vector<uint16> fEnterStates;	// by location: its arrival (+0x0C)
     int				fCity;			// the party is in this city, or -1

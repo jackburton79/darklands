@@ -99,6 +99,9 @@ CityVisit::CityVisit(GameData& data)
     fEvents(NULL),
     fLocationFlags(NULL),
     fEnterStates(NULL),
+    fRetired(NULL),
+    fPartyReturn(SCREEN_INN),
+    fChoosingRecruit(false),
     fLordHall(false),
     fQuestReturn(-1),
     fQuestPatron(-1),
@@ -291,6 +294,22 @@ CityVisit::Choose(int option)
         if (fPreviousScreen < 0)
             return false;				// a place not implemented: away
         _Show(fPreviousScreen, false);
+        return true;
+    }
+    if (fChoosingRecruit) {
+        // the people found: one of them, or none (the last line)
+        fChoosingRecruit = false;
+        if (option >= 0 && option < int(fRecruitChoices.size())
+                && fRetired != NULL && fParty != NULL
+                && fRecruitChoices[size_t(option)] < fRetired->size()) {
+            const retired_member who = (*fRetired)[fRecruitChoices[size_t(option)]];
+            fRetired->erase(fRetired->begin() + long(fRecruitChoices[size_t(option)]));
+            fParty->members.push_back(who.member);
+            fParty->images.push_back(who.image);
+            fParty->colors.push_back(who.colors);
+            SetParty(fParty);
+        }
+        _Show(SCREEN_PARTY);
         return true;
     }
     if (fChoosingSaint) {
@@ -707,6 +726,25 @@ CityVisit::Choose(int option)
         case ACTION_SHELL_LEAVE:
             _Show(fShellReturn);			// file 0x110E48: no time passes
             return true;
+        case ACTION_PARTY:
+            fPartyReturn = fScreen;
+            _Show(SCREEN_PARTY);
+            return true;
+        case ACTION_PARTY_FIND:
+            _Show(_PartyLooking());
+            return true;
+        case ACTION_PARTY_RECRUITS:
+            _ShowRecruits();
+            return true;
+        case ACTION_PARTY_RETIRE:
+            _Show(_Retire(rule.target));
+            return true;
+        case ACTION_PARTY_AGAIN:
+            _Show(SCREEN_PARTY);
+            return true;
+        case ACTION_PARTY_DONE:
+            _Show(fPartyReturn);
+            return true;
         case ACTION_LORD_AUDIENCE:
             fLordHall = fScreen == SCREEN_TOWN_HALL;
             _Show(_LordRequest(false));
@@ -971,6 +1009,14 @@ CityVisit::_Show(int screen, bool withScene)
     // November to May the swimming options are not offered, card 1)
     if (screen == SCREEN_DOCKS && fNight && _ColdWater())
         screen = SCREEN_DOCKS_ICE;
+    // the party's composition: $ChosenOneName..$ChosenFiveName are the
+    // members in their order
+    if (screen == SCREEN_PARTY && fParty != NULL) {
+        static const char* kNames[5] = { "ChosenOneName", "ChosenTwoName",
+            "ChosenThreeName", "ChosenFourName", "ChosenFiveName" };
+        for (size_t i = 0; i < 5 && i < fParty->members.size(); i++)
+            fVariables[kNames[i]] = fParty->members[i].shortName;
+    }
     // swimming away: the names on the cards
     if (screen >= SCREEN_SWIM_ALL && screen <= SCREEN_SWIM_FOLLOW
             && !fSwimSteps.empty()) {
@@ -1183,6 +1229,11 @@ CityVisit::_HiddenOptions(int screen) const
                 hide = true;
             if (rule.needs == kNeedsLordSaint && !_SaintKnown(screen))
                 hide = true;
+        } else if (rule.needs == kNeedsPartyRoom) {
+            hide = fParty == NULL || fParty->members.size() >= 4;
+        } else if (rule.needs == kNeedsPartyRetire) {
+            hide = fParty == NULL || fParty->members.size() < 2
+                || size_t(rule.target) >= fParty->members.size();
         } else if (rule.needs == kNeedsSwimMounted)
             hide = !_HasHorses();
         else if (rule.needs == kNeedsSwimOnFoot)

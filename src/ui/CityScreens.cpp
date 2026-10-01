@@ -171,7 +171,7 @@ static const screen_rules kDayScreens[] = {
         DO(ACTION_STABLES),
         GO(SCREEN_STORE),					// store items (file 0xA720C)
         GO_IF(SCREEN_RECOVER, kNeedsCache),	// recover them (0xA72B8)
-        TODO,								// the party's composition
+        DO(ACTION_PARTY),					// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -311,7 +311,8 @@ static const screen_rules kDayScreens[] = {
     } },
     // "The $cityBarracks is the armory of $PlaceName..."
     { CityVisit::SCREEN_BARRACKS, "CITYB00", 0, NULL, {
-        TODO, TODO,							// training, recruits
+        TODO,								// training
+        DO(ACTION_PARTY),					// look for people to join
         HIDE,								// ask $NamedOneName to join
         TODO, TODO,							// placeholders
         GO_IF(SCREEN_SQUARE, CITY_SQUARE),
@@ -389,6 +390,19 @@ static const screen_rules kDayScreens[] = {
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    // The party's composition (state 0xAA): find somebody, let a member
+    // retire (the followers' options never apply)
+    { CityVisit::SCREEN_PARTY, "PARTY00", 0, NULL, {
+        { ACTION_PARTY_FIND, 0, kNeedsPartyRoom, 0 },
+        { ACTION_PARTY_RETIRE, 0, kNeedsPartyRetire, 0 },
+        { ACTION_PARTY_RETIRE, 1, kNeedsPartyRetire, 0 },
+        { ACTION_PARTY_RETIRE, 2, kNeedsPartyRetire, 0 },
+        { ACTION_PARTY_RETIRE, 3, kNeedsPartyRetire, 0 },
+        HIDE, HIDE, HIDE, HIDE,				// ask a follower to leave
+        DO(ACTION_PARTY_DONE)				// finish this task
+    } },
+    { CityVisit::SCREEN_PARTY_LOOKING, "PARTY00", 6, NULL, { DO(ACTION_PARTY_RECRUITS) } },
+    { CityVisit::SCREEN_PARTY_RETIRED, "PARTY00", 7, NULL, { DO(ACTION_PARTY_AGAIN) } },
     // The city lord: the cards of $CITYF00, or $COUNC00 in the town hall
     // (CityVisit::_Show()); each leads to the next of the queue
     { CityVisit::SCREEN_LORD_NOT_TODAY, "CITYF00", 1, NULL, { DO(ACTION_LORD_NEXT) } },
@@ -458,7 +472,7 @@ static const screen_rules kDayScreens[] = {
         HIDE, HIDE,							// eat and rest, a room
         DO(ACTION_STABLES),
         HIDE, HIDE,							// store, recover items
-        TODO,								// the party's composition
+        DO(ACTION_PARTY),					// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
@@ -1054,7 +1068,7 @@ static const screen_rules kNightScreens[] = {
         DO(ACTION_STABLES),
         GO(SCREEN_STORE),
         GO_IF(SCREEN_RECOVER, kNeedsCache),
-        TODO,								// the party's composition
+        DO(ACTION_PARTY),					// the party's composition
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },

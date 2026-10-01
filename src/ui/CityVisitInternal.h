@@ -126,6 +126,12 @@ enum option_action {
     ACTION_TOWER_FIGHT_KNIGHT,	// after a card: the battles
     ACTION_TOWER_FIGHT_MEN,
     ACTION_TOWER_INSIDE,		// the audience (0x95) or inside (0x94)
+    ACTION_PARTY,				// the party's composition, from here
+    ACTION_PARTY_FIND,			// look for people
+    ACTION_PARTY_RECRUITS,		// the people found
+    ACTION_PARTY_RETIRE,		// the member `target`
+    ACTION_PARTY_AGAIN,			// back to the composition
+    ACTION_PARTY_DONE,			// back where it was started
     ACTION_LORD_AUDIENCE,		// the fortress and the town hall
     ACTION_LORD_CLERK,
     ACTION_LORD_NEXT,			// the next screen of the queue
@@ -274,6 +280,10 @@ static const int kNeedsLordSaint	= -52;
 static const int kMarkAppointment	= 0x3A;	// an appointment for tomorrow
 static const int kMarkAudienceTaken	= 0x3C;	// no chance for a week
 static const int kMarkAudienceSure	= 0x3B;	// (never made)
+// the party's composition: room for another member, a member who may retire
+// (`target`, his slot)
+static const int kNeedsPartyRoom	= -53;
+static const int kNeedsPartyRetire	= -54;
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
 // The game's timed marks used here (0E76:2930, 2A32)

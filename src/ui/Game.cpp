@@ -126,6 +126,7 @@ Game::Run()
     };
     fTime.SetListener(recover);
     visit.SetSeed(fSeed);
+    visit.SetRetired(&fRetired);
     visit.SetReputations(&fReputations);
     _PrepareWorld();
     visit.SetWorld(&fEvents, &fLocationFlags, &fEnterStates);

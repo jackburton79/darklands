@@ -191,7 +191,7 @@ League's to the side streets (0x09/0x0A), the League's main door to
 the market; the church's, the inn's and the crafts' ways out to the
 main (0x06/0x08) and side streets. The church's "talk to a priest"
 leads to CLERI00 (0x6F), sanctuary to state 0x81, the inn's "the
-composition of your party" to state 0xAA.
+composition of your party" to state 0xAA (see "The party's composition").
 
 The options of a state are enabled (1), hidden (0) or disabled (2) by ten
 words at DS:EE76..EE88, set when the state starts and changed by its
@@ -255,6 +255,40 @@ both decks. **verified** (code)
   thanks (state 0x91, $RAUBI01 card 0, the reputation 40..50 better);
   else, with random(100) under 50, the offer, and otherwise another task
   (state 0x151, not implemented).
+
+## The party's composition
+
+State 0xAA ($PARTY00, 1916:000E at file 0x10D62E; the options through a
+switch at file 0x10D8FD), reached from the inn (also at night and when it
+turns the party away), and from the barracks' "look for people" (DS:E7D8
+0x75); "finish this task" goes back to DS:E7D8. **verified** (code) unless
+marked.
+
+- **The options** (flags DS:EE76..EE88): finding somebody is shown unless
+  the party has 4 members or more (dim, 2); "allow $ChosenOneName to
+  retire" and the three after it are shown for the members in slots 0..3
+  when the party has two or more (and, for slots 1..3, who are not
+  followers: 0E76:38D2(slot, 0x43), an event); the four "ask $ChosenTwoName
+  to leave" (slots 1..4) are for the followers. A member in the fifth slot
+  cannot retire. $ChosenOneName..$ChosenFiveName are the slots' nicknames.
+  Followers, who the quests bring, are not in this game yet.
+- **Retiring** (file 0x10DB9C...; 0x10D98C(slot)): card 7, an hour; the
+  purse (DS:906B) and the letters of credit (DS:9072) each lose a fifth
+  (1367:00F2, 0180), the card says the member takes a fifth of "the party's
+  entire wealth"; 09C0:1EC3 = 1462:3B58 of overlay 0x25 (file 0x72230) takes
+  him out of the party. A follower leaves with card 9 and nothing more
+  (event 0x43 deleted, 09C0:18B5).
+- **Looking for people** (file 0x10DA7A): random(3) + 2 hours ($Number1),
+  card 6, then 0E76:2246(location) = 1462:0000 of overlay 0x26, the
+  character selection screen (not decoded: cards 8 and 9 and PARTY00's
+  other texts belong to it and to the followers). Card 8 says the person
+  chosen "pawned all useful equipment" and has no cash.
+- **Reproduced** (`CityVisit`): the screen, the retiring, and, in place of
+  the selection screen, a list of the members who retired in this city
+  (*inferred*: the card says they "might be available to rejoin"). They
+  are kept in memory only: a saved game does not hold them, so they are
+  lost when the game is saved and loaded, or closed. New people to hire
+  are not made (without any, "not implemented").
 
 ## Names and random numbers
 

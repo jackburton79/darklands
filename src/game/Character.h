@@ -92,6 +92,15 @@ struct party {
     uint16 philosopherStone;			// quality, 0: none
 };
 
+// A member who retired from the party (the inn's "composition of your
+// party"): he waits in the city, with his possessions, to rejoin
+struct retired_member {
+    character member;
+    std::string image;
+    std::vector<uint8> colors;
+    int city;					// index into DARKLAND.LOC
+};
+
 // 1 florin = 20 groschen = 240 pfennigs; 1 groschen = 12 pfennigs
 // (manual p. 21)
 uint32 TotalPfennigs(const money& amount);
