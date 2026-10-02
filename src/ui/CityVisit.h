@@ -661,6 +661,21 @@ public:
         SCREEN_SPIDERS_ESCAPED,
         SCREEN_SPIDERS_TAKEN,
         SCREEN_SPIDERS_WON,
+        SCREEN_SCHRATS_MEET,	// $MeetS00, schrats (state 0x113): 0, 1, 2
+        SCREEN_SCHRATS,			// (the menus), 4, 5 (the saint), 6 (round
+        SCREEN_SCHRATS_AMBUSH,	// them), 7 (no use running: a menu), 8 (the
+        SCREEN_SCHRATS_HIDDEN,	// charge), 9 (outrun), 10 (beaten), 11 (won),
+        SCREEN_SCHRATS_CALMED,	// 13 (they want one of the party: a menu),
+        SCREEN_SCHRATS_UNHEARD,	// 18 (a retreat, the fallen come back)
+        SCREEN_SCHRATS_UNHEARD_BACK,
+        SCREEN_SCHRATS_AROUND,
+        SCREEN_SCHRATS_WINDED,
+        SCREEN_SCHRATS_CHARGE,
+        SCREEN_SCHRATS_ESCAPED,
+        SCREEN_SCHRATS_BEATEN,
+        SCREEN_SCHRATS_WON,
+        SCREEN_SCHRATS_DEMAND,
+        SCREEN_SCHRATS_RECOVERED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -874,7 +889,7 @@ private:
     // magistrate (file 0xFB4A0, state 0x8C) and the execution (file
     // 0xFBEA8, state 0x8D)
     int				_EnterPrison();
-    void			_Search();
+    void			_Search(int member = -2);
     int				_CellScreen() const;
     void			_WorseCell();
     void			_Beating();
@@ -1139,6 +1154,7 @@ private:
     int				_AmbushUp();
     int				_AmbushRun();
     int				_AmbushSurrender();
+    int				_AmbushPlead();
     void			_FightAmbushers();
     int				_ResolveAmbushBattle(int outcome);
     // The spiders' warehouse (DARKLAND.EXE, state 0x168)
@@ -1353,7 +1369,10 @@ private:
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall
-    int				fMonster;		// the ambushers met: 0 tatzelwurms, 1 spiders
+    int				fMonster;		// the ambushers met: 0 tatzelwurms, 1 spiders,
+                                    // 2 schrats
+    bool			fPleadOffered;	// the schrats' plea after a failed run
+    int				fFallen;		// members down when the last battle ended
     bool			fMonsterSaintsFirst;	// the first list of saints
     int				fMeetTerrain;	// the tile type under the party
     int				fJobFlorins;	// the spiders' job: the pay ($Number1)

@@ -138,6 +138,7 @@ IsEncounterPlayed(int state)
         case ENCOUNTER_FLOOD:
         case ENCOUNTER_TATZELWURM:
         case ENCOUNTER_SPIDERS:
+        case ENCOUNTER_SCHRATS:
             return true;
         default:
             return false;

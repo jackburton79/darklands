@@ -585,6 +585,9 @@ CityVisit::_SaintsFor(int screen) const
     // and Tarachus once ambushed (the tatzelwurms: not at the start)
     const bool tatzel = screen >= SCREEN_TATZEL && screen <= SCREEN_TATZEL_HIDDEN;
     const bool spiders = screen >= SCREEN_SPIDERS && screen <= SCREEN_SPIDERS_HIDDEN;
+    // the schrats (file 0x1440DA): Genevieve, Godfrey, Willehad, 69, always
+    if (screen >= SCREEN_SCHRATS && screen <= SCREEN_SCHRATS_HIDDEN)
+        saints = { 54, 61, 131, 69 };
     if (tatzel || spiders) {
         const bool ambushed = screen == SCREEN_TATZEL_AMBUSH
             || screen == SCREEN_TATZEL_HIDDEN || screen == SCREEN_SPIDERS_AMBUSH
@@ -836,6 +839,12 @@ CityVisit::_SaintAnswered(int screen, int index)
         case SCREEN_SPIDERS_AMBUSH:
         case SCREEN_SPIDERS_HIDDEN:
             return SCREEN_SPIDERS_CALMED;			// card 4, on
+        case SCREEN_SCHRATS:
+        case SCREEN_SCHRATS_AMBUSH:
+        case SCREEN_SCHRATS_HIDDEN:
+        case SCREEN_SCHRATS_WINDED:
+        case SCREEN_SCHRATS_DEMAND:
+            return SCREEN_SCHRATS_CALMED;			// card 4, on
         case SCREEN_WOLVES:
             // file 0x108912: an hour, card 7
             if (fClock != NULL)
@@ -964,6 +973,15 @@ CityVisit::_SaintIgnored(int screen)
         case SCREEN_SPIDERS_AMBUSH:
         case SCREEN_SPIDERS_HIDDEN:
             return SCREEN_SPIDERS_UNHEARD;
+        case SCREEN_SCHRATS:
+            fPrayerFailed = true;
+            fMeetBack = SCREEN_SCHRATS;
+            return SCREEN_SCHRATS_UNHEARD_BACK;
+        case SCREEN_SCHRATS_AMBUSH:
+        case SCREEN_SCHRATS_HIDDEN:
+        case SCREEN_SCHRATS_WINDED:
+        case SCREEN_SCHRATS_DEMAND:
+            return SCREEN_SCHRATS_UNHEARD;
         case SCREEN_WOLVES:
             fMeetBack = SCREEN_WOLVES;
             return SCREEN_WOLVES_UNHEARD;			// card 8

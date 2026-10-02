@@ -144,6 +144,8 @@ CityVisit::CityVisit(GameData& data)
     fShellWon(false),
     fGroveHours(0),
     fMonster(0),
+    fPleadOffered(false),
+    fFallen(0),
     fMonsterSaintsFirst(false),
     fMeetTerrain(0),
     fJobFlorins(0),
@@ -963,6 +965,9 @@ CityVisit::Choose(int option)
         case ACTION_AMBUSH_SURRENDER:
             _Show(_AmbushSurrender());
             return true;
+        case ACTION_AMBUSH_PLEAD:
+            _Show(_AmbushPlead());
+            return true;
         case ACTION_AMBUSH_AROUND:
             _Show(_AmbushAround());
             return true;
@@ -1407,6 +1412,8 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetAmbushers(0);
     else if (screen == SCREEN_SPIDERS_MEET)
         screen = _MeetAmbushers(1);
+    else if (screen == SCREEN_SCHRATS_MEET)
+        screen = _MeetAmbushers(2);
     if (screen == SCREEN_WOLVES_MEET)
         screen = _MeetWolves();
     else if (screen == SCREEN_BOARS_MEET)
@@ -1828,6 +1835,8 @@ CityVisit::_HiddenOptions(int screen, std::vector<int>* dim) const
             hide = !_EventHere(2, 0);
         } else if (rule.needs == kNeedsJobUnasked) {
             hide = fJobAsked;
+        } else if (rule.needs == kNeedsPleadOffered) {
+            hide = !fPleadOffered;
         } else if (rule.needs == kNeedsJobNight) {
             hide = !fJobNight;
         } else if (rule.needs == kNeedsJobRumor) {

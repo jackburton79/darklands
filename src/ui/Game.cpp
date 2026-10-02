@@ -277,6 +277,9 @@ Game::Run()
             case ENCOUNTER_SPIDERS:
                 screen = CityVisit::SCREEN_SPIDERS_MEET;
                 break;
+            case ENCOUNTER_SCHRATS:
+                screen = CityVisit::SCREEN_SCHRATS_MEET;
+                break;
             case ENCOUNTER_BLIZZARD:
                 screen = CityVisit::SCREEN_BLIZZARD_MEET;
                 break;

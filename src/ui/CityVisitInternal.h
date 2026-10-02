@@ -269,6 +269,7 @@ enum option_action {
     ACTION_AMBUSH_SURRENDER,	// surrender (the tatzelwurms: the ambush too)
     ACTION_AMBUSH_AROUND,		// sneak round them
     ACTION_AMBUSH_UP,			// sneak up on them
+    ACTION_AMBUSH_PLEAD,		// the schrats: bluff, plead
     ACTION_AMBUSH_RUN,
     ACTION_AMBUSH_FIGHT
 };
@@ -410,6 +411,8 @@ static const int kNeedsAlchemistTeach = -70;
 // or the spiders' job: the locals not asked yet, accepted at night
 static const int kNeedsJobUnasked	= -71;
 static const int kNeedsJobNight		= -72;
+// or the schrats' plea, offered half of the time after a failed run
+static const int kNeedsPleadOffered	= -73;
 static const int kMarkUniversity	= 0x4E;	// + (option << 8): 168 hours
 static const int kMarkFormulaTrade	= 0x62;	// 60 hours
 static const int kMarkCampSafe		= 0x60;	// 168 hours without danger

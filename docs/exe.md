@@ -2119,7 +2119,7 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   the schrats 0x2E or 0x2F). The tatzelwurms (state 0x111): enemy 0x3B at
   variant 1, s / 3 + 1 of them; the spiders (0x112): enemy 0x39 at
   variant 1, random(3) + 3 · (s / 5) + 1; the schrats (0x113): enemy 0x3E at
-  variant random(3) + s, random(5) + 3 of them. A win calls 0E76:19D0(the
+  variant random(3) + s / 4 + 1, random(5) + 3 of them. A win calls 0E76:19D0(the
   nearest place of the map (09C0:1FA9 from the tile of the meeting,
   DS:E3D0/E3D2), a, b): the tatzelwurms' is (1, 1) after card 11 and an
   hour. **verified** (code)
@@ -2165,6 +2165,39 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
     to hour 5. 3, 4: (the spiders: the party searched, 09C0:1EB9(−2)) the
     member with the lowest Strength (0E76:164A(1)) leaves (09C0:18B5), card
     10, random(3) + 3 hours.
+
+- **The schrats** (state 0x113, $MeetS00, file 0x1440DA; the same frame as the
+  tatzelwurms and the spiders, see above). **verified** (code) but where
+  marked.
+  - *The start*: random(20) instead of random(10), and Orpiment does not
+    help. One list of saints always: Genevieve, Godfrey, Willehad and 69.
+  - *Card 0*: press onward (the ambush, card 1); the bluff (the plea, below);
+    a saint; surrender (card 13); sneak round them; sneak up. *Card 1* (the
+    ambush): plead for lives, a saint, surrender, fight, run. *Card 2*
+    (from hiding): plead, a saint, sneak round, attack, run.
+  - *The plea* (also the bluff): the member they want is the woman standing
+    with the best Charisma (0E76:007C, 174A(5)): the chance is four times her
+    Charisma; without a woman the member with the best Charisma
+    (0E76:16FE(5)) and (Speak Common + Charisma / 2) / 3; 1..99. Success:
+    card 13, a menu (the schrats want that member): a saint, attack, run.
+    Failure: after the bluff the ambush (card 1); after a plea card 8 (the
+    charge) and the fight. *Surrender*: on card 0 the same card 13; else
+    every member's Endurance is set to 1 and Strength to random(5) + 1
+    (0E76:0988(member, attribute, value): the attribute set, within its
+    maximum), everybody searched (09C0:1EB9(−2)), card 10.
+  - *Sneaking round* and *up*: clamp(5, 85, the average Woodwise + 2/3 of the
+    average speed), as the spiders' without the 5; the same results (card 6
+    and a lesson; card 2). *Running*: with mounts 95, else the slowest
+    member's speed (0E76:0656), 10..95; success: a lesson (mode 7, with
+    mounts), three hours, card 9; else a lesson (mode 0), card 7, a menu:
+    the plea (half of the time), a saint, fight.
+  - *The fight*: enemy 0x3E at variant random(3) + s / 4 + 1, random(5) + 3
+    of them. Won: card 11, an hour, the reputation + 1. 1, 2: the time to hour
+    5, card 6, or card 18 if members had fallen (status 5: they come back).
+    3, 4: everybody but the woman standing with the best Charisma has
+    Endurance and Strength set to 1 and each stack of items kept two times in
+    ten (09C0:2021(member, 20)), the time to hour 18; she is searched
+    (09C0:1EB9) and card 10; without a woman card 18.
 
 - **The thieves on the map** (state 0x24 with DS:A891 = 3): as in the
   city (see "Encounters in the city") but card 2 for the options (no

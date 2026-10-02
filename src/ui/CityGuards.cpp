@@ -122,6 +122,9 @@ CityVisit::_RunBattle(GameWindow& window)
     std::vector<fighter> fighters;
     for (size_t i = 0; i < fParty->members.size(); i++)
         fighters.push_back(view.FigureFighter(int(i)));
+    fFallen = 0;
+    for (const fighter& f : fighters)
+        fFallen += f.status == FIGHTER_UNCONSCIOUS;
     AfterBattle(*fParty, fighters);
     if (fParty->members.empty()) {
         fPartyLost = true;

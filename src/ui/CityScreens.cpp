@@ -1531,6 +1531,66 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_SPIDERS_ESCAPED, "MEETG02", 9, NULL, { LEAVE } },
     { CityVisit::SCREEN_SPIDERS_TAKEN, "MEETG02", 10, NULL, { LEAVE } },
     { CityVisit::SCREEN_SPIDERS_WON, "MEETG02", 11, NULL, { LEAVE } },
+    // $MeetS00, schrats (state 0x113): the bluff and the plea are one
+    // option (its chance in the ambush: charm), the placeholders hidden
+    { CityVisit::SCREEN_SCHRATS_MEET, "MEETS00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS, "MEETS00", 0, NULL, {
+        DO(ACTION_AMBUSH_ONWARD),
+        DO(ACTION_AMBUSH_PLEAD),				// bluff
+        HIDE,									// a potion
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_AMBUSH_SURRENDER),
+        DO(ACTION_AMBUSH_AROUND),
+        HIDE,
+        DO(ACTION_AMBUSH_UP)
+    } },
+    { CityVisit::SCREEN_SCHRATS_AMBUSH, "MEETS00", 1, NULL, {
+        HIDE,
+        DO(ACTION_AMBUSH_PLEAD),				// plead for your lives
+        HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_AMBUSH_SURRENDER),
+        HIDE,
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_SCHRATS_HIDDEN, "MEETS00", 2, NULL, {
+        HIDE,
+        DO(ACTION_AMBUSH_PLEAD),				// plead for free passage
+        HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE,
+        DO(ACTION_AMBUSH_AROUND),
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_SCHRATS_CALMED, "MEETS00", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS_UNHEARD, "MEETS00", 5, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_SCHRATS_UNHEARD_BACK, "MEETS00", 5, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_SCHRATS_AROUND, "MEETS00", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS_WINDED, "MEETS00", 7, NULL, {
+        HIDE,
+        DO_IF(ACTION_AMBUSH_PLEAD, kNeedsPleadOffered),	// half of the time
+        HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE, HIDE,
+        DO(ACTION_AMBUSH_FIGHT)
+    } },
+    { CityVisit::SCREEN_SCHRATS_CHARGE, "MEETS00", 8, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_SCHRATS_ESCAPED, "MEETS00", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS_BEATEN, "MEETS00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS_WON, "MEETS00", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SCHRATS_DEMAND, "MEETS00", 13, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE, HIDE,
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_SCHRATS_RECOVERED, "MEETS00", 18, NULL, { LEAVE } },
     // Wild boars ($meetb00, state 0xA5, file 0x10B390): dodge, a ride (all
     // mounted), a saint, attack
     { CityVisit::SCREEN_BOARS_MEET, "MEETB00", 0, NULL, { LEAVE } },

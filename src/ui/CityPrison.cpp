@@ -34,18 +34,23 @@ CityVisit::_EnterPrison()
 }
 
 
-// The search (18E7:0854(-2), file 0x66484): the purse is emptied; each
+// The search (18E7:0854(-2), file 0x66484): the purse is emptied (not when
+// only one member is searched, *inferred*); each
 // item goes if its quantity · weight is over 2, else if random(100) is
 // under h / 2 (2) or h (less), h = (Agility + Stealth) / 2 of its
 // owner. As the game has it, the nimbler lose more. What is gone is no
 // longer in use.
 void
-CityVisit::_Search()
+CityVisit::_Search(int who)
 {
     if (fParty == NULL)
         return;
-    fParty->cash = money{ 0, 0, 0 };
-    for (character& member : fParty->members) {
+    if (who < 0)
+        fParty->cash = money{ 0, 0, 0 };
+    for (size_t index = 0; index < fParty->members.size(); index++) {
+        if (who >= 0 && int(index) != who)
+            continue;
+        character& member = fParty->members[index];
         const int h = (member.attributes[ATTRIBUTE_AGILITY]
             + member.skills[kSkillStealth]) / 2;
         std::vector<item> kept;
