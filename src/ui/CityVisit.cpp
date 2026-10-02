@@ -129,6 +129,7 @@ CityVisit::CityVisit(GameData& data)
     fWeatherMember(0),
     fBogFailed(),
     fFloodRope(false),
+    fBattleLeaves(false),
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
@@ -205,6 +206,10 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             fPartyLost = false;
             return PARTY_LOST;
         }
+        if (fBattleLeaves) {
+            fBattleLeaves = false;
+            return LEAVE_CITY;
+        }
     }
     for (;;) {
         const int option = fView.Run(window);
@@ -264,6 +269,10 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
             if (fPartyLost) {
                 fPartyLost = false;
                 return PARTY_LOST;
+            }
+            if (fBattleLeaves) {
+                fBattleLeaves = false;
+                return LEAVE_CITY;
             }
         }
         if (fPendingResidence && fSlumCamp) {
@@ -728,6 +737,24 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_FLOOD_RAFT:
             _Show(_FloodRaft());
+            return true;
+        case ACTION_WOLVES_LORE:
+            _Show(_WolvesLore());
+            return true;
+        case ACTION_WOLVES_RIDE:
+            _Show(_WolvesRide());
+            return true;
+        case ACTION_WOLVES_BATTLE:
+            _Show(_WolvesBattle());
+            return true;
+        case ACTION_BOARS_DODGE:
+            _Show(_BoarsDodge());
+            return true;
+        case ACTION_BOARS_RIDE:
+            _Show(_BoarsRide());
+            return true;
+        case ACTION_BOARS_BATTLE:
+            _Show(_BoarsBattle());
             return true;
         case ACTION_HERMIT_MEET:
             _Show(_HermitMeet());
@@ -1258,6 +1285,10 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetBog();
     else if (screen == SCREEN_FLOOD_MEET)
         screen = _MeetFlood();
+    else if (screen == SCREEN_WOLVES_MEET)
+        screen = _MeetWolves();
+    else if (screen == SCREEN_BOARS_MEET)
+        screen = _MeetBoars();
     if (screen == SCREEN_THIEVES_MAP_MEET) {
         fThievesReturn = -1;
         screen = _MeetThieves();

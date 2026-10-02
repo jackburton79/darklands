@@ -1359,6 +1359,47 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_FLOOD_RAFT_FAILED, "MEETS01", 3, NULL, { LEAVE } },
     { CityVisit::SCREEN_FLOOD_RAFT, "MEETS01", 4, NULL, { LEAVE } },
     { CityVisit::SCREEN_FLOOD_PRAYED, "MEETS01", 6, NULL, { LEAVE } },
+    // Wolves ($meetw00, state 0xA0, file 0x1083A0): woods lore, a ride (all
+    // mounted), a saint, (a potion), the fight; card 1 at night
+    { CityVisit::SCREEN_WOLVES_MEET, "MEETW00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES, "MEETW00", 0, NULL, {
+        DO(ACTION_WOLVES_LORE),
+        DO_IF(ACTION_WOLVES_RIDE, kNeedsMounts),
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        HIDE,
+        GO(SCREEN_WOLVES_FIGHT)
+    } },
+    { CityVisit::SCREEN_WOLVES_SHOUTED, "MEETW00", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_FIRE, "MEETW00", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_OUTRAN, "MEETW00", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_CAUGHT, "MEETW00", 5, NULL, { GO(SCREEN_WOLVES_FIGHT) } },
+    { CityVisit::SCREEN_WOLVES_FIGHT, "MEETW00", 6, NULL, { DO(ACTION_WOLVES_BATTLE) } },
+    { CityVisit::SCREEN_WOLVES_CALMED, "MEETW00", 7, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_UNHEARD, "MEETW00", 8, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_WOLVES_WON, "MEETW00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_PURSUED, "MEETW00", 11, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_WOLVES_EATEN_MOUNTED, "MEETW00", 12, NULL, { LEAVE } },
+    { CityVisit::SCREEN_WOLVES_EATEN, "MEETW00", 13, NULL, { LEAVE } },
+    // Wild boars ($meetb00, state 0xA5, file 0x10B390): dodge, a ride (all
+    // mounted), a saint, attack
+    { CityVisit::SCREEN_BOARS_MEET, "MEETB00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS, "MEETB00", 0, NULL, {
+        DO(ACTION_BOARS_DODGE),
+        DO_IF(ACTION_BOARS_RIDE, kNeedsMounts),
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        GO(SCREEN_BOARS_FIGHT)
+    } },
+    { CityVisit::SCREEN_BOARS_OUTRAN, "MEETB00", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_TRAMPLE, "MEETB00", 2, NULL, { GO(SCREEN_BOARS_FIGHT) } },
+    { CityVisit::SCREEN_BOARS_FIGHT, "MEETB00", 3, NULL, { DO(ACTION_BOARS_BATTLE) } },
+    { CityVisit::SCREEN_BOARS_CALMED, "MEETB00", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_UNHEARD, "MEETB00", 5, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_BOARS_WON, "MEETB00", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_RAMPAGE_MOUNTED, "MEETB00", 7, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_RAMPAGE, "MEETB00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_NONE, "MEETB00", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_ONE, "MEETB00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOARS_SEVERAL, "MEETB00", 11, NULL, { GO(SCREEN_BOARS_FIGHT) } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },
@@ -1412,6 +1453,14 @@ static const screen_rules kDayScreens[] = {
 // At night (see GameTime::IsNight()) these screens show other cards;
 // a NULL deck: the same as by day
 static const screen_rules kNightScreens[] = {
+    // wolves in the night: card 1
+    { CityVisit::SCREEN_WOLVES, "MEETW00", 1, NULL, {
+        DO(ACTION_WOLVES_LORE),
+        DO_IF(ACTION_WOLVES_RIDE, kNeedsMounts),
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        HIDE,
+        GO(SCREEN_WOLVES_FIGHT)
+    } },
     // "Mellow lanterns and a warm fire make the $Inn..." (file 0xA7545)
     { CityVisit::SCREEN_INN, "URBAN01", 0, NULL, {
         DO(ACTION_INN_NEWS),				// local news and rumors

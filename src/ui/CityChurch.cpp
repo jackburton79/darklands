@@ -572,6 +572,10 @@ CityVisit::_SaintsFor(int screen) const
     // a blizzard (file 0x1470EA): Christopher, Drogo, Godehard, Wilfrid; a
     // peat bog (0x14649C): Cecilia, Finnian, Florian, Godehard; a flood
     // (0x149F5A): Engelbert, Finnian, Florian, Pantaleon
+    // wolves (file 0x1083A0) and wild boars (0x10B390): Aidan, Hubert,
+    // Perpetua, Tarachus
+    if (screen == SCREEN_WOLVES || screen == SCREEN_BOARS)
+        saints = { 3, 69, 107, 121 };
     if (screen == SCREEN_BLIZZARD)
         saints = { 22, 38, 60, 130 };
     if (screen == SCREEN_BOG || screen == SCREEN_BOG_AGAIN
@@ -806,6 +810,16 @@ CityVisit::_SaintAnswered(int screen, int index)
         case SCREEN_CAMPB_UNANSWERED:
             _Mark(kMarkCampSafe, 168);
             return SCREEN_CAMPB_PRAYED;				// card 2 (file 0x17BCBB)
+        case SCREEN_WOLVES:
+            // file 0x108912: an hour, card 7
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_WOLVES_CALMED;
+        case SCREEN_BOARS:
+            // file 0x10B810: an hour, card 4
+            if (fClock != NULL)
+                fClock->AddHours(1);
+            return SCREEN_BOARS_CALMED;
         case SCREEN_BLIZZARD:
             return SCREEN_BLIZZARD_PRAYED;			// card 2 (file 0x147525)
         case SCREEN_BOG:
@@ -910,6 +924,12 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_WOLVES:
+            fMeetBack = SCREEN_WOLVES;
+            return SCREEN_WOLVES_UNHEARD;			// card 8
+        case SCREEN_BOARS:
+            fMeetBack = SCREEN_BOARS;
+            return SCREEN_BOARS_UNHEARD;			// card 5
         case SCREEN_BLIZZARD:
             fMeetBack = SCREEN_BLIZZARD;
             return SCREEN_BLIZZARD_UNHEARD;			// card 3 (file 0x14755A)

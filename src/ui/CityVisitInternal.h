@@ -214,6 +214,12 @@ enum option_action {
     ACTION_BOG_ABANDON,
     ACTION_FLOOD_SEARCH,		// a flood: higher ground, a raft
     ACTION_FLOOD_RAFT,
+    ACTION_WOLVES_LORE,			// wolves: woods lore, a ride, the fight
+    ACTION_WOLVES_RIDE,
+    ACTION_WOLVES_BATTLE,
+    ACTION_BOARS_DODGE,			// wild boars: dodge, a ride, the fight
+    ACTION_BOARS_RIDE,
+    ACTION_BOARS_BATTLE,
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,

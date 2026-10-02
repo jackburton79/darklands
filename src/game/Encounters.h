@@ -15,8 +15,8 @@ enum encounter_state {
     ENCOUNTER_THIEVES		= 0x24,	// $CITYT00
     ENCOUNTER_GARGOYLES		= 0x3D,	// $MeetG00
     ENCOUNTER_FRIAR			= 0x7F,	// $MeetG01
-    ENCOUNTER_WILD_A0		= 0xA0,	// $meetw00 or $meetb00 (not known which)
-    ENCOUNTER_WILD_A5		= 0xA5,
+    ENCOUNTER_WOLVES		= 0xA0,	// $meetw00
+    ENCOUNTER_BOARS			= 0xA5,	// $meetb00
     ENCOUNTER_ALCHEMIST		= 0xA6,	// $MeetA00
     ENCOUNTER_ALCHEMIST_ARMED = 0xA7,	// $MeetA01
     ENCOUNTER_CAVE_DRAGON	= 0xC3,	// $MeetJ00 (the knight of a tournament)

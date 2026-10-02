@@ -131,6 +131,8 @@ IsEncounterPlayed(int state)
         case ENCOUNTER_TOLL:
         case ENCOUNTER_CARAVAN:
         case ENCOUNTER_REFUGEES:
+        case ENCOUNTER_WOLVES:
+        case ENCOUNTER_BOARS:
         case ENCOUNTER_PEAT_BOG:
         case ENCOUNTER_BLIZZARD:
         case ENCOUNTER_FLOOD:

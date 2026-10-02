@@ -185,6 +185,18 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveCaravanBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_WOLVES) {
+        _Show(_ResolveWolvesBattle(outcome));
+        return;
+    }
+    if (fBattleKind == BATTLE_WITH_BOARS) {
+        const int screen = _ResolveBoarsBattle(outcome);
+        if (screen < 0)
+            fBattleLeaves = true;			// no card: on with the journey
+        else
+            _Show(screen);
+        return;
+    }
     if (fBattleKind == BATTLE_WITH_REFUGEES) {
         _Show(_ResolveRefugeesBattle(outcome));
         return;

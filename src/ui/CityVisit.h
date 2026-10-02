@@ -495,6 +495,32 @@ public:
         SCREEN_FLOOD_RAFT,
         SCREEN_FLOOD_AGAIN,
         SCREEN_FLOOD_PRAYED,
+        SCREEN_WOLVES_MEET,		// $meetw00, wolves (state 0xA0): the start,
+        SCREEN_WOLVES,			// 0 (1 at night), 2 (frightened off), 3
+        SCREEN_WOLVES_SHOUTED,	// (the fire), 4 (outrun), 5 (not), 6 (the
+        SCREEN_WOLVES_FIRE,		// fight), 7 (a saint calmed them), 8 (no
+        SCREEN_WOLVES_OUTRAN,	// answer), 10 (won), 11 (fled, they follow),
+        SCREEN_WOLVES_CAUGHT,	// 12, 13 (beaten: one is eaten)
+        SCREEN_WOLVES_FIGHT,
+        SCREEN_WOLVES_CALMED,
+        SCREEN_WOLVES_UNHEARD,
+        SCREEN_WOLVES_WON,
+        SCREEN_WOLVES_PURSUED,
+        SCREEN_WOLVES_EATEN_MOUNTED,
+        SCREEN_WOLVES_EATEN,
+        SCREEN_BOARS_MEET,		// $meetb00, wild boars (state 0xA5): the
+        SCREEN_BOARS,			// start, 0, 1 (outrun), 2 (not), 3 (the
+        SCREEN_BOARS_OUTRAN,	// fight), 4 (a saint calmed them), 5 (no
+        SCREEN_BOARS_TRAMPLE,	// answer), 6 (won), 7, 8 (beaten), 9, 10,
+        SCREEN_BOARS_FIGHT,		// 11 (dodged: nobody, one, several hit)
+        SCREEN_BOARS_CALMED,
+        SCREEN_BOARS_UNHEARD,
+        SCREEN_BOARS_WON,
+        SCREEN_BOARS_RAMPAGE_MOUNTED,
+        SCREEN_BOARS_RAMPAGE,
+        SCREEN_BOARS_NONE,
+        SCREEN_BOARS_ONE,
+        SCREEN_BOARS_SEVERAL,
         SCREEN_CAMPB_FLED,
         SCREEN_CAMPB_BEATEN,
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
@@ -988,6 +1014,19 @@ private:
     int				_MeetFlood();
     int				_FloodSearch();
     int				_FloodRaft();
+    // The animals of the map (CityBeasts.cpp)
+    void			_Wound(int member, int minStrength, int minEndurance,
+                        int amount);
+    int				_MeetWolves();
+    int				_WolvesLore();
+    int				_WolvesRide();
+    int				_WolvesBattle();
+    int				_ResolveWolvesBattle(int outcome);
+    int				_MeetBoars();
+    int				_BoarsDodge();
+    int				_BoarsRide();
+    int				_BoarsBattle();
+    int				_ResolveBoarsBattle(int outcome);
     // The other meetings of the map (CityMeetings.cpp)
     int				_MeetPilgrims();
     int				_PilgrimsGive();
@@ -1125,6 +1164,8 @@ private:
         BATTLE_WITH_FRIAR,
         BATTLE_WITH_CARAVAN,
         BATTLE_WITH_REFUGEES,
+        BATTLE_WITH_WOLVES,
+        BATTLE_WITH_BOARS,
         BATTLE_AT_CAMP,
         BATTLE_AT_SANCTUARY
     };
@@ -1196,6 +1237,7 @@ private:
                                     // the flood
     bool			fBogFailed[3];	// the rope, by hand, the possessions
     bool			fFloodRope;		// the party carries a rope
+    bool			fBattleLeaves;	// the party left a battle: the map
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall

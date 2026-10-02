@@ -1982,9 +1982,9 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   $MeetH01 (Hussites), 0x11A $MeetR00 (river pirates), 0x11B $MeetS01 (a
   flood), 0x11C and 0x11D $MeetS02, $MeetS03 (saints' lists), 0x122
   $MeetW01 (a hut), 0x163 $MeetH02 (a toll), 0x169 $CampJ00, 0x16A
-  $CampB00. States 0xA0, 0xA5 and 0x105 are in the tables of every
-  terrain and have no deck string next to them: they are probably the
-  wolves ($meetw00) and the boars ($meetb00), and a third not known.
+  $CampB00. States 0xA0 and 0xA5 are the wolves ($meetw00, the deck
+  pointer at DS:611E) and the boars ($meetb00; the item 146 they leave is
+  "Tusk of a Boar"); 0x105 is $Rescu00 (not decoded). **verified**
 - **The party's strength** (09C0:1C1B = 1462:0470 of overlay 0x27, file
   0x80E10; `PartyStrength()`): (the best missile skill, skills 4..6, of
   all + the average best weapon skill (0E76:01C0) + the average of skills
@@ -2184,6 +2184,35 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
     take 23 + random(3) hours. *A saint* (44, 50, 51, 103): answered card
     6 (no time), unanswered card 5 and the options again. **verified**
     (code)
+- **Wolves and wild boars** (states 0xA0 and 0xA5, files 0x1083A0 and
+  0x10B390; saints 3, 69, 107, 121 in both). Wolves: the member with the
+  best Woodwise is $ChosenOneName; card 0 by day, 1 at night (1367:072A is
+  true by day). *Woods lore*: the best Woodwise + 30 by day (at night at
+  most 80), 1..99; success: by day card 2, at night three hours and card
+  3; failure: the fight. *Ride* (offered when everybody has a mount): the
+  lowest Riding (0E76:1396) + 18E7:171C(member, 0, 0x200), which has no
+  item to find (nothing in DARKLAND.LST has the flag 0x02000000), 1..99;
+  success three hours, card 4, a lesson in Riding (mode 7, 10); failure two
+  hours, card 5, the fight. *A saint*: answered an hour, card 7; else card
+  8. The fight (card 6; field 0x2F): enemy 42 at variant s / 4 + 1,
+  random(5) + 3 of them. Won: an hour, card 10; fled: two hours, card 11
+  and the options again; beaten: a random member is eaten (card 12 if all
+  were mounted, else 13) and the horses are lost. Boars: *dodge* (file
+  0x10B638): each member with random(100) over (Agility + 5) · 2 is
+  wounded; none hit card 9, one card 10, more card 11 and the fight (card
+  3). *Ride*: the chance is clamp(1, 99, 0), a slip of the original (the
+  code asks for the best Riding and pushes 0): 1 in 100; success three
+  hours, card 1 and a lesson (mode 7, 10); failure two hours, a lesson
+  (mode 0), card 2, the fight. The fight (field 0x2F): enemy 43 at variant
+  1, clamp(3, 8, random(3) + s / 2 + 1) of them. Won: an hour, card 6 and a
+  Tusk of a Boar (item 146, 09C0:2067) for the leader; fled: the
+  journey goes on, no card; beaten: card 7 if the party has horses, else
+  8, everybody wounded. A wound (09C0:2143 = 1462:026A of overlay 0x27;
+  arguments member or −2, minimum Strength, minimum Endurance, amount):
+  Strength − min(its maximum, max(random(S · amount / 40 + 1) − 1,
+  minimum)), Endurance − min(its maximum, max(random(E · amount / 20 + 1)
+  − 1, the strength lost, minimum)); 1367:0084 is a maximum and 1367:0094
+  a minimum. **verified** (code)
 - **States the chooser never gives**: 0x105 is the deck $Rescu00 (not
   decoded). 0x10A $MeetA02 (an army), 0x10B $MeetA03 (soldiers in
   ambush), 0x119 $MeetH01 (Hussites) and 0xB3 $MeetI00 (the emperor's
