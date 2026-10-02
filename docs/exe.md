@@ -1631,7 +1631,7 @@ $CIVCR00.MSG by day (file 0xA42D5). **verified** (code); see
   multiple of 3 (see "Names and random numbers").
 - Going to a guild (e.g. the tinkers, file 0xA47A2) takes an hour (one
   more if 1367:072A says it is night), unless a random(100) over a chance
-  brings an encounter (state 0x3C; not reproduced).
+  brings the watch (state 0x3C). Reproduced (`ACTION_NIGHT_WALK`, at night).
 - **Soldier's Road** (the arms-making guilds' first option, state 0x17,
   file 0xA217E): card 1 or 2 of $MILCR00 (by the city's property 0x21
   odd or even, 150B:03B0(card, 1): variants of the crafts' own card,
