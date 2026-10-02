@@ -203,6 +203,22 @@ and $Money2 never being offered; the town hall (0x2B, file 0xB1A98) does
 not offer the weapons training, and at night (0x2C, file 0xB3446) only
 the square and its ways out. **verified** (code)
 
+- **Disabled options** (2): the text layout of the cards (0265:0134, file
+  0x3F84 + ...; the option's word is at +0x2E of the card's state record):
+  an option with 0 is skipped up to its line end, one with 1 gets an area
+  (its color, its place, its key by the code after the dots) and can be
+  chosen, any other value (2) lays the text out like the rest but makes no
+  area for it: it shows, never lights under the mouse and no click or key
+  reaches it. **verified** (code); that the text has the same color as the
+  enabled options is *inferred* (the layout passes the same color to all;
+  the game's screens were not seen). Reproduced by `CardView::SetCard()`'s
+  `disabled` list; `CityVisit` disables (instead of hiding) the options
+  whose conditions the code is known to set to 2: the donation and the meal
+  with a short purse, sanctuary, finding somebody with four members, the
+  lord's audience, clerk and saint, the soldiers' *ignore* after it, the
+  locals of the spiders' job after asking. The other conditions stay hidden
+  until their words are checked (`DimsWhenOff()`).
+
 ## The city's lord
 
 The fortress (state 0x1B, file 0xA4B0E, $CITYF00) and the town hall (0x2B,
@@ -216,7 +232,8 @@ both decks. **verified** (code)
   (09C0:20F3), and its clerk is dim again while mark 0x3A runs. The saint
   option (150B:168C) needs a member who knows one of the card's saints:
   Alcuin (5), Raymond Penafort (112), Wolfgang (134), Wenceslaus (129).
-  Dim options are hidden here (*inferred*: the card has no dim drawing).
+  Dim options are drawn and cannot be chosen (see "The options of a
+  state" above).
   The town hall's prisoner options (cards 14..17) need an event (mark
   0x4D): not reproduced.
 - **The chance** (file 0xA5018, 0xA5300, 0xB223C): 0 with a reputation of

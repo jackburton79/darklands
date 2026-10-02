@@ -45,10 +45,13 @@ public:
 
     // The card to show. Variables not in `variables` stay as they are.
     // Options are numbered from 0 in card order; the ones in `hidden` are
-    // not shown, the others keep their numbers.
+    // not shown, the others keep their numbers. The ones in `disabled` are
+    // shown as the others but cannot be chosen (DARKLAND.EXE: the option
+    // word 2 of DS:EE76..: the text is laid out, no area is made for it).
     void			SetCard(const msg_card& card,
                         const card_variables& variables,
-                        const std::vector<int>& hidden = std::vector<int>());
+                        const std::vector<int>& hidden = std::vector<int>(),
+                        const std::vector<int>& disabled = std::vector<int>());
     // A scene picture (e.g. "MAIN-ST.PIC"): the background of the card,
     // faded under the text; empty for none. With `showFirst`, it is shown
     // alone first, in full color, until a click or a key ("you must
@@ -137,7 +140,8 @@ private:
                         int transparent = -1, int height = -1);
 
     void			_Layout(const msg_card& card, const std::string& text,
-                        const std::vector<int>& hidden);
+                        const std::vector<int>& hidden,
+                        const std::vector<int>& disabled);
     bool			_MenuEvent(GameWindow& window, const SDL_Event& event,
                         int& result);
     int				_OptionAt(const GFX::point& point) const;

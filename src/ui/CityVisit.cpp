@@ -1609,8 +1609,10 @@ CityVisit::_Show(int screen, bool withScene)
         deck = "MEETB02";
     if (fToll && screen >= SCREEN_TITHE_MEET && screen <= SCREEN_TITHE_POOR)
         deck = "MEETH02";
+    std::vector<int> dim;
+    const std::vector<int> hidden = _HiddenOptions(screen, &dim);
     fView.SetCard(fData.Messages(deck).CardAt(uint32(rules.card)),
-        fVariables, _HiddenOptions(screen));
+        fVariables, hidden, dim);
     if ((screen == SCREEN_FUGGER_DEPOSIT || screen == SCREEN_MEDICI_DEPOSIT)
             && fParty != NULL) {
         // DARKLAND.EXE: the purse's florins to start with, 10 digits
@@ -1621,8 +1623,31 @@ CityVisit::_Show(int screen, bool withScene)
 }
 
 
+// The conditions that the game shows as an option disabled (word 2 of
+// DS:EE76.., drawn, not to be chosen), not hidden (0): the ones its code
+// is known to set so (docs/exe.md); the others stay hidden
+static bool
+DimsWhenOff(int needs)
+{
+    switch (needs) {
+        case kNeedsDonation:
+        case kNeedsBadReputation:
+        case kNeedsInnPrice:
+        case kNeedsCampIgnore:
+        case kNeedsPartyRoom:
+        case kNeedsLordAudience:
+        case kNeedsLordClerk:
+        case kNeedsLordSaint:
+        case kNeedsJobUnasked:
+            return true;
+    }
+    return false;
+}
+
+
+// The options not shown, and (`dim`) those shown but off
 std::vector<int>
-CityVisit::_HiddenOptions(int screen) const
+CityVisit::_HiddenOptions(int screen, std::vector<int>* dim) const
 {
     const city& c = _City();
     std::vector<int> hidden;
@@ -1861,7 +1886,11 @@ CityVisit::_HiddenOptions(int screen) const
             hide = c.harbor == CITY_HARBOR_NONE;
         else if (rule.needs != kAlways)
             hide = c.places[rule.needs].empty();
-        if (hide)
+        if (!hide)
+            continue;
+        if (dim != NULL && DimsWhenOff(rule.needs))
+            dim->push_back(i);
+        else
             hidden.push_back(i);
     }
     return hidden;

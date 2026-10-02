@@ -193,11 +193,12 @@ CardView::~CardView()
 
 void
 CardView::SetCard(const msg_card& card, const card_variables& variables,
-    const std::vector<int>& hidden)
+    const std::vector<int>& hidden, const std::vector<int>& disabled)
 {
     fPrompt.clear();
     fPromptText.clear();
-    _Layout(card, Normalize(Substitute(card.text, variables)), hidden);
+    _Layout(card, Normalize(Substitute(card.text, variables)), hidden,
+        disabled);
     fSelected = fOptions.empty() ? -1 : 0;
     // the option under the mouse, if it is on the window
     if (fCursorVisible)
@@ -568,7 +569,7 @@ CardView::_DrawPicture(const raw_picture& picture, int x, int y,
 // Splits the text into screen lines, and finds the options.
 void
 CardView::_Layout(const msg_card& card, const std::string& text,
-    const std::vector<int>& hidden)
+    const std::vector<int>& hidden, const std::vector<int>& disabled)
 {
     fLines.clear();
     fOptions.clear();
@@ -647,7 +648,8 @@ CardView::_Layout(const msg_card& card, const std::string& text,
             y += lineHeight;
             first = false;
         } while (!rest.empty());
-        if (option)
+        if (option && std::find(disabled.begin(), disabled.end(), optionNumber)
+                == disabled.end())
             fOptions.push_back(option_area{ optionNumber, top - 1, y - kLineGap });
     }
     fTextLeft = left;

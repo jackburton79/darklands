@@ -988,7 +988,8 @@ private:
     uint16			_PeopleSeed() const;
     // A man of the city named by the game (1367:0DB4) for `seed`
     std::string		_PersonName(uint16 seed);
-    std::vector<int> _HiddenOptions(int screen) const;
+    std::vector<int> _HiddenOptions(int screen,
+                        std::vector<int>* dim = NULL) const;
     // The city's record, or an empty one in another place (size 1)
     const city&		_City() const;
     bool			_InCity() const;
