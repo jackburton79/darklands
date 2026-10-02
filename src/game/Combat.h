@@ -34,12 +34,13 @@ enum hit_location {
 
 // A fighter's way of fighting, the bits of its Orders word (record +0x10)
 // that the strike's formulas test (file 0x43CA2, 0x44232, 0x44418): all
-// have bit 0x02, "fighting". The names are the Attack menu's (the order of
-// the bits and the items is *inferred*)
+// have bit 0x02, "fighting". The values are the game's: the function at
+// file 0x4E55E shows the order's key, 0x12 'A', 0x0A 'V', 0x06 'B', 0x22
+// 'P' (also 0x80 'M', Use Missile, and 0x100 'T', Throw) **verified**
 enum battle_stance {
-    STANCE_STANDARD = 0x02,		// Std Attack
-    STANCE_VULNERABLE = 0x06,	// slower and surer, easier to hit
-    STANCE_BERSERK = 0x0A,		// faster, wilder, hits deeper
+    STANCE_STANDARD = 0x12,		// Std Attack
+    STANCE_VULNERABLE = 0x0A,	// slower, deeper blows
+    STANCE_BERSERK = 0x06,		// faster, wilder
     STANCE_PARRY = 0x22			// hard to hit, less sure
 };
 

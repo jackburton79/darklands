@@ -2619,10 +2619,15 @@ mouse button held down, or F10, shows it; it has four pull-down menus,
   selected member's checked); the other orders of the menu are dim.
   **Stances** (`battle_stance`): the strike's formulas (above) test the
   bits 0x06, 0x0A and 0x22 of the Orders on top of the bit 0x02 that every
-  fighter has; the program gives Std Attack 0x02, Vulnerable 0x06, Berserk
-  0x0A and Parry 0x22 (which bit is which item is *inferred* from what the
-  terms do: 0x06 is slower and surer and leaves the fighter exposed, 0x0A
-  faster, wilder and deeper, 0x22 guarded). Orders on the field: a click on
+  fighter has. The orders' values are the game's: the function at file
+  0x4E55E (the order's key, shown for the selected combatant) maps 1 to F
+  or W (walk or flee towards), 6 to B, 0x0A to V, 0x12 to A, 0x22 to P,
+  0x40 to R, 0x80 to M (Use Missile) and 0x100 to T (Throw): so Std Attack
+  is 0x12, Vulnerable 0x0A, Berserk 0x06 and Parry 0x22. **verified**
+  (code; an earlier revision had Vulnerable and Berserk the other way
+  round, from what the terms seemed to do: 0x06 is the faster one,
+  Berserk, and 0x0A, Vulnerable, the slower one with deeper blows).
+  Orders on the field: a click on
   a member selects it (also 1..5, Tab), a click on a cell sends it there, a
   click on a standing foe sends it against that foe (it follows it, one
   step at a time, and fights only it until it falls, a red frame marks
