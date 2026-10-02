@@ -5,6 +5,7 @@
 #include "MenuBar.h"
 #include "FileStream.h"
 #include "GameData.h"
+#include "GameSettings.h"
 #include "MsgFile.h"
 #include "PICImage.h"
 #include "Palette.h"
@@ -55,6 +56,7 @@ static const uint8 kPaperColor		= 255;
 static const GFX::Color kPaperRGB	= { 252, 228, 216, 0 };	// (63, 57, 54)
 static const uint8 kTextColor		= 137;
 static const uint8 kHighlightColor	= 140;
+static const uint8 kDimColor		= 8;	// EGA dark gray: the Extras' dim options
 static const uint8 kSidebarColor	= 159;
 
 // Under the text, the scene is faded toward the paper, as on the
@@ -157,6 +159,7 @@ CardView::CardView(GameData& data)
     fBuffer(NULL),
     fInfo(NULL),
     fMenu(NULL),
+    fSettings(NULL),
     fShowingScene(false),
     fCapital(0),
     fCapitalPosition(0, 0),
@@ -615,8 +618,11 @@ CardView::_Layout(const msg_card& card, const std::string& text,
         std::string rest = line.substr(i);
         while (!rest.empty() && rest[rest.size() - 1] == ' ')
             rest.erase(rest.size() - 1);
+        bool disabledOption = false;
         if (option) {
             optionNumber++;
+            disabledOption = std::find(disabled.begin(), disabled.end(),
+                optionNumber) != disabled.end();
             if (IsPlaceholderOption(hasPrefix, rest)
                     || std::find(hidden.begin(), hidden.end(), optionNumber)
                         != hidden.end())
@@ -633,7 +639,7 @@ CardView::_Layout(const msg_card& card, const std::string& text,
         const int top = y;
         int x = left;
         if (option) {
-            fLines.push_back(text_line{ left, y, prefix });
+            fLines.push_back(text_line{ left, y, prefix, disabledOption });
             x = left + fFont->StringWidth(prefix) + kOptionTextGap;
         }
         int firstX = x;
@@ -649,12 +655,11 @@ CardView::_Layout(const msg_card& card, const std::string& text,
             const int lineX = first ? firstX : x;
             const std::string part = fFont->TruncateString(rest,
                 uint16(std::max(right - lineX, 1)));
-            fLines.push_back(text_line{ lineX, y, part });
+            fLines.push_back(text_line{ lineX, y, part, disabledOption });
             y += lineHeight;
             first = false;
         } while (!rest.empty());
-        if (option && std::find(disabled.begin(), disabled.end(), optionNumber)
-                == disabled.end())
+        if (option && !disabledOption)
             fOptions.push_back(option_area{ optionNumber, top - 1, y - kLineGap });
     }
     fTextLeft = left;
@@ -724,9 +729,10 @@ CardView::_DrawCard()
             }
         }
     }
+    const bool dim = fSettings != NULL && fSettings->extras;
     for (const text_line& line : fLines) {
         fFont->RenderString(line.text, fBuffer, GFX::point(line.x, line.y),
-            kTextColor);
+            dim && line.disabled ? kDimColor : kTextColor);
     }
     if (Prompting()) {
         // under the text, with a cursor (the game's look is not known)

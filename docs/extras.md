@@ -29,5 +29,15 @@ With Extras on:
   a slot (`SlotInUse()`). The rows of that scroll start `kMarkWidth` pixels
   to the right, marked or not, to stay aligned.
 
+## The cards (`CardView`)
+
+The original (0265:0134, docs/exe.md "Disabled options") lays out a
+disabled option, the option word 2, like the others: same color, but no
+area, so it never lights and cannot be chosen. Nothing shows that it is
+off (*inferred*: the layout passes the same color to every line).
+
+With Extras on, the lines of a disabled option are drawn in EGA dark gray
+(`kDimColor`) instead of the text color.
+
 Not done yet (ideas): the same in the Equipment scroll of the information
 screens; a warning when an item in use is sold.

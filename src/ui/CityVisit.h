@@ -661,7 +661,8 @@ public:
     // The Game menu's settings (not owned; NULL: the middle difficulty):
     // the difficulty changes the fame of a task done
     void			SetSettings(const game_settings* settings)
-                        { fSettings = settings; fTrade.SetSettings(settings); }
+                        { fSettings = settings; fTrade.SetSettings(settings);
+                          fView.SetSettings(settings); }
     // The bandits of the map (a state 0x102 or 0x103 of the game): the
     // soldiers' deck or the bandits', and the tile type under the party
     // (for the saints and the battlefield). Enter(place, SCREEN_BANDITS_MEET)

@@ -211,7 +211,7 @@ the square and its ways out. **verified** (code)
   area for it: it shows, never lights under the mouse and no click or key
   reaches it. **verified** (code); that the text has the same color as the
   enabled options is *inferred* (the layout passes the same color to all;
-  the game's screens were not seen). Reproduced by `CardView::SetCard()`'s
+  the game's screens were not seen; with the Extras setting on the program draws them dim, docs/extras.md). Reproduced by `CardView::SetCard()`'s
   `disabled` list; `CityVisit` disables (instead of hiding) the options
   whose conditions the code is known to set to 2: the donation and the meal
   with a short purse, sanctuary, finding somebody with four members, the

@@ -26,6 +26,8 @@ class GameData;
 class GameWindow;
 class InfoView;
 class MenuBar;
+struct game_settings;
+struct game_settings;
 class PartySidebar;
 struct msg_card;
 struct party;
@@ -82,6 +84,11 @@ public:
     // The menu bar (right mouse button, F10, the shortcuts): not owned;
     // NULL: none. Quit ends Run() as Esc does.
     void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
+    // The Game menu's settings (not owned; NULL: none): with `extras` the
+    // disabled options are drawn dim (the original draws them like the
+    // others: docs/extras.md)
+    void			SetSettings(const game_settings* settings)
+                        { fSettings = settings; }
 
     // Runs until an option is chosen: returns its number, or -1 if the
     // user quit, or kSaveRequested for Ctrl+S or the menu's Save Game,
@@ -119,6 +126,7 @@ private:
         int x;
         int y;
         std::string text;		// game character set
+        bool disabled;			// a line of a disabled option
     };
     struct option_area {
         int number;				// in card order, hidden options included
@@ -155,6 +163,7 @@ private:
     std::unique_ptr<PartySidebar> fSidebar;
     InfoView*		fInfo;
     MenuBar*		fMenu;
+    const game_settings* fSettings;
 
     // Frame pictures, decoded once. The capitals sheet (ILLMCAPS.PIC)
     // also carries the palette range of the card (128..159).
