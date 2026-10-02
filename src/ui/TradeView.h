@@ -27,6 +27,7 @@ class GameData;
 class GameWindow;
 class InfoView;
 class MenuBar;
+struct game_settings;
 class PartySidebar;
 struct item;
 struct money;
@@ -75,6 +76,11 @@ public:
     // The menu bar (not owned; NULL: none): Party Info, Pause and Quit
     // work here, Save and Load do not
     void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
+    // The Game menu's settings (not owned; NULL: none): with `extras`, the
+    // scrolls show when they can scroll and which items are in use (not in
+    // the original game, see docs/extras.md)
+    void			SetSettings(const game_settings* settings)
+                        { fSettings = settings; }
     // Where the trade happens: a city (index into DARKLAND.CTY, or -1),
     // the party's reputation there and the location's flags.
     void			SetPlace(int cityIndex, int reputation, uint8 flags = 0);
@@ -154,6 +160,8 @@ private:
     void			_DrawText(const std::string& utf8, int x, int y,
                         uint8 color, int maxWidth = 250);
     void			_DrawScroll(int which);
+    void			_DrawMark(int x, int y);
+    void			_DrawArrow(int x, int y, bool up);
 
     GameData&		fData;
     Bitmap*			fBuffer;
@@ -165,6 +173,7 @@ private:
     party*			fParty;
     InfoView*		fInfo;
     MenuBar*		fMenu;
+    const game_settings* fSettings;
     int				fCity;
     int				fReputation;
     uint8			fLocationFlags;

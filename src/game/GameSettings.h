@@ -19,7 +19,8 @@ struct game_settings {
         difficulty(DIFFICULTY_STANDARD),
         showChanges(true),
         music(true),
-        soundEffects(true)
+        soundEffects(true),
+        extras(false)
     {
     }
 
@@ -27,4 +28,7 @@ struct game_settings {
     bool	showChanges;		// messages about temporary changes
     bool	music;
     bool	soundEffects;
+    // The aids the original game does not have (docs/extras.md): off, the
+    // game is as DARKLAND.EXE has it. The "Extras" item of the Game menu
+    bool	extras;
 };

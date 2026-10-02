@@ -3,7 +3,9 @@
 #include "Bitmap.h"
 #include "Character.h"
 #include "CityFile.h"
+#include "Equipment.h"
 #include "FileStream.h"
+#include "GameSettings.h"
 #include "GameData.h"
 #include "InfoView.h"
 #include "MenuBar.h"
@@ -39,6 +41,11 @@ static const struct {
     { 104, 291, 146, 178, 129 }	// the member's
 };
 static const int kRodHeight			= 8;	// the rods above and below
+// The aids of the Extras setting (not in the original game): the width
+// kept for the mark of an item in use, and the arrows on the rods
+static const int kMarkWidth			= 6;
+static const int kArrowHalf			= 3;
+static const uint8 kArrowColor		= 137;	// the text color
 
 // Colors: dark text on the parchment, EGA crimson for the letters to
 // type (manual p. 7: "the crimson letter"), dim for unavailable actions
@@ -153,6 +160,7 @@ TradeView::TradeView(GameData& data)
     fParty(NULL),
     fInfo(NULL),
     fMenu(NULL),
+    fSettings(NULL),
     fCity(-1),
     fReputation(0),
     fLocationFlags(0),
@@ -825,6 +833,7 @@ TradeView::_DrawScroll(int which)
     const auto& box = kScrolls[which];
     const std::vector<item_definition>& definitions = fData.Lists().Items();
     const character& member = fParty->members[fMember];
+    const bool aids = fSettings != NULL && fSettings->extras;
 
     // the label: "The %Fs offers...", "%s has..."
     // (the cache's: "The cache contains...", "%s currently has...")
@@ -884,7 +893,46 @@ TradeView::_DrawScroll(int which)
                     name.c_str(), carried.quantity, carried.quality);
             }
         }
-        _DrawText(text, box.left + 2, y, kTextColor, box.right - box.left - 2);
+        // Extras: the items in use are marked, at the start of the row
+        int left = box.left + 2;
+        if (aids && which == SCROLL_MEMBER) {
+            if (SlotInUse(member, member.items[index]) >= 0)
+                _DrawMark(left + 1, y + kRowHeight / 2 - 1);
+            left += kMarkWidth;
+        }
+        _DrawText(text, left, y, kTextColor, box.right - left);
+    }
+    // Extras: an arrow on a rod where the scroll has more rows to show
+    if (aids) {
+        const int middle = (box.left + box.right) / 2;
+        if (fTop[which] > 0)
+            _DrawArrow(middle, box.top - kRodHeight / 2, true);
+        if (fTop[which] + kVisibleRows < count)
+            _DrawArrow(middle, box.bottom + kRodHeight / 2, false);
+    }
+}
+
+
+// Extras: a small diamond, the mark of an item in use
+void
+TradeView::_DrawMark(int x, int y)
+{
+    for (int dy = -2; dy <= 2; dy++) {
+        const int half = 2 - std::abs(dy);
+        fBuffer->FillRect(GFX::rect(x - half, y + dy, 2 * half + 1, 1),
+            kCrimsonColor);
+    }
+}
+
+
+// Extras: a triangle pointing up or down, centered at (x, y)
+void
+TradeView::_DrawArrow(int x, int y, bool up)
+{
+    for (int row = 0; row < kArrowHalf; row++) {
+        const int half = up ? row : kArrowHalf - 1 - row;
+        fBuffer->FillRect(GFX::rect(x - half, y - kArrowHalf / 2 + row,
+            2 * half + 1, 1), kArrowColor);
     }
 }
 

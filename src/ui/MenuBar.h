@@ -48,6 +48,7 @@ enum menu_command {
     MENU_SHOW_CHANGES,
     MENU_MUSIC,
     MENU_SOUND_EFFECTS,
+    MENU_EXTRAS,			// not in the original: see game_settings
     MENU_PAUSE,
     MENU_QUIT,
     // Orders

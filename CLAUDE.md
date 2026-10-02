@@ -161,6 +161,10 @@ include path: include headers by name (`#include "CityFile.h"`).
   `ACTION_DONATION`) change the party and the clock in `CityVisit`, as
   DARKLAND.EXE does (docs/exe.md, "The church"). `ScreenSupport`: `GameWindow` (shows a
   320x200 8-bit buffer) and the mouse cursor, shared by both.
+- **Extras** (docs/extras.md): what the original does not have, always
+  behind `game_settings::extras`, the Game menu's "Extras" item (off by
+  default; read at draw time, so that the menu changes it at once). Do not
+  add such things unasked.
 - `darklands.cpp`: command line only.
 
 ## Code style

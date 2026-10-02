@@ -68,6 +68,7 @@ static const menu_item_definition kGameItems[] = {
     { MENU_SHOW_CHANGES, "Show Changes", ALT "C", 'C', true, false },
     { MENU_MUSIC, "Music", ALT "M", 'M', true, false },
     { MENU_SOUND_EFFECTS, "Sound FX", ALT "F", 'F', true, false },
+    { MENU_EXTRAS, "Extras", ALT "X", 'X', true, false },
     { MENU_PAUSE, "Pause", ALT "P", 'P', true, false },
     { MENU_QUIT, "Quit to DOS", ALT "Q", 'Q', true, false }
 };
@@ -118,7 +119,7 @@ static const menu_item_definition kPartyItems[] = {
 };
 
 static const menu_definition kMenus[MenuBar::kMenuCount] = {
-    { "Game", kGameItems, 8, true },
+    { "Game", kGameItems, 9, true },
     { "Orders", kOrdersItems, 18, true },
     { "Attack", kAttackItems, 6, false },
     { "Party", kPartyItems, 2, false }
@@ -214,6 +215,8 @@ MenuBar::IsChecked(menu_command command) const
             return fSettings->music;
         case MENU_SOUND_EFFECTS:
             return fSettings->soundEffects;
+        case MENU_EXTRAS:
+            return fSettings->extras;
         case MENU_STD_ATTACK:
         case MENU_VULNERABLE:
         case MENU_BERSERK:
@@ -475,6 +478,9 @@ MenuBar::_Choose(menu_command command)
             break;
         case MENU_SOUND_EFFECTS:
             fSettings->soundEffects = !fSettings->soundEffects;
+            break;
+        case MENU_EXTRAS:
+            fSettings->extras = !fSettings->extras;
             break;
         default:
             break;
