@@ -35,6 +35,7 @@ static const uint32 kWeaponSkills	= 0x7726;
 static const uint32 kWeaponMinimum	= 0x7765;
 static const uint32 kWeaponMaximum	= 0x77A4;
 static const uint32 kWeaponRanges	= 0x77E3;
+static const uint32 kWeaponAmmo		= 0x7822;	// verified (file 0x448A2)
 static const uint32 kArmorStrengths	= 0x781E;	// by item type
 static const size_t kArmorCount		= 100;
 // The saints' functions: far pointers at 290E:2937 to RTLink thunks
@@ -222,7 +223,7 @@ ExeData::ExeData(const std::string& exePath)
     }
 
     const size_t weapons = kWeaponSegment * 16 + kDataBase;
-    if (weapons + kWeaponRanges + kWeaponCount > data.size())
+    if (weapons + kWeaponAmmo + kWeaponCount > data.size())
         throw std::runtime_error("ExeData: weapon table past the end");
     const uint8* w = &data[weapons];
     for (size_t i = 0; i < kWeaponCount; i++) {
@@ -237,6 +238,7 @@ ExeData::ExeData(const std::string& exePath)
         weapon.minStrength = w[kWeaponMinimum + i];
         weapon.maxStrength = w[kWeaponMaximum + i];
         weapon.range = w[kWeaponRanges + i];
+        weapon.ammo = w[kWeaponAmmo + i];
         fWeapons.push_back(weapon);
     }
     if (weapons + kArmorStrengths + kArmorCount > data.size())

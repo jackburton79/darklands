@@ -52,6 +52,8 @@ struct exe_weapon {
     uint8 minStrength;			// the strength it is used at best with
     uint8 maxStrength;
     uint8 range;				// missiles only
+    uint8 ammo;					// the item type it shoots (0x40 arrows, 0x41
+                                // quarrels, 0x42 balls), 0: itself (thrown)
 };
 
 // A saint's rules (DARKLAND.EXE: one function per saint, 165C:xxxx of

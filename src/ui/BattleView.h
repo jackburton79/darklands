@@ -108,7 +108,7 @@ public:
     // The menu bar (not owned; NULL: none): in a battle the Game menu works
     // but for Save and Load (the game does not allow them on a battlefield,
     // inferred), Party Info is off (manual p. 20), of the Orders only
-    // Resume and Halt do anything so far.
+    // Resume, Halt, the stances and Use Missile do anything so far.
     void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
     // The selected member stops where it is, and drops its attack order
     void			HaltSelected();
@@ -125,6 +125,11 @@ public:
     // Attack menu: Std Attack, Vulnerable, Berserk, Parry)
     void			SetSelectedStance(int stance);
     int				SelectedStance() const;
+    // Use Missile (M): the selected member shoots at the foe it is sent
+    // against (or the nearest in range) instead of walking up to it; false
+    // if it has no missile weapon or nothing to shoot. Provisional: the
+    // rules of the game's missiles are not decoded (Combat.h, Shoot()).
+    bool			SetSelectedMissile();
     // The next member standing after the selected one
     void			SelectNext();
 
@@ -170,6 +175,10 @@ private:
         int			fallFrame;
         int			damage;		// the last loss of Endurance shown
         int			damageTicks;	// how long it is still shown
+        int			reload;		// combat steps until it may shoot again
+        int			shotTicks;	// how long its last shot is still drawn
+        int			shotX;		// where it went, in map pixels
+        int			shotY;
     };
 
     figure			_MakeFigure(const std::string& image, int weapon, int x,
@@ -178,6 +187,9 @@ private:
     void			_DrawStatus();
     bool			_Hostile(const figure& a, const figure& b) const;
     void			_Fight();
+    // The shots of this combat step; true for those who shot
+    std::vector<bool> _Shoot();
+    int				_ShotTarget(const figure& shooter) const;
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
                         const char* set, int weapon);

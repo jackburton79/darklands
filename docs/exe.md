@@ -2826,6 +2826,34 @@ Where the battle code starts; the rules are not decoded yet.
   of the battle; with nobody left, 09C0:18F1(0x12) and the game ends
   (not decoded further). It returns the battle's result ([DS:A893]).
   **verified** (code)
+- **Missile weapons** (what is decoded; the strike itself is not).
+  The order Use Missile is 0x80 (key M, see "Stances"), Throw 0x100 (T,
+  the potions); a weapon type's ammunition is the byte at 20A5:7822 + the
+  type: 0x40 arrows for the bows (27..29), 0x41 quarrels for the crossbows
+  (30, 31), 0x42 balls for the handguns (32, 33), 0 for the thrown
+  weapons (23..26, 34), which are their own piece. **verified** (file
+  0x448A2). Each shot takes one piece (file 0x44A54): the carried item of
+  the ammunition's type (and quality) loses one of its quantity, and goes
+  from the list at zero; a thrown weapon with none left leaves the
+  missile slot (record +0x22 = 0xFF). The range is the byte at 77E3 + the
+  type (bows 53, 45, 38; crossbows 165, 135; handguns 180, 195; thrown
+  weapons 60, 60, 45, 60; the rock of the monsters, 34, 150); its unit is
+  not known. The function at file 0x4D9A0 (1EF8:0000 of overlay 0x12)
+  queues the shot's effect (a flight of the weapon types 0x17..0x21);
+  PCMissileAttack is above. *Not decoded*: the chance to hit and the
+  damage of a missile, the pace of shooting, the line of fire, the
+  enemies' shots (no enemy type has a missile weapon in +0xA0).
+  Reproduced provisionally (`Shoot()`, `BattleView::_Shoot()`; *inferred*):
+  the range is a quarter of the table's, in cells; a member in the Use
+  Missile order with a missile weapon and ammunition shoots at the foe it
+  was sent against, or at the nearest in range, standing where it is (it
+  walks up only until the foe is in range); the chance is the melee's
+  with PCMissileAttack, less two for each cell, 5..95; the damage the
+  melee's with the missile weapon (its quality and the shooter's
+  strength); a bow or a thrown weapon shoots every second combat step, a
+  crossbow every third, a handgun every fourth; the pieces shot leave the
+  list after the battle; with the last one the order goes back to Std
+  Attack.
 - **Loot**: the battle's orders menu has "Loot Bodies" (DS:718, with
   "Open Chest", "Pick Lock", "Dissolve Lock", "Surrender (All)", "Exit
   Battlefield"). The loot screen is an overlay of its own (segment 1462,

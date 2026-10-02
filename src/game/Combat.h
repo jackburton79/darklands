@@ -41,7 +41,8 @@ enum battle_stance {
     STANCE_STANDARD = 0x12,		// Std Attack
     STANCE_VULNERABLE = 0x0A,	// slower, deeper blows
     STANCE_BERSERK = 0x06,		// faster, wilder
-    STANCE_PARRY = 0x22			// hard to hit, less sure
+    STANCE_PARRY = 0x22,		// hard to hit, less sure
+    STANCE_MISSILE = 0x80		// Use Missile (M): shoots, does not fight
 };
 
 // What a combatant's record holds, as the game sets it up (file 0x446E0)
@@ -60,6 +61,17 @@ struct fighter {
     int shieldType;				// 95..97, 0: none
     int shieldQuality;
     int attack;					// PCMeleeAttack
+    // The missile weapon (record +0x22, +0x5A, +0x21): its weapon type
+    // (-1 none), quality, the skill it uses and PCMissileAttack
+    int missileType;
+    int missileQuality;
+    int missileSkill;
+    int missileAttack;
+    // What it shoots: the item type (a thrown weapon is its own), how
+    // many pieces it carries and how many it has shot in the battle
+    int ammoType;
+    int ammo;
+    int shots;
 };
 
 fighter FighterFromCharacter(const character& member, const ExeData& exe);
@@ -69,6 +81,16 @@ fighter FighterFromEnemy(const enemy_type& type, const ExeData& exe);
 // PCMeleeAttack (file 0x446E0): the skill, less for a weapon too heavy or
 // too hard for the fighter, more for a strong one
 int MeleeAttack(const fighter& f, const exe_weapon& weapon);
+
+// PCMissileAttack (file 0x446E0): S - weak - 2 * unskilled, 0..255
+int MissileAttack(const fighter& f, const exe_weapon& weapon, int skill);
+
+// Whether the fighter can shoot now: a missile weapon and a piece to shoot
+bool CanShoot(const fighter& f);
+// The range in cells. Provisional: the weapon table's range (file
+// 0x77E3) is in units the program does not know; a quarter of it fits
+// the arms (bows 9..13 cells, crossbows 33..41, guns 45..48)
+int MissileRange(const fighter& f, const ExeData& exe);
 
 // HitChance (file 0x43CA2), for a melee fighter: the chance in 100 that
 // it strikes at a given moment
@@ -97,6 +119,14 @@ struct strike {
 // the attacker strikes, and the damage. Nothing is changed.
 strike Strike(const fighter& attacker, const fighter& defender,
     const ExeData& exe, int helpers, int threats, std::mt19937& random);
+
+// One shot at a defender `distance` cells away, nothing is changed but
+// the shot's piece (ammo and shots of the attacker). Provisional: the
+// game's rules for missiles are not decoded; the chance is the melee
+// one with PCMissileAttack, less two for each cell, the damage the
+// melee's with the missile weapon.
+strike Shoot(fighter& attacker, const fighter& defender, const ExeData& exe,
+    int distance, std::mt19937& random);
 
 // Takes a strike's damage; the defender may fall
 void TakeStrike(fighter& defender, const strike& blow);

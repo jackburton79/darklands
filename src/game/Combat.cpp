@@ -2,6 +2,7 @@
 
 #include "Character.h"
 #include "EnemyFile.h"
+#include "Equipment.h"
 #include "ExeData.h"
 
 #include <algorithm>
@@ -101,6 +102,24 @@ FighterFromCharacter(const character& member, const ExeData& exe)
     const exe_weapon* w = WeaponOf(f, exe);
     f.weaponSkill = member.skills[w != NULL ? w->category : kEdgedSkill];
     f.attack = w != NULL ? MeleeAttack(f, *w) : 0;
+
+    // the missile weapon, and the pieces it shoots (a thrown weapon is
+    // its own piece)
+    f.missileType = -1;
+    const int missile = member.equipment[EQUIPMENT_MISSILE];
+    if (missile != kNoEquipment && missile < int(exe.Weapons().size())
+            && exe.Weapons()[size_t(missile)].category >= WEAPON_THROWN) {
+        const exe_weapon& mw = exe.Weapons()[size_t(missile)];
+        f.missileType = missile;
+        f.missileQuality = QualityOf(member, missile);
+        f.missileSkill = member.skills[mw.category];
+        f.missileAttack = MissileAttack(f, mw, f.missileSkill);
+        f.ammoType = mw.ammo != 0 ? mw.ammo : missile;
+        for (const item& i : member.items) {
+            if (i.type == f.ammoType)
+                f.ammo += i.quantity;
+        }
+    }
     return f;
 }
 
@@ -127,7 +146,33 @@ FighterFromEnemy(const enemy_type& type, const ExeData& exe)
     const exe_weapon* w = WeaponOf(f, exe);
     f.weaponSkill = type.skills[w != NULL ? w->category : kEdgedSkill];
     f.attack = w != NULL ? MeleeAttack(f, *w) : 0;
+    f.missileType = -1;
     return f;
+}
+
+
+int
+MissileAttack(const fighter& f, const exe_weapon& weapon, int skill)
+{
+    const int weak = Positive(weapon.minStrength - f.maxStrength);
+    const int unskilled = Positive(weapon.skill - skill);
+    return std::min(255, Positive(skill - weak - 2 * unskilled));
+}
+
+
+bool
+CanShoot(const fighter& f)
+{
+    return f.missileType >= 0 && f.ammo > 0;
+}
+
+
+int
+MissileRange(const fighter& f, const ExeData& exe)
+{
+    if (f.missileType < 0 || size_t(f.missileType) >= exe.Weapons().size())
+        return 0;
+    return exe.Weapons()[size_t(f.missileType)].range / 4;
 }
 
 
@@ -149,11 +194,11 @@ StrikeRate(const fighter& f, const ExeData& exe)
 }
 
 
-int
-ChanceToHit(const fighter& attacker, const fighter& defender,
-    const ExeData& exe, int helpers, int threats)
+// What the defender opposes to an attack: its own attack and its shield
+// (against all but flails, with a one-handed weapon)
+static int
+Defense(const fighter& attacker, const fighter& defender, const ExeData& exe)
 {
-    // the shield: against all but flails, with a one-handed weapon
     int shield = -5;
     const exe_weapon* a = WeaponOf(attacker, exe);
     const exe_weapon* d = WeaponOf(defender, exe);
@@ -171,7 +216,15 @@ ChanceToHit(const fighter& attacker, const fighter& defender,
                 break;
         }
     }
-    const int defense = Positive(defender.attack + shield);
+    return Positive(defender.attack + shield);
+}
+
+
+int
+ChanceToHit(const fighter& attacker, const fighter& defender,
+    const ExeData& exe, int helpers, int threats)
+{
+    const int defense = Defense(attacker, defender, exe);
     // the stances (file 0x44232): the attacker's care or wildness, then
     // the defender's guard or exposure
     int m = 0;
@@ -220,6 +273,34 @@ RollDamage(int value, int armor, int penetration, std::mt19937& random,
 }
 
 
+// The damage of a blow that hit (file 0x44418) with the weapon `w`
+static void
+Damage(const exe_weapon& w, int weaponQuality, const fighter& attacker,
+    const fighter& defender, std::mt19937& random, strike& blow)
+{
+    const int armor = defender.armor[blow.location];
+    int penetration = w.penetration;
+    if (Has(attacker.orders, 0x0A))
+        penetration += Die(random, 4);
+    if (blow.result == STRIKE_WEAK_HIT)
+        penetration -= Die(random, 4);
+    int value;
+    if (armor < penetration)
+        value = w.damage;
+    else if (armor == penetration)
+        value = w.damage / 2;
+    else
+        value = w.damage / 8;
+    if (attacker.maxStrength > w.maxStrength)
+        value += (attacker.maxStrength - w.maxStrength) / 5 + 1;
+    else if (attacker.maxStrength < w.minStrength)
+        value += (attacker.maxStrength - w.minStrength) / 5 - 1;
+    const int quality = std::min(defender.armorQuality[blow.location], 99);
+    value += (weaponQuality - quality) / 10;
+    RollDamage(value, armor, penetration, random, blow);
+}
+
+
 strike
 Strike(const fighter& attacker, const fighter& defender, const ExeData& exe,
     int helpers, int threats, std::mt19937& random)
@@ -244,27 +325,35 @@ Strike(const fighter& attacker, const fighter& defender, const ExeData& exe,
     if (blow.result == STRIKE_MISS || w == NULL)
         return blow;
 
-    // file 0x44418
-    const int armor = defender.armor[blow.location];
-    int penetration = w->penetration;
-    if (Has(attacker.orders, 0x0A))
-        penetration += Die(random, 4);
-    if (blow.result == STRIKE_WEAK_HIT)
-        penetration -= Die(random, 4);
-    int value;
-    if (armor < penetration)
-        value = w->damage;
-    else if (armor == penetration)
-        value = w->damage / 2;
+    Damage(*w, attacker.weaponQuality, attacker, defender, random, blow);
+    return blow;
+}
+
+
+strike
+Shoot(fighter& attacker, const fighter& defender, const ExeData& exe,
+    int distance, std::mt19937& random)
+{
+    strike blow = { STRIKE_NONE, HIT_VITALS, 0, 0 };
+    if (!CanShoot(attacker))
+        return blow;
+    attacker.ammo--;
+    attacker.shots++;
+    const exe_weapon& w = exe.Weapons()[size_t(attacker.missileType)];
+    const int roll = Die(random, 100);
+    blow.location = (roll & 1) != 0 ? HIT_LIMBS : HIT_VITALS;
+    fighter shooter = attacker;
+    shooter.weaponType = attacker.missileType;
+    const int chance = std::min(std::max((attacker.missileAttack
+        - Defense(shooter, defender, exe)) * 2 / 3 + 50 - 2 * distance, 5), 95);
+    if (roll <= chance - 10)
+        blow.result = STRIKE_HIT;
+    else if (roll <= chance)
+        blow.result = STRIKE_WEAK_HIT;
     else
-        value = w->damage / 8;
-    if (attacker.maxStrength > w->maxStrength)
-        value += (attacker.maxStrength - w->maxStrength) / 5 + 1;
-    else if (attacker.maxStrength < w->minStrength)
-        value += (attacker.maxStrength - w->minStrength) / 5 - 1;
-    const int quality = std::min(defender.armorQuality[blow.location], 99);
-    value += (attacker.weaponQuality - quality) / 10;
-    RollDamage(value, armor, penetration, random, blow);
+        blow.result = STRIKE_MISS;
+    if (blow.result != STRIKE_MISS)
+        Damage(w, attacker.missileQuality, attacker, defender, random, blow);
     return blow;
 }
 
@@ -299,6 +388,15 @@ AfterBattle(party& members, const std::vector<fighter>& fighters)
             = uint8(std::max(fighters[i].endurance, 0));
         member.attributes[ATTRIBUTE_STRENGTH]
             = uint8(std::max(fighters[i].strength, 0));
+        // the pieces shot are gone
+        for (int shot = 0; shot < fighters[i].shots; shot++) {
+            for (size_t k = 0; k < member.items.size(); k++) {
+                if (member.items[k].type == fighters[i].ammoType) {
+                    DropItem(member, k, false);
+                    break;
+                }
+            }
+        }
         if (fighters[i].status != FIGHTER_DEAD)
             continue;
         RemoveMember(members, i);

@@ -128,6 +128,10 @@ BattleView::_MakeFigure(const std::string& image, int weapon, int x, int y,
     f.fallFrame = 0;
     f.damage = 0;
     f.damageTicks = 0;
+    f.reload = 0;
+    f.shotTicks = 0;
+    f.shotX = 0;
+    f.shotY = 0;
     return f;
 }
 
@@ -291,6 +295,18 @@ BattleView::SelectedStance() const
 }
 
 
+bool
+BattleView::SetSelectedMissile()
+{
+    if (fSelected < 0 || fFigures[size_t(fSelected)].member < 0
+            || fFigures[size_t(fSelected)].stats.status != FIGHTER_ACTIVE
+            || !CanShoot(fFigures[size_t(fSelected)].stats))
+        return false;
+    fFigures[size_t(fSelected)].stats.orders = STANCE_MISSILE;
+    return true;
+}
+
+
 void
 BattleView::SelectNext()
 {
@@ -362,6 +378,8 @@ BattleView::Tick()
     for (figure& f : fFigures) {
         if (f.damageTicks > 0)
             f.damageTicks--;
+        if (f.shotTicks > 0)
+            f.shotTicks--;
         if (f.stats.status != FIGHTER_ACTIVE) {
             if (f.fallFrame < f.death->CountFrames() - 1)
                 f.fallFrame++;
@@ -383,8 +401,11 @@ BattleView::Tick()
             const figure& foe = fFigures[size_t(f.orderTarget)];
             if (foe.stats.status != FIGHTER_ACTIVE) {
                 f.orderTarget = -1;
-            } else if (std::abs(foe.x - f.x) <= 1
-                    && std::abs(foe.y - f.y) <= 1) {
+            } else if ((std::abs(foe.x - f.x) <= 1
+                    && std::abs(foe.y - f.y) <= 1)
+                || (f.stats.orders == STANCE_MISSILE && CanShoot(f.stats)
+                    && std::max(std::abs(foe.x - f.x), std::abs(foe.y - f.y))
+                        <= MissileRange(f.stats, *fExe))) {
                 f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
                 f.path.clear();
                 f.frame = 0;
@@ -440,10 +461,11 @@ BattleView::_Hostile(const figure& a, const figure& b) const
 void
 BattleView::_Fight()
 {
+    const std::vector<bool> shot = _Shoot();
     for (size_t i = 0; i < fFigures.size(); i++) {
         figure& f = fFigures[i];
         f.target = -1;
-        if (f.stats.status != FIGHTER_ACTIVE || !f.path.empty())
+        if (shot[i] || f.stats.status != FIGHTER_ACTIVE || !f.path.empty())
             continue;
         // the foe it was sent against, once beside it, and no other
         if (f.orderTarget >= 0) {
@@ -496,6 +518,86 @@ BattleView::_Fight()
             }
         }
     }
+}
+
+
+// The foe a figure in the Use Missile order shoots at: the one it was
+// sent against if it is in range, else the nearest standing one in
+// range; -1 if none
+int
+BattleView::_ShotTarget(const figure& shooter) const
+{
+    const int range = MissileRange(shooter.stats, *fExe);
+    int best = -1;
+    int bestDistance = range + 1;
+    for (size_t j = 0; j < fFigures.size(); j++) {
+        const figure& foe = fFigures[j];
+        if (foe.stats.status != FIGHTER_ACTIVE || !_Hostile(shooter, foe))
+            continue;
+        const int distance = std::max(std::abs(foe.x - shooter.x),
+            std::abs(foe.y - shooter.y));
+        if (int(j) == shooter.orderTarget && distance <= range)
+            return int(j);
+        if (distance < bestDistance) {
+            best = int(j);
+            bestDistance = distance;
+        }
+    }
+    return best;
+}
+
+
+// Each standing member in the Use Missile order, not walking, with a
+// piece to shoot and a foe in range, shoots when it has reloaded. Provisional:
+// a bow or a thrown weapon every second combat step, a crossbow every
+// third, a gun every fourth (the game's pace is not decoded).
+std::vector<bool>
+BattleView::_Shoot()
+{
+    std::vector<bool> shot(fFigures.size(), false);
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        figure& f = fFigures[i];
+        if (f.member < 0 || f.stats.orders != STANCE_MISSILE
+                || f.stats.status != FIGHTER_ACTIVE || !f.path.empty()
+                || !CanShoot(f.stats))
+            continue;
+        const int target = _ShotTarget(f);
+        if (target < 0)
+            continue;
+        shot[i] = true;
+        if (f.reload > 0) {
+            f.reload--;
+            continue;
+        }
+        figure& foe = fFigures[size_t(target)];
+        const exe_weapon& weapon
+            = fExe->Weapons()[size_t(f.stats.missileType)];
+        f.reload = weapon.category == WEAPON_MISSILE_DEVICE
+            ? (weapon.range >= 180 ? 3 : 2)
+            : 1;
+        f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
+        const int distance = std::max(std::abs(foe.x - f.x),
+            std::abs(foe.y - f.y));
+        const strike blow = Shoot(f.stats, foe.stats, *fExe, distance,
+            fRandom);
+        f.strikeFrame = 1;
+        f.shotTicks = 3;
+        f.shotX = foe.x * kCellSize + kCellSize / 2;
+        f.shotY = foe.y * kCellSize + kCellSize / 2;
+        if (blow.result == STRIKE_HIT || blow.result == STRIKE_WEAK_HIT) {
+            TakeStrike(foe.stats, blow);
+            foe.damage = blow.endurance;
+            foe.damageTicks = 2 * kCombatTicks;
+            if (foe.stats.status != FIGHTER_ACTIVE) {
+                foe.path.clear();
+                foe.fallFrame = 0;
+            }
+        }
+        // the last piece: back to the standard attack
+        if (!CanShoot(f.stats))
+            f.stats.orders = STANCE_STANDARD;
+    }
+    return shot;
 }
 
 
@@ -780,11 +882,15 @@ BattleView::Run(GameWindow& window)
                 MENU_VULNERABLE, MENU_BERSERK, MENU_PARRY };
             for (menu_command stance : kStances)
                 fMenu->SetEnabled(stance, member);
+            fMenu->SetEnabled(MENU_USE_MISSILE, member
+                && CanShoot(fFigures[size_t(fSelected)].stats));
             const int stance = SelectedStance();
             fMenu->SetStance(!member ? MENU_NONE
                 : stance == STANCE_VULNERABLE ? MENU_VULNERABLE
                 : stance == STANCE_BERSERK ? MENU_BERSERK
-                : stance == STANCE_PARRY ? MENU_PARRY : MENU_STD_ATTACK);
+                : stance == STANCE_PARRY ? MENU_PARRY
+                : stance == STANCE_MISSILE ? MENU_USE_MISSILE
+                : MENU_STD_ATTACK);
         }
         const battle_outcome outcome = Outcome();
         if (dirty) {
@@ -831,6 +937,8 @@ BattleView::Run(GameWindow& window)
                     SetSelectedStance(STANCE_BERSERK);
                 else if (command == MENU_PARRY)
                     SetSelectedStance(STANCE_PARRY);
+                else if (command == MENU_USE_MISSILE)
+                    SetSelectedMissile();
                 else if (command == MENU_PAUSE)
                     MenuBar::Pause(window);
                 dirty = true;
@@ -957,6 +1065,14 @@ BattleView::Draw()
         }
         _DrawFigure(*f);
     }
+    // the shots in flight: a line to where they went
+    for (const figure& f : fFigures) {
+        if (f.shotTicks > 0) {
+            fBuffer->StrokeLine(f.x * kCellSize + kCellSize / 2 - fOrigin.x,
+                f.y * kCellSize + kCellSize / 2 - fOrigin.y,
+                f.shotX - fOrigin.x, f.shotY - fOrigin.y, kYellow + 7);
+        }
+    }
     // the foe the selected member was sent against: a red frame
     const int target = SelectedTarget();
     if (target >= 0 && fFigures[size_t(target)].stats.status == FIGHTER_ACTIVE) {
@@ -997,7 +1113,8 @@ BattleView::_DrawStatus()
             continue;
         const char letter = f.stats.orders == STANCE_VULNERABLE ? 'V'
             : f.stats.orders == STANCE_BERSERK ? 'B'
-            : f.stats.orders == STANCE_PARRY ? 'P' : 'S';
+            : f.stats.orders == STANCE_PARRY ? 'P'
+            : f.stats.orders == STANCE_MISSILE ? 'M' : 'S';
         std::string name = f.name;
         std::string text;
         for (;;) {
