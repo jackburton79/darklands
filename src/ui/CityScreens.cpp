@@ -991,13 +991,51 @@ static const screen_rules kDayScreens[] = {
     // 0x67, file 0xE3F7A): the employers' leads are quests, not
     // implemented; 1 and 2 need an event of kind 2 here (0E76:360C)
     { CityVisit::SCREEN_JOBS, "SPECI00", 0, NULL, {
-        TODO_IF(kNeedsJobRumor),			// a well-placed personage
+        DO_IF(ACTION_JOB_START, kNeedsJobRumor),	// a well-placed personage
         TODO_IF(kNeedsRebelsHere),			// an aristocrat, friend of
         TODO_IF(kNeedsRebelsHere),			// the ruler; people with a
                                             // grudge (0E76:360C(2, 0, here))
         HIDE,
         HIDE, HIDE, HIDE, HIDE, HIDE,		// "info 4." ... "info 8."
         GO(SCREEN_NEWS)						// nothing more to hear
+    } },
+    // the poster of the spiders' warehouse (state 0x168, file 0x17A374;
+    // $DPOST00, the other deck is not used): the cards' options are in
+    // card order, the placeholders of the cards before them included
+    { CityVisit::SCREEN_JOB_POSTER, "DPOST00", 0, NULL, {
+        DO(ACTION_NEWS_RETURN),				// not get involved
+        GO(SCREEN_JOB_HOUSE),				// pursue the matter
+        DO_IF(ACTION_JOB_ASK, kNeedsJobUnasked)	// ask the locals
+    } },
+    { CityVisit::SCREEN_JOB_HOUSE, "DPOST00", 1, NULL, { GO(SCREEN_JOB_WELCOME) } },
+    { CityVisit::SCREEN_JOB_WELCOME, "DPOST00", 5, NULL, { GO(SCREEN_JOB_PROPOSAL) } },
+    { CityVisit::SCREEN_JOB_PROPOSAL, "DPOST00", 6, NULL, {
+        HIDE, HIDE, HIDE,
+        GO(SCREEN_SQUARE),					// this is not a job for adventurers
+        GO(SCREEN_JOB_ACCEPTED)				// happy to help
+    } },
+    { CityVisit::SCREEN_JOB_ACCEPTED, "DPOST00", 7, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO(ACTION_JOB_ACCEPT),				// go to the warehouse
+        DO(ACTION_JOB_KEEP)					// keep the money
+    } },
+    { CityVisit::SCREEN_JOB_WAREHOUSE, "DPOST00", 8, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO_IF(ACTION_JOB_WAIT, kNeedsJobNight),	// wait until daytime
+        DO(ACTION_JOB_ENTER),
+        DO(ACTION_JOB_ABANDON)
+    } },
+    { CityVisit::SCREEN_JOB_LOCALS, "DPOST00", 3, NULL, { GO(SCREEN_JOB_POSTER) } },
+    { CityVisit::SCREEN_JOB_NOBODY, "DPOST00", 4, NULL, { GO(SCREEN_JOB_POSTER) } },
+    { CityVisit::SCREEN_JOB_SWEPT, "DPOST00", 9, NULL, { GO(SCREEN_SQUARE) } },
+    { CityVisit::SCREEN_JOB_SPIDERS, "DPOST00", 10, NULL, { DO(ACTION_JOB_FIGHT) } },
+    { CityVisit::SCREEN_JOB_DONE, "DPOST00", 11, NULL, { GO(SCREEN_SQUARE) } },
+    { CityVisit::SCREEN_JOB_WEBBED, "DPOST00", 12, NULL, { GO(SCREEN_SQUARE) } },
+    { CityVisit::SCREEN_JOB_FLED, "DPOST00", 13, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE, HIDE, HIDE,
+        DO_IF(ACTION_JOB_WAIT, kNeedsJobNight),
+        DO(ACTION_JOB_ENTER),
+        DO(ACTION_JOB_ABANDON)
     } },
     // the news of the world (the game's events and the locations'
     // state; see _Notices(), _Affairs(), _Gossip())
@@ -1487,6 +1525,8 @@ static const screen_rules kDayScreens[] = {
 // At night (see GameTime::IsNight()) these screens show other cards;
 // a NULL deck: the same as by day
 static const screen_rules kNightScreens[] = {
+    // the way to the house of the spiders' job in the dark
+    { CityVisit::SCREEN_JOB_HOUSE, "DPOST00", 2, NULL, { GO(SCREEN_JOB_WELCOME) } },
     // the university at night: locked up
     { CityVisit::SCREEN_UNIVERSITY, "UNIVE00", 1, NULL, {
         HIDE, HIDE, HIDE, HIDE, HIDE,

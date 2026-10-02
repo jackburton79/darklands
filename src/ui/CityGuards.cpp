@@ -213,6 +213,10 @@ CityVisit::ResolveBattle(int outcome)
         _Show(_ResolveBanditsBattle(outcome));
         return;
     }
+    if (fBattleKind == BATTLE_WITH_SPIDERS) {
+        _Show(_ResolveSpidersBattle(outcome));
+        return;
+    }
     if (fBattleKind == BATTLE_WITH_THIEVES) {
         _Show(_ResolveThievesBattle(outcome));
         return;

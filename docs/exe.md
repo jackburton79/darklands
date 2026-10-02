@@ -1837,11 +1837,38 @@ their content comes from the game's events. **verified** (code)
 - Reproduced in `CityVisit` with the game's events and the locations'
   state (a saved game's; a new game's are those of SAVES/DEFAULT): the
   menu, the notices, "elsewhere", the situation, one card after the
-  other, the special jobs' menu (the jobs are quests: not
-  implemented). Ended events count as gone (*inferred*: the game takes
+  other, the special jobs' menu (only the first job, the spiders'
+  warehouse, see below; the others are quests: not implemented). Ended events count as gone (*inferred*: the game takes
   them away as time passes); $Direction is from the city where the
   party is (*inferred*: DS:ED54 is not set by these handlers);
   $NearestCity is the city nearest to the event.
+
+- **The spiders' warehouse** (state 0x168, $DPOST00, overlay 0x86 with
+  1838:0000 at file 0x17A374; the first special job, option 0 of state
+  0x67, file 0xE3F7A: property 0x21 % 20 == 0 and not mark 0x65).
+  One state for the whole job, the card in DS:EE53 and the options by
+  position (the placeholders of the cards before count): $Number1 =
+  random(5) + 2 florins (DS:ED4C), $NamedOneName from the people seed + 12.
+  Card 0: leave (back to DS:E7D8); pursue (card 1, or 2 at night, card 5,
+  then card 6: leave to the square (states 9, 10), or accept: card 7); ask
+  the locals (card 4 if random(100) is over clamp(1, 99, 2 · the leader's
+  Speak Common − 10 by day), else card 3; the option is dim after it).
+  Card 7: *go* (1367:0130 pays the florins, mark 0x65 for 9999 hours,
+  card 8) or *keep the money* (the same pay and mark, the reputation
+  down by 20..40, Virtue −1 for all (0E76:02EA(−2, 9, −1)), the square).
+  Card 8 (and 13): *wait until daytime* (offered if it was night when the
+  job was taken): the time to hour 5 and two hours more, then one time in
+  four giant spiders; *enter now*: one time in two; else the small ones are
+  swept away (card 9: 0E76:0A72(−2, 0, random(10)) for all, as the file has
+  it, though the card speaks of bites; the square); *change your mind*:
+  the reputation down by 2..4, Virtue −1 for all, the square. The giant
+  spiders (card 10): 0E76:2278(0x13, ...): random(5) + 1 of enemy 0x39 at
+  variant 3 (after waiting) or 5; won, the reputation + 4, card 11; lost
+  (results 1, 2), the time to hour 5, the reputation − 2, card 12 (0E76:
+  2434, not decoded, wakes the members); fled (3, 4), the reputation − 4
+  and card 13. **verified** (code); the deck $DPOST01 (a moneylender's job)
+  is not named in the program. Reproduced in `CityJobs.cpp`; which of the
+  game's results is a retreat and which a defeat is *inferred*.
 
 ## Time and travel
 

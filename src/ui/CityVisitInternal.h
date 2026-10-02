@@ -256,7 +256,15 @@ enum option_action {
     ACTION_FROM_PRIEST,
     ACTION_NIGHT_WALK,			// ACTION_GO, but the watch may stop the
                                 // party outside the game's day
-    ACTION_TO_GROVE				// the streets' way to the grove
+    ACTION_TO_GROVE,			// the streets' way to the grove
+    ACTION_JOB_START,			// the special jobs' first rumor
+    ACTION_JOB_ASK,				// the spiders' job: ask the locals
+    ACTION_JOB_ACCEPT,			// take the advance and go
+    ACTION_JOB_KEEP,			// keep the money
+    ACTION_JOB_WAIT,			// wait for daytime, then enter
+    ACTION_JOB_ENTER,			// enter now
+    ACTION_JOB_ABANDON,			// change one's mind
+    ACTION_JOB_FIGHT			// the giant spiders
 };
 
 // Options that need the city to have something: a place slot, a harbor
@@ -393,6 +401,9 @@ static const int kNeedsUniversity	= -67;
 static const int kNeedsLibraryMoney	= -68;
 static const int kNeedsFormulaTrade	= -69;
 static const int kNeedsAlchemistTeach = -70;
+// or the spiders' job: the locals not asked yet, accepted at night
+static const int kNeedsJobUnasked	= -71;
+static const int kNeedsJobNight		= -72;
 static const int kMarkUniversity	= 0x4E;	// + (option << 8): 168 hours
 static const int kMarkFormulaTrade	= 0x62;	// 60 hours
 static const int kMarkCampSafe		= 0x60;	// 168 hours without danger

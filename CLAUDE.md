@@ -108,7 +108,7 @@ include path: include headers by name (`#include "CityFile.h"`).
   physician, alchemist), `CityGate` (night market, gate, walls),
   `CityGuards` (the watch, guards, chases), `CityPrison` (dungeon,
   court, execution, the priest), `CityWorld` (news, events, places),
-  `CityQuests` (the banks' tasks, the robber knight's tower), `CityLord`
+  `CityQuests` (the banks' tasks, the robber knight's tower), `CityJobs` (the special jobs: the spiders' warehouse), `CityLord`
   (the audience at the fortress and the town hall) and `CityParty` (the
   party's composition: members who retire) `CitySanctuary` and `CityCathedral` and
   `CityEncounters` (the slum, thieves, the grove, the bandits of the map; `CityMeetings`, the other meetings of the map, `CityWeather`, a blizzard, a peat bog and a flood, `CityBeasts`, wolves and boars, `CityLearning`, the university, the library and the formulae: `MapViewer` rolls the hazard, `Encounters.h` is the chooser, `Game` runs `CityVisit` from `SCREEN_BANDITS_MEET` / `SCREEN_THIEVES_MAP_MEET`). A new screen goes in

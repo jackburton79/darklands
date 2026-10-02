@@ -621,6 +621,19 @@ public:
         SCREEN_CATHEDRAL_NIGHT_MASS,
         SCREEN_CATHEDRAL_NIGHT_PRELATE,
         SCREEN_CATHEDRAL_NIGHT_RELIC,
+        SCREEN_JOB_POSTER,		// $DPOST00: the poster of the special jobs
+        SCREEN_JOB_HOUSE,		// (0), the way to the house (1, night 2),
+        SCREEN_JOB_WELCOME,		// the host (5), his proposal (6), the
+        SCREEN_JOB_PROPOSAL,	// advance (7), the warehouse (8)
+        SCREEN_JOB_ACCEPTED,
+        SCREEN_JOB_WAREHOUSE,
+        SCREEN_JOB_LOCALS,		// the locals' answer (3, 4)
+        SCREEN_JOB_NOBODY,
+        SCREEN_JOB_SWEPT,		// the spiders swept away (9), the giant
+        SCREEN_JOB_SPIDERS,		// ones (10), the fight won (11), lost
+        SCREEN_JOB_DONE,		// (12), or fled from (13)
+        SCREEN_JOB_WEBBED,
+        SCREEN_JOB_FLED,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -1084,6 +1097,15 @@ private:
     void			_FriarCurse();
     void			_FriarPenalties();
     void			_FightFriar();
+    // The spiders' warehouse (DARKLAND.EXE, state 0x168)
+    int				_JobStart();
+    int				_JobAsk();
+    int				_JobAccept(bool keep);
+    int				_JobEnter(bool wait);
+    int				_JobAbandon();
+    void			_FightSpiders();
+    int				_ResolveSpidersBattle(int outcome);
+    void			_JobVariables();
     int				_ResolveFriarBattle(int outcome);
     int				_FriarSaint(int saint);
     int				_MeetCaravan();
@@ -1201,7 +1223,8 @@ private:
         BATTLE_WITH_WOLVES,
         BATTLE_WITH_BOARS,
         BATTLE_AT_CAMP,
-        BATTLE_AT_SANCTUARY
+        BATTLE_AT_SANCTUARY,
+        BATTLE_WITH_SPIDERS
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -1284,6 +1307,10 @@ private:
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall
+    int				fJobFlorins;	// the spiders' job: the pay ($Number1)
+    bool			fJobNight;		// accepted at night
+    bool			fJobAsked;		// the locals asked
+    int				fJobVariant;	// the spiders' variant
     int				fMonastery;		// its card shown on arrival
     int				fMonkAnswer;	// the screen after "the monk inquires"
     int				fThanksReturn;	// the patron's screen after $RAUBI01

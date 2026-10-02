@@ -142,6 +142,10 @@ CityVisit::CityVisit(GameData& data)
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
+    fJobFlorins(0),
+    fJobNight(false),
+    fJobAsked(false),
+    fJobVariant(3),
     fMonastery(SCREEN_MONASTERY),
     fMonkAnswer(SCREEN_MONASTERY),
     fThanksReturn(SCREEN_FUGGER),
@@ -928,6 +932,26 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_CAMPB_FIGHT:
             _FightAtCamp(false);
+            return true;
+        case ACTION_JOB_START:
+            _Show(_JobStart());
+            return true;
+        case ACTION_JOB_ASK:
+            _Show(_JobAsk());
+            return true;
+        case ACTION_JOB_ACCEPT:
+        case ACTION_JOB_KEEP:
+            _Show(_JobAccept(rule.action == ACTION_JOB_KEEP));
+            return true;
+        case ACTION_JOB_WAIT:
+        case ACTION_JOB_ENTER:
+            _Show(_JobEnter(rule.action == ACTION_JOB_WAIT));
+            return true;
+        case ACTION_JOB_ABANDON:
+            _Show(_JobAbandon());
+            return true;
+        case ACTION_JOB_FIGHT:
+            _FightSpiders();
             return true;
         case ACTION_FRIAR_PAY:
             _PayMeetingMoney();
@@ -1751,6 +1775,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = !_EventHere(2);
         } else if (rule.needs == kNeedsRebelsHere) {
             hide = !_EventHere(2, 0);
+        } else if (rule.needs == kNeedsJobUnasked) {
+            hide = fJobAsked;
+        } else if (rule.needs == kNeedsJobNight) {
+            hide = !fJobNight;
         } else if (rule.needs == kNeedsJobRumor) {
             hide = int16(_PeopleSeed()) % 20 != 0 || _Marked(0x65);
         } else if (rule.needs == kNeedsInnerWall) {
