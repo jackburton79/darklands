@@ -10,6 +10,7 @@
 #include "ImcFile.h"
 #include "ImgFile.h"
 #include "MenuBar.h"
+#include "Palette.h"
 #include "ListFile.h"
 #include "ScreenSupport.h"
 #include "Stream.h"
@@ -71,6 +72,8 @@ BattleView::BattleView(GameData& data)
     fTicks(0),
     fEnemiesActive(true),
     fOrigin(0, 0),
+    fMouse(0, 0),
+    fCursorVisible(false),
     fPlace(PLACE_WILDERNESS)
 {
     fBuffer->SetColors(fPalette.colors, 0, 256);
@@ -820,6 +823,11 @@ BattleView::Run(GameWindow& window)
             case SDL_QUIT:
                 SDL_PushEvent(&event);	// for the screen below, which quits
                 return outcome != BATTLE_GOING_ON ? outcome : BATTLE_LEFT;
+            case SDL_MOUSEMOTION:
+                fMouse = GameWindow::ToScreen(event.motion.x, event.motion.y);
+                fCursorVisible = true;
+                dirty = true;
+                break;
             case SDL_MOUSEBUTTONUP:
                 if (outcome != BATTLE_GOING_ON)
                     return outcome;
@@ -865,6 +873,8 @@ BattleView::Run(GameWindow& window)
                 dirty = true;
                 break;
             case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_LEAVE)
+                    fCursorVisible = false;
                 dirty = true;
                 break;
         }
@@ -933,6 +943,11 @@ BattleView::Draw()
             foe.y * kCellSize - fOrigin.y, kCellSize, kCellSize), kRed + 7);
     }
     _DrawStatus();
+    if (fCursorVisible) {
+        // libjgame hides the system cursor
+        DrawMouseCursor(fBuffer, fMouse, NearestColor(fPalette, 0, 0, 0),
+            NearestColor(fPalette, 255, 255, 255));
+    }
     return fBuffer;
 }
 

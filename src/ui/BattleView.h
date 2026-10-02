@@ -199,5 +199,7 @@ private:
     bool			fEnemiesActive;
     std::unique_ptr<BattleMap> fMap;
     GFX::point		fOrigin;		// top left, in pixels
+    GFX::point		fMouse;			// the cursor drawn by Draw()
+    bool			fCursorVisible;
     place			fPlace;
 };
