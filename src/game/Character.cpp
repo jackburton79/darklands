@@ -366,3 +366,14 @@ FormulaVersions(const character& member, int formula)
         return 0;
     return member.record[offset] & 7;
 }
+
+
+void
+LearnFormula(character& member, int formula, int versionBit)
+{
+    if (formula < 0 || formula >= kFormulaCount)
+        return;
+    if (member.record.size() != kCharacterRecordSize)
+        member.record.resize(kCharacterRecordSize, 0);
+    member.record[0x94 + size_t(formula)] |= uint8(versionBit & 7);
+}

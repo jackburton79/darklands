@@ -100,6 +100,8 @@ struct party {
 // authors' versions (1, 2, 4); 0 for a character without a record
 static const int kFormulaCount = 22;
 int FormulaVersions(const character& member, int formula);
+// The member learns a version (bit 1, 2 or 4) of a formula
+void LearnFormula(character& member, int formula, int versionBit);
 
 // The party's strength, 1..10 (09C0:1C1B = 1462:0470 of overlay 0x27, file
 // 0x80E10): the best missile skill (skills 4..6) of the members + their

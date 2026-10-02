@@ -297,12 +297,43 @@ static const screen_rules kDayScreens[] = {
     // 0x36, file 0xB97B2; the cards $MONAS00, $MONAS01 are never used)
     { CityVisit::SCREEN_MONASTERY, "CITYM00", 0, NULL, MONASTERY_OPTIONS },
     // "At the $university... the snobbish staff prefers to speak Latin"
+    // (state 0x31, file 0xB59EC): saints (the library), formulae, the
+    // stone, rare materials, a teacher
     { CityVisit::SCREEN_UNIVERSITY, "UNIVE00", 0, NULL, {
-        TODO, TODO, TODO, TODO, TODO,		// saints, formulae, stone...
-        TODO, TODO, TODO,					// placeholders
+        { ACTION_UNIVERSITY, 0, kNeedsUniversity, 0 },
+        { ACTION_UNIVERSITY, 1, kNeedsUniversity, 0 },
+        { ACTION_UNIVERSITY, 2, kNeedsUniversity, 0 },
+        { ACTION_UNIVERSITY, 3, kNeedsUniversity, 0 },
+        { ACTION_UNIVERSITY, 4, kNeedsUniversity, 0 },
+        HIDE, HIDE, HIDE,					// placeholders
         GO(SCREEN_MAIN_STREET),
         GO(SCREEN_SIDE_STREET)
     } },
+    { CityVisit::SCREEN_UNIVERSITY_LOST, "UNIVE00", 2, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_LIBRARY, "UNIVE00", 3, NULL, { GO(SCREEN_LIBRARY) } },
+    { CityVisit::SCREEN_UNIVERSITY_PROFESSORS, "UNIVE00", 4, NULL, { GO(SCREEN_FORMULAS) } },
+    { CityVisit::SCREEN_UNIVERSITY_NO_PROFESSORS, "UNIVE00", 5, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_STONE, "UNIVE00", 6, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_NO_STONE, "UNIVE00", 7, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_SHOP, "UNIVE00", 8, NULL, { DO(ACTION_UNIVERSITY_SHOP) } },
+    { CityVisit::SCREEN_UNIVERSITY_NO_SHOP, "UNIVE00", 9, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_TEACHERS, "UNIVE00", 10, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_UNIVERSITY_NO_TEACHERS, "UNIVE00", 11, NULL, { DO(ACTION_MEET_BACK) } },
+    // "...a gift of $Money1... donate $Money1, select the saint you will
+    // study, and the person who will benefit" (state 0x39, file 0xBC3C8)
+    { CityVisit::SCREEN_LIBRARY, "LEARN00", 0, NULL, {
+        DO_IF(ACTION_LIBRARY_LIST, kNeedsLibraryMoney),
+        DO(ACTION_LIBRARY_LEAVE)
+    } },
+    // the formulae for sale (state 0x53, file 0xD3298)
+    { CityVisit::SCREEN_FORMULAS, "ALCHE01", 0, NULL, {
+        DO(ACTION_FORMULA_LIST),
+        HIDE, HIDE,							// placeholders
+        DO(ACTION_FORMULAS_BACK),			// talk about other things
+        DO(ACTION_FORMULAS_LEAVE)
+    } },
+    { CityVisit::SCREEN_FORMULAS_POOR, "ALCHE01", 1, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_FORMULAS_KNOWN, "ALCHE01", 2, NULL, { DO(ACTION_MEET_BACK) } },
     // "The entrance... of the $councilHall for $PlaceName is well guarded."
     // (state 0x2B, file 0xB1A98: the weapons training is never offered)
     { CityVisit::SCREEN_TOWN_HALL, "COUNC00", 0, NULL, {
@@ -635,10 +666,10 @@ static const screen_rules kDayScreens[] = {
 #define ALCHEMIST_OPTIONS { \
         DO_IF(ACTION_STONE, kNeedsStone),	/* a better stone for $Money1 */ \
         DO(ACTION_ALCHEMIST_SHOP),			/* purchasing $Text4 */ \
-        TODO_IF(kNeedsMaster),				/* purchasing formulas */ \
-        TODO,								/* trading formulas */ \
-        TODO,								/* instruction in alchemy */ \
-        TODO,								/* special tasks */ \
+        DO_IF(ACTION_ALCHEMIST_FORMULAS, kNeedsMaster),	/* formulae */ \
+        DO_IF(ACTION_ALCHEMIST_TRADE, kNeedsFormulaTrade),	/* trading them */ \
+        DO_IF(ACTION_ALCHEMIST_TEACH, kNeedsAlchemistTeach),	/* lessons */ \
+        DO(ACTION_NOTHING),					/* special tasks: no code */ \
         HIDE, HIDE, HIDE,					/* placeholders */ \
         GO(SCREEN_CRAFTS)					/* trivialities, then leave */ \
     }
@@ -652,6 +683,9 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_ALCHEMIST_ANGRY, "ALCHE00", 6, NULL, { GO(SCREEN_CRAFTS) } },
     // "...your abilities are beyond my own", "...improve your
     // philosopher's stone to quality $Number1"
+    { CityVisit::SCREEN_ALCHEMIST_TEACH, "ALCHE00", 8, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
+    { CityVisit::SCREEN_ALCHEMIST_TRADE, "ALCHE00", 11, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
+    { CityVisit::SCREEN_ALCHEMIST_NO_TRADE, "ALCHE00", 12, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
     { CityVisit::SCREEN_STONE_BEYOND, "ALCHE00", 5, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
     { CityVisit::SCREEN_STONE_IMPROVED, "ALCHE00", 7, NULL, { GO(SCREEN_ALCHEMIST_AGAIN) } },
     // "Among the dark townhouses... he peers at you through a crack in
@@ -1453,6 +1487,13 @@ static const screen_rules kDayScreens[] = {
 // At night (see GameTime::IsNight()) these screens show other cards;
 // a NULL deck: the same as by day
 static const screen_rules kNightScreens[] = {
+    // the university at night: locked up
+    { CityVisit::SCREEN_UNIVERSITY, "UNIVE00", 1, NULL, {
+        HIDE, HIDE, HIDE, HIDE, HIDE,
+        HIDE, HIDE, HIDE,
+        GO(SCREEN_MAIN_STREET),
+        GO(SCREEN_SIDE_STREET)
+    } },
     // wolves in the night: card 1
     { CityVisit::SCREEN_WOLVES, "MEETW00", 1, NULL, {
         DO(ACTION_WOLVES_LORE),

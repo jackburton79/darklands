@@ -130,6 +130,15 @@ CityVisit::CityVisit(GameData& data)
     fBogFailed(),
     fFloodRope(false),
     fBattleLeaves(false),
+    fUniversityOff(),
+    fLibraryReturn(SCREEN_CHURCHES),
+    fLibrarySaints(),
+    fFormulaCaller(SCREEN_UNIVERSITY),
+    fFormulaLeave(SCREEN_UNIVERSITY),
+    fFormulaIds(),
+    fAlchemistTaught(false),
+    fChoosingLearn(0),
+    fLearnItem(-1),
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
@@ -348,6 +357,29 @@ CityVisit::Choose(int option)
         if (fPreviousScreen < 0)
             return false;				// a place not implemented: away
         _Show(fPreviousScreen, false);
+        return true;
+    }
+    if (fChoosingLearn != 0) {
+        // the library's or the formulae's list: a member and one of the
+        // four, or none (the last line)
+        const int kind = fChoosingLearn;
+        const bool choosingItem = fLearnItem < 0;
+        if (option < 0 || option >= int(fSaintChoices.size())) {
+            _Show(fScreen, false);
+            return true;
+        }
+        const std::pair<int, int> choice = fSaintChoices[size_t(option)];
+        if (choosingItem) {
+            // the saint or the formula; then who
+            fLearnItem = choice.second;
+            _ShowLearnList();
+            return true;
+        }
+        const int item = fLearnItem;
+        fChoosingLearn = 0;
+        fLearnItem = -1;
+        _Show(kind == 1 ? _LibraryStudy(choice.first, item)
+            : _FormulaBuy(choice.first, item));
         return true;
     }
     if (fChoosingSaint) {
@@ -719,6 +751,38 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_PILGRIMS_ARRIVE:
             _Show(_PilgrimsArrive());
+            return true;
+        case ACTION_UNIVERSITY:
+            _Show(_University(rule.target));
+            return true;
+        case ACTION_UNIVERSITY_SHOP:
+            fPendingTrade = MERCHANT_UNIVERSITY;
+            _Show(SCREEN_UNIVERSITY);
+            return true;
+        case ACTION_LIBRARY_LIST:
+        case ACTION_FORMULA_LIST:
+            fChoosingLearn = rule.action == ACTION_LIBRARY_LIST ? 1 : 2;
+            _ShowLearnList();
+            return true;
+        case ACTION_LIBRARY_LEAVE:
+            _Show(_LibraryLeave());
+            return true;
+        case ACTION_FORMULAS_BACK:
+            _Show(_FormulasBack());
+            return true;
+        case ACTION_FORMULAS_LEAVE:
+            _Show(_FormulasLeave());
+            return true;
+        case ACTION_ALCHEMIST_FORMULAS:
+            _Show(_AlchemistFormulas());
+            return true;
+        case ACTION_ALCHEMIST_TRADE:
+            _Show(_AlchemistTrade());
+            return true;
+        case ACTION_ALCHEMIST_TEACH:
+            _Show(_AlchemistTeach());
+            return true;
+        case ACTION_NOTHING:
             return true;
         case ACTION_BLIZZARD_ONWARD:
             _Show(_BlizzardOnward());
@@ -1256,6 +1320,8 @@ CityVisit::_Show(int screen, bool withScene)
     const int previous = fScreen;
     fScreen = screen;
     fChoosingSaint = false;
+    fChoosingLearn = 0;
+    fLearnItem = -1;
     fNight = fClock != NULL && fClock->IsNight();
     if (fClock != NULL) {
         fVariables["CurrentBell"] = fClock->BellName();
@@ -1285,7 +1351,13 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetBog();
     else if (screen == SCREEN_FLOOD_MEET)
         screen = _MeetFlood();
-    else if (screen == SCREEN_WOLVES_MEET)
+    if (screen == SCREEN_UNIVERSITY)
+        _EnterUniversity(previous);
+    else if (screen == SCREEN_LIBRARY)
+        _EnterLibrary();
+    else if (screen == SCREEN_FORMULAS)
+        _EnterFormulas();
+    if (screen == SCREEN_WOLVES_MEET)
         screen = _MeetWolves();
     else if (screen == SCREEN_BOARS_MEET)
         screen = _MeetBoars();
@@ -1387,8 +1459,10 @@ CityVisit::_Show(int screen, bool withScene)
         // best Alchemy, at least 10
         const bool found = int((fSeed + fCity) % 30)
             < std::max(10, std::min(_BestSkill(kSkillAlchemy), 99));
-        if (screen == SCREEN_ALCHEMIST)
+        if (screen == SCREEN_ALCHEMIST) {
             fStoneOffered = false;
+            fAlchemistTaught = false;
+        }
         if (angry != fAlchemistAngryUntil.end() && now < angry->second)
             screen = SCREEN_ALCHEMIST_ANGRY;
         else if (!found)
@@ -1637,6 +1711,17 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fBogFailed[rule.target];
         } else if (rule.needs == kNeedsRaft) {
             hide = !fFloodRope;
+        } else if (rule.needs == kNeedsUniversity) {
+            hide = fUniversityOff[rule.target]
+                || _Marked(kMarkUniversity | (rule.target << 8))
+                || (rule.target == 2 && (fParty == NULL
+                    || TotalPfennigs(fParty->cash) < fMeetMoney));
+        } else if (rule.needs == kNeedsLibraryMoney) {
+            hide = fParty == NULL || TotalPfennigs(fParty->cash) < fMeetMoney;
+        } else if (rule.needs == kNeedsFormulaTrade) {
+            hide = _Marked(kMarkFormulaTrade);
+        } else if (rule.needs == kNeedsAlchemistTeach) {
+            hide = fAlchemistTaught;
         } else if (rule.needs == kNeedsMemberHere) {
             hide = fParty == NULL || size_t(rule.target) >= fParty->members.size();
         } else if (rule.needs == kNeedsSaint) {

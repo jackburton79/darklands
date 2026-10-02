@@ -220,6 +220,17 @@ enum option_action {
     ACTION_BOARS_DODGE,			// wild boars: dodge, a ride, the fight
     ACTION_BOARS_RIDE,
     ACTION_BOARS_BATTLE,
+    ACTION_UNIVERSITY,			// the university: option `target`
+    ACTION_UNIVERSITY_SHOP,		// its rare components
+    ACTION_LIBRARY_LIST,		// the library: the list of saints to study
+    ACTION_LIBRARY_LEAVE,
+    ACTION_FORMULA_LIST,		// formulae for sale: the list
+    ACTION_FORMULAS_BACK,
+    ACTION_FORMULAS_LEAVE,
+    ACTION_ALCHEMIST_FORMULAS,	// the alchemist: formulae, a trade, lessons
+    ACTION_ALCHEMIST_TRADE,
+    ACTION_ALCHEMIST_TEACH,
+    ACTION_NOTHING,				// nothing happens (his special tasks)
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
@@ -376,6 +387,14 @@ static const int kNeedsCampIgnore	= -64;
 // not yet failed, the flood's raft (needs a rope)
 static const int kNeedsBogOption	= -65;
 static const int kNeedsRaft			= -66;
+// the university's options (`target`), the library's saints (the purse
+// covers the gift), a formula trade not yet tried, instruction not yet asked
+static const int kNeedsUniversity	= -67;
+static const int kNeedsLibraryMoney	= -68;
+static const int kNeedsFormulaTrade	= -69;
+static const int kNeedsAlchemistTeach = -70;
+static const int kMarkUniversity	= 0x4E;	// + (option << 8): 168 hours
+static const int kMarkFormulaTrade	= 0x62;	// 60 hours
 static const int kMarkCampSafe		= 0x60;	// 168 hours without danger
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 

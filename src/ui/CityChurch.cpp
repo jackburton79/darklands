@@ -248,7 +248,8 @@ CityVisit::_AskLibrary()
         fClock->AddHours(1);
     if (int(fRandom() % 100) <= chance) {
         _Mark(kMarkLibrary, 1440);
-        fMonkAnswer = SCREEN_NOT_IMPLEMENTED;
+        fLibraryReturn = SCREEN_CHURCHES;
+        fMonkAnswer = SCREEN_LIBRARY;
         return SCREEN_MONKS_INQUIRE;
     }
     _Mark(kMarkLibrary, 720);

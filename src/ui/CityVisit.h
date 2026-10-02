@@ -521,6 +521,23 @@ public:
         SCREEN_BOARS_NONE,
         SCREEN_BOARS_ONE,
         SCREEN_BOARS_SEVERAL,
+        SCREEN_UNIVERSITY_LOST,	// $UNIVE00 cards 2 (nothing found), 3 (the
+        SCREEN_UNIVERSITY_LIBRARY,	// library), 4 and 5 (the professors:
+        SCREEN_UNIVERSITY_PROFESSORS,	// formulae), 6 and 7 (the stone), 8
+        SCREEN_UNIVERSITY_NO_PROFESSORS,	// and 9 (materials), 10 and 11
+        SCREEN_UNIVERSITY_STONE,	// (a teacher)
+        SCREEN_UNIVERSITY_NO_STONE,
+        SCREEN_UNIVERSITY_SHOP,
+        SCREEN_UNIVERSITY_NO_SHOP,
+        SCREEN_UNIVERSITY_TEACHERS,
+        SCREEN_UNIVERSITY_NO_TEACHERS,
+        SCREEN_LIBRARY,			// $LEARN00 (state 0x39): the saints' books
+        SCREEN_FORMULAS,		// $ALCHE01 (state 0x53): formulae for sale
+        SCREEN_FORMULAS_POOR,	// (1: no money, 2: already known)
+        SCREEN_FORMULAS_KNOWN,
+        SCREEN_ALCHEMIST_TEACH,	// $ALCHE00 cards 8 (instruction), 11 (a
+        SCREEN_ALCHEMIST_TRADE,	// formula traded), 12 (nothing to trade)
+        SCREEN_ALCHEMIST_NO_TRADE,
         SCREEN_CAMPB_FLED,
         SCREEN_CAMPB_BEATEN,
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
@@ -1014,6 +1031,23 @@ private:
     int				_MeetFlood();
     int				_FloodSearch();
     int				_FloodRaft();
+    // The university, the library and the formulae (CityLearning.cpp)
+    void			_EnterUniversity(int previous);
+    int				_UniversityChance(int option) const;
+    int				_University(int option);
+    void			_EnterLibrary();
+    void			_ShowLearnList();
+    int				_LibraryStudy(int member, int index);
+    int				_LibraryLeave();
+    void			_EnterFormulas();
+    uint32			_FormulaPrice(int slot) const;
+    int				_FormulaBuy(int member, int slot);
+    int				_FormulasBack();
+    int				_FormulasLeave();
+    int				_AlchemistFormulas();
+    int				_AlchemistTrade();
+    int				_AlchemistTeach();
+    int				_AlchemistOffended();
     // The animals of the map (CityBeasts.cpp)
     void			_Wound(int member, int minStrength, int minEndurance,
                         int amount);
@@ -1238,6 +1272,15 @@ private:
     bool			fBogFailed[3];	// the rope, by hand, the possessions
     bool			fFloodRope;		// the party carries a rope
     bool			fBattleLeaves;	// the party left a battle: the map
+    bool			fUniversityOff[5];	// the options tried this visit
+    int				fLibraryReturn;	// where the library leads back to
+    int				fLibrarySaints[4];	// the saints to study here
+    int				fFormulaCaller;	// the screen the formulae lead back to
+    int				fFormulaLeave;	// and where leaving them goes
+    int				fFormulaIds[4];	// the formulae for sale
+    bool			fAlchemistTaught;	// he offered instruction this visit
+    int				fChoosingLearn;	// a list: 1 the library, 2 formulae
+    int				fLearnItem;		// the saint or formula chosen, or -1
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall

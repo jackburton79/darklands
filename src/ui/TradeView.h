@@ -48,6 +48,7 @@ enum merchant_kind {
     MERCHANT_ALCHEMIST,		// potions,
     MERCHANT_ALCHEMIST_COMPONENTS,	// or components from a lesser one
     MERCHANT_ARMS_OUTFITTER,	// Soldier's Road
+    MERCHANT_UNIVERSITY,	// rare alchemical components
     MERCHANT_COUNT
 };
 

@@ -118,7 +118,9 @@ screen, sound, the other quests, and many places' options (they say
 - [x] The Fugger and Medici banks: letters of credit
 - [x] The physician: his skill, treating wounds, alchemical components
 - [x] The alchemist's shop: a better philosopher's stone, potions and
-      components
+      components, formulae (buying and trading), lessons
+- [x] The university: the library of the saints, formulae, the stone, rare
+      materials and teachers
 - [x] The market at night (sneaking, bribing) and the night watch
       (fines, running away)
 - [x] Arriving at a city: the walls, the gate by day and at night

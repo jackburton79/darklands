@@ -1431,7 +1431,69 @@ city's property 0x21 (its number + the seed global).
 - **Purchasing** (file 0xDA0CA): the trade screen ("Alchemist", type
   −1), potions (mask 0x800) if his skill without the bonus is over 24,
   else components (0x400).
-- Not reproduced: the formulas, their trade, the instruction, the tasks.
+- **Purchasing formulas** (file 0xDA166, only with a skill of 25 or
+  more): offended (card 6, the mark 0x44) if the chance fails, else state
+  0x53 (below) and the crafts afterwards.
+- **Trading formulas** (file 0xDA1BC): mark 0x62 for 60 hours (the option is
+  closed while it runs); offended if the chance fails. He offers one if
+  P % 5 is 0 or P % 50 + 30 is under the best Alchemy (card 11, else card
+  12): from a start of random(330) % 66, the first version (66: 22
+  formulae by three) whose formula the leader ([DS:907B]) knows no version of
+  (the loop runs on while he knows one, and stops where it began), which
+  he learns without giving one up. **verified** (code)
+- **Instruction** (file 0xDA32C): offended if the chance fails; else a
+  teacher of Alchemy for a week (0E76:2C4E, category 0x28), of his
+  skill, for skill / 4 + 12 pfennigs a day ($Money2), card 8.
+- **Special tasks** (file 0xDA462): the handler is a bare `retf`, nothing
+  happens; cards 4, 9 and 10 of $ALCHE00 are never shown.
+
+## The university
+
+State 0x31 ($UNIVE00, file 0xB59EC; the university is a place of the city:
+by the square and the market at night too). **verified** (code); see
+`CityLearning.cpp`. Outside the game's day card 1 and no option but the
+streets. $Number1 is (P + 7) & 15 + 14 and $Money1 the city size · $Number1
+· 4 groschen. The marks of kind 0x4E (a sub-kind for each option) close an
+option for a week after a failure; the visit's own flags (DS:EE76..EE7E)
+are set again each time the state is entered (not while the cards of a
+failure are shown). Each option, if random(100) is at most its chance: an
+hour passes and the option works; else two hours, the mark (the formulae's
+failure marks the saints' option, a slip of the original), the reputation
+may fall by 1 (0E76:19D0(-1, -1)), and card 2, 5, 7, 9 or 11.
+
+- **Chances** (files 0xB5DEC...): (the fame / 200 + 20 + terms) / 4,
+  0..99 (the fame term is 0E76:1326(4) / 10). Saints: the party's best
+  Religion, Intelligence, Perception and Speak Latin. The others: the
+  leader's Speak Latin, Perception and Intelligence + the best Alchemy.
+- **Saints** (file 0xB5D0A): card 3, then state 0x39 (below), back here.
+- **Formulae** (file 0xB5E74): card 4, then state 0x53 (below), back here.
+- **The stone** (file 0xB5FDC; not offered to a purse under $Money1): if
+  the party's stone is under $Number1, it becomes $Number1, $Money1 is
+  paid, card 6; else card 7. The option is closed for the visit either
+  way.
+- **Rare materials** (file 0xB6156): card 8, then the trade screen,
+  0E76:21AA(-1, "University", 0x400, 0): components.
+- **A teacher** (file 0xB62C4): card 10; five teachers (0E76:2C4E, category
+  0x28; Alchemy 90, Religion 70, Speak Latin 50, Read & Write 50, skill 13
+  110 pfennigs a day; level (P % 15) + 45) for 168 hours, who give the
+  lessons at the inn.
+- **The library** (state 0x39, $LEARN00, file 0xBC3C8; the monastery's
+  library leads here too): $Money1 is (the purse / 30 + 12, at most 240) /
+  12 groschen; four saints, random(135) of the C library's generator
+  (seed · 214013 + 2531011, bits 16..30) seeded with the seed global + the
+  location, so always the same ones in a city. The gift is paid (not
+  offered to a purse under it), the day goes on until six in the evening
+  (1367:0716(18)) and the member knows the saint; declining takes an hour.
+  The game's list of saints and members is not decoded; the program asks
+  for the saint, then for the member.
+- **Formulae for sale** (state 0x53, $ALCHE01, file 0xD3298; also the
+  alchemist's): four, the version number (P + 0x64 + 3 · k) % 22 for
+  k = 0..3, the price 10 · (number % 3 + 1) / the city's size florins; the
+  buyer learns version number % 3 (bit 1, 2, 4) of the formula number / 3
+  (the first eight formulae only). Without the money card 1, a version he
+  knows card 2. "Talk about other things" takes an hour and leads back to
+  where he came from (DS:A88D), leaving takes an hour and leads to DS:E7D8
+  (the crafts for the alchemist, the university). **verified** (code)
 
 ## The inn's cache
 
@@ -2311,7 +2373,7 @@ are never loaded (no "$Monas" string in the executable). **verified**
     and gives that (the fields 11, 12 of its table: Latin and reading
     seem meant), + the reputation / 2 when negative, + 25 after
     prayers (mark 0x30), within 0..99, 100 from 75 up. Success: card 4,
-    an hour, mark 0x34 for 1440 hours, state 0x39 ($LEARN00?) and then
+    an hour, mark 0x34 for 1440 hours, state 0x39 ($LEARN00, see "The university") and then
     the churches; failure: an hour, mark 0x34 for 720 hours, card 4 and
     card 7 ("too busy": no prayers paid for) or card 16;
   - *healing* (file 0xBA074): card 4, an hour; the chance (file 0xBA1C6)
