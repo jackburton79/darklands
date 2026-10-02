@@ -134,7 +134,7 @@ CityVisit::_RunBattle(GameWindow& window)
     if (outcome == BATTLE_WON) {
         fLoot = view.Loot();
         fTrade.SetPlace(fCity, _Reputation());
-        fTrade.SetLoot(&fLoot, money{ 0, 0, 0 });
+        fTrade.SetLoot(&fLoot, view.LootCash());
         fTrade.Run(window);
         fLoot.clear();
     }

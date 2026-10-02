@@ -636,6 +636,28 @@ ItemOfType(const ListFile& lists, int type)
 }
 
 
+// The game (file 0x18DDB) adds, for each foe, a die of the type's sides
+// (none under 1; a one-sided die gives 1) plus its bonus, when over 0
+money
+BattleView::LootCash()
+{
+    uint32 coins[3] = { 0, 0, 0 };
+    for (const figure& f : fFigures) {
+        if (f.enemyType < 0)
+            continue;
+        const enemy_type& type = fData.Enemies().TypeAt(uint32(f.enemyType));
+        for (int k = 0; k < 3; k++) {
+            int amount = type.cashDice[k] >= 1
+                ? int(fRandom() % type.cashDice[k]) + 1 : 0;
+            amount += type.cashPlus[k];
+            if (amount > 0)
+                coins[k] += uint32(amount);
+        }
+    }
+    return MoneyFromPfennigs(coins[0] * 240 + coins[1] * 12 + coins[2]);
+}
+
+
 std::vector<cache_item>
 BattleView::Loot() const
 {

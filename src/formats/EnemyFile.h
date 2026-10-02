@@ -31,6 +31,10 @@ struct enemy_type {
     uint8 armorQuality;
     uint8 shield;				// item type (95..97), 0xFF: none
     uint8 shieldQuality;
+    // The cash each foe carries (florins, groschen, pfennigs): a die of
+    // cashDice sides plus cashPlus (DARKLAND.EXE, file 0x18DDB)
+    uint16 cashDice[3];
+    int16 cashPlus[3];
 };
 
 // One enemy name, as the game shows it ("Guard", "Raubritter"...)

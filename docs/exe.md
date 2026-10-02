@@ -2835,9 +2835,29 @@ Where the battle code starts; the rules are not decoded yet.
   %dfl, %dgr, %dpf in cash." **verified** (code). What the pile holds
   (the fallen foes' items? TAC.TXT's F, G, Pf of the activation spots
   for the cash) comes from the battle code that calls it, not found:
-  no RTLink entry leads to 1462:0000. Reproduced (TradeView::SetLoot())
-  with a provisional pile: the fallen enemies' weapon, armor and shield
-  (real items only), at their type's qualities, and no cash.
+  the thunk 09C0:1DAB (overlay 0x28) is called only from the file 0x47BD0
+  function, whose own callers were not located. Reproduced
+  (TradeView::SetLoot()) with a provisional pile: the fallen enemies'
+  weapon, armor and shield (real items only), at their type's qualities.
+- **The foes' cash** (function at file 0x18BD0, which fixes the
+  activation spots' records, 30 bytes each, TAC.TXT's F, G and Pf being
+  the words at +0x0E, +0x10 and +0x12): the spot's cash is the sum over
+  its foes (the count of each of its three types, bytes at +0x0B..+0x0D)
+  of three amounts, each a die and a bonus read from the enemy type
+  (DARKLAND.ENM): florins = random(word +0xC0) + 1 + the word at +0xC6,
+  groschen the same with +0xC2 and +0xC8, pfennigs with +0xC4 and +0xCA;
+  the die gives 0 under 1 side and 1 with one side (file 0x18F36:
+  n dice of s sides, here one), and an amount is added only if it
+  is over 0. The bonuses are mostly 0, but -1 for the bandits' groschen
+  and the knights' florins (a die of 2 or 3 sides minus 1 sometimes
+  leaves nothing). The spot placing its foes (function at file 0x54320,
+  mode 0, its third argument being the record) adds the record's three
+  words to the cash at DS:0BB0 (carrying 12 pfennigs and 20 groschen),
+  the pool of the battle (reset at 0x47B15), so every foe counts, fallen
+  or not (the loot is only offered after a win). Animals and the undead
+  have 0 everywhere. **verified** (code); that the pool is what
+  1462:0000 shows as "The party finds..." is *inferred*: the
+  caller was not found. Reproduced by BattleView::LootCash().
 - **LCASTLE** (in the game directory) is a catalog like the .CAT files:
   LC_COURT, LC_G1..LC_G5, LC_G4S, LC_G4NS, LC_G7A, LC_G7B and an .ATV
   for each, the castle's levels (overlay 0xD names "lcastle",

@@ -30,6 +30,12 @@ static const size_t kArmorQualityOffset = 0x96;
 static const size_t kShieldOffset	= 0x97;
 static const size_t kShieldQualityOffset = 0x99;
 
+// verified (code, file 0x18DDB): per foe, a die of the word at +0xC0 (+0xC2,
+// +0xC4) sides plus the word at +0xC6 (+0xC8, +0xCA) florins (groschen,
+// pfennigs)
+static const size_t kCashDiceOffset	= 0xC0;
+static const size_t kCashPlusOffset	= 0xC6;
+
 static const size_t kEnemyNameOffset = 0x02;
 static const size_t kEnemyNameLength = 12;	// "Castle Guard" fills it, no NUL
 static const size_t kFlagsOffset	= 0x16;
@@ -83,6 +89,10 @@ EnemyFile::EnemyFile(const std::string& fileName)
             t.armorQuality = record[kArmorQualityOffset];
             t.shield = record[kShieldOffset];
             t.shieldQuality = record[kShieldQualityOffset];
+            for (int k = 0; k < 3; k++) {
+                t.cashDice[k] = WordAt(record, kCashDiceOffset + k * 2);
+                t.cashPlus[k] = int16(WordAt(record, kCashPlusOffset + k * 2));
+            }
             fTypes.push_back(t);
         }
 

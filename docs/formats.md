@@ -1235,6 +1235,12 @@ and `./darklands --enemies`.
                   the 70 types (Baphomet has no sprites) the weapon's
                   code names one of the type's sprite files; +0xA6 is
                   often a weapon too, with no sprites of its own
+    +0xC0   6     the cash a foe carries: three words, the sides of a
+                  die of florins, groschen and pfennigs (0: none)
+    +0xC6   6     three signed words added to them (mostly 0, -1 for
+                  the bandits' groschen and the knights' florins)
+                  **verified** (code, exe.md "The foes' cash"); the
+                  words are 0 for animals and the undead
 
     enemy, 24 (0x18) bytes:
     +0x00   2     the first type of its group

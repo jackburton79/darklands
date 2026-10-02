@@ -31,6 +31,7 @@ class ImcFile;
 class ImgFile;
 struct cache_item;
 struct character;
+struct money;
 struct battle_cell;
 
 enum battle_outcome {
@@ -98,8 +99,11 @@ public:
     battle_outcome	Outcome() const;
     // What the fallen enemies leave (TradeView::SetLoot()): their weapon,
     // armor and shield, at the quality of their type. Provisional: the
-    // game's rule (and its cash) is not decoded yet.
+    // game's rule for the items is not decoded yet.
     std::vector<cache_item> Loot() const;
+    // The cash the enemies carried: each rolls a die per coin (their
+    // type's), as DARKLAND.EXE does when it places them
+    money			LootCash();
 
     // The menu bar (not owned; NULL: none): in a battle the Game menu works
     // but for Save and Load (the game does not allow them on a battlefield,
