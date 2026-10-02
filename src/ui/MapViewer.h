@@ -93,6 +93,7 @@ public:
     // The place of DARKLAND.LOC nearest to the party (the bigger of the two
     // distances plus half the smaller), or -1
     int				NearestPlace() const;
+    int				NearestPlace(const map_position& at) const;
     // The city nearest to the party (09C0:1FA9 = 1462:271A of overlay 0x1E,
     // file 0x6018A): the larger of the two distances, the rows' a third,
     // plus half the other; the reputation it changes is the one of a meeting

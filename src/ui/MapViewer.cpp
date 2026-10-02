@@ -476,39 +476,50 @@ MapViewer::Tick()
 {
     if (fPath.empty())
         return false;
+    // file 0x5F0CC: after every frame of the walk (a tile is 8 to 16 of
+    // them) the weariness grows with a chance of 10 in 500, up to 10, and
+    // the party meets someone if (weariness + 1) * the base chance is at
+    // least random(1000); water (tile types 1 and 2) is never a place to
+    // meet someone. Not on the way onto a place, nor in one
+    const bool hazards = fEncounterHandler && fRandom && fPlace < 0
+        && !(fPath.size() == 1 && fDestinationPlace >= 0);
+    int meetingState = -1;
+    map_position meetingAt = fParty;
+    const frame_hook hook = [&](const map_position& at) {
+        const int terrain = fData.Map().TileTypeAt(at.x, at.y);
+        if (terrain == 1 || terrain == 2)
+            return false;
+        if (fWeariness < 10 && fRandom(500) <= 9)
+            fWeariness++;
+        const int place = NearestPlace(at);
+        if (place < 0 || fRandom(1000)
+                > EncounterChance(terrain, place) * (fWeariness + 1))
+            return false;
+        const int state = fEncounterChooser ? fEncounterChooser(terrain) : 0;
+        if (state < 0)
+            return false;
+        meetingState = state;
+        return true;
+    };
     const uint32 hours = TravelHours(fData.Map(), fParty, fPath.front(),
-        fTravelMinutes);
+        fTravelMinutes, hazards ? hook : frame_hook(), &meetingAt);
     if (fClock != NULL)
         fClock->AddHours(hours);
+    if (meetingState >= 0) {
+        fParty = meetingAt;
+        fPath.clear();
+        fDestinationPlace = -1;
+        fWeariness = 0;
+        _KeepPartyVisible();
+        fEncounterPlace = std::max(0, NearestCity());
+        fEncounterState = meetingState;
+        return true;
+    }
     fParty = fPath.front();
     fPath.erase(fPath.begin());
     _KeepPartyVisible();
     if (fPath.empty() && fDestinationPlace >= 0)
         _EnterPlace(fDestinationPlace);
-    else if (fEncounterHandler && fRandom && fPlace < 0) {
-        // file 0x5F0CC: the weariness grows with a chance of 10 in 500, up
-        // to 10; the party meets someone if (weariness + 1) * the base
-        // chance is at most random(1000); water (tile types 1 and 2) is
-        // never a place to meet someone
-        const int terrain = fData.Map().TileTypeAt(fParty.x, fParty.y);
-        if (terrain != 1 && terrain != 2) {
-            if (fWeariness < 10 && fRandom(500) <= 9)
-                fWeariness++;
-            const int place = NearestPlace();
-            if (place >= 0 && fRandom(1000)
-                    <= EncounterChance(terrain, place) * (fWeariness + 1)) {
-                const int state = fEncounterChooser
-                    ? fEncounterChooser(terrain) : 0;
-                if (state >= 0) {
-                    fPath.clear();
-                    fDestinationPlace = -1;
-                    fWeariness = 0;
-                    fEncounterPlace = std::max(0, NearestCity());
-                    fEncounterState = state;
-                }
-            }
-        }
-    }
     return true;
 }
 
@@ -561,13 +572,20 @@ MapViewer::NearestCity() const
 int
 MapViewer::NearestPlace() const
 {
+    return NearestPlace(fParty);
+}
+
+
+int
+MapViewer::NearestPlace(const map_position& at) const
+{
     const LocationFile& locations = fData.Locations();
     int best = -1;
     int bestDistance = 0;
     for (uint32 i = 0; i < locations.CountLocations(); i++) {
         const location& l = locations.LocationAt(i);
-        const int dx = std::abs(int(l.x) - int(fParty.x));
-        const int dy = std::abs(int(l.y) - int(fParty.y));
+        const int dx = std::abs(int(l.x) - int(at.x));
+        const int dy = std::abs(int(l.y) - int(at.y));
         const int distance = std::max(dx, dy) + std::min(dx, dy) / 2;
         if (best < 0 || distance < bestDistance) {
             best = int(i);

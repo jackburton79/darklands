@@ -2047,8 +2047,20 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   1) · chance, the chance being file 0x607E4: 3 for tile types 4, 5, 16,
   17, 20, 21, 2 for 6, 7, 14, 15, 18, 19, 22, 23, else 1, plus the nearest
   place's word +0x0A (1, 5, 9 or 10 in DARKLAND.LOC). **verified** (code).
-  The program rolls it once per tile and resets DS:E488 after a meeting
-  (*inferred*; where the game does it is not known).
+  The step (file 0x5EDA0) is one *move* of the party, one frame (one pixel
+  horizontally, one every other frame vertically), so the hazard is drawn
+  8 to 16 times for each tile walked, just as the minutes of the terrain
+  are counted; the program draws it the same way (`TravelHours()`' frame
+  hook) and a meeting stops the party where it is. **verified** (code: the
+  hazard is in the same function as the minutes, after them, without a
+  frame count). DS:E488 is set to 0 where the map's state starts (file
+  0x5DBD3, 1462:0000: the departure and every return from a meeting), so
+  the program resets it after a meeting. The chance's place term is the
+  nearest place's word +0x0A, or the value of a mark of kind 0x2A there
+  (0E76:3A20), at file 0x607E4. With the real tables (tile types, the
+  states played) the program meets someone about once in 55..95 tiles, a
+  bandit or soldier band about once in 200..400. (An earlier version
+  drew it once per tile: 8 to 16 times rarer.)
 - **The chooser** (**verified**, code): with mark 0x5F (a camp) the camp's
   ambushes (0x169/0x16A); with a place within reach of its own states
   (the territories, see "Places"), at night with an event, or with a

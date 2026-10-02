@@ -141,7 +141,8 @@ FindPath(const WorldMap& map, const map_position& from, const map_position& to,
 
 uint32
 TravelHours(const WorldMap& map, const map_position& from,
-    const map_position& to, int& accumulator)
+    const map_position& to, int& accumulator, const frame_hook& hook,
+    map_position* stoppedAt)
 {
     const GFX::point a = map.TileCenter(from.x, from.y);
     const GFX::point b = map.TileCenter(to.x, to.y);
@@ -157,6 +158,11 @@ TravelHours(const WorldMap& map, const map_position& from,
         if (accumulator >= 60) {
             hours++;
             accumulator -= 60;
+        }
+        if (hook && hook(map_position{ x, y })) {
+            if (stoppedAt != NULL)
+                *stoppedAt = map_position{ x, y };
+            break;
         }
     }
     return hours;

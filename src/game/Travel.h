@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <functional>
+
 #include "SupportDefs.h"
 
 #include <vector>
@@ -41,6 +43,10 @@ std::vector<map_position> FindPath(const WorldMap& map,
 // a frame horizontally and one every other frame vertically; every frame
 // adds the minutes of the terrain under it to `accumulator`, and an hour
 // passes, at most one a frame, whenever it reaches 60. Keep the same
-// accumulator from step to step.
+// accumulator from step to step. The game draws its hazards after every
+// frame: `hook`, if given, is called with the tile under the party after
+// each one, and a true result stops the walk there (`stoppedAt`).
+typedef std::function<bool(const map_position&)> frame_hook;
 uint32 TravelHours(const WorldMap& map, const map_position& from,
-    const map_position& to, int& accumulator);
+    const map_position& to, int& accumulator,
+    const frame_hook& hook = frame_hook(), map_position* stoppedAt = NULL);
