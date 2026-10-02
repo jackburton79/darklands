@@ -313,6 +313,7 @@ and license). It is built automatically by the top-level Makefile.
 ## Documentation
 
 Reverse-engineered data format notes live in [docs/formats.md](docs/formats.md).
+How releases are made: [docs/releasing.md](docs/releasing.md).
 
 ## Legal
 

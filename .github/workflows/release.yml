@@ -1,0 +1,64 @@
+name: release
+
+# Push a tag vX.Y.Z or vX.Y.Z-beta.N to publish a release (see
+# docs/releasing.md). A tag with a "-" is marked as a pre-release.
+# "Run workflow" by hand only builds the packages, as a dry run.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    # the oldest runner: binaries need a glibc no newer than the users'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with: { submodules: recursive, fetch-depth: 0 }
+      - run: sudo apt-get update && sudo apt-get install -y libsdl2-dev zlib1g-dev
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=$(git describe --tags --always)" >> "$GITHUB_ENV"
+          fi
+      - name: Build and package
+        run: make dist VERSION="$VERSION"
+      - name: Check the binary
+        run: |
+          out=$(./darklands --version)
+          echo "$out"
+          [ "$out" = "darklands $VERSION" ]
+      - name: Source package (with libjgame, which GitHub's archives lack)
+        run: |
+          mkdir -p dist
+          git ls-files --recurse-submodules \
+            | tar -czf "dist/darklands-$VERSION-src.tar.gz" \
+                --transform "s,^,darklands-$VERSION/," -T -
+      - name: Checksums
+        run: cd dist && sha256sum *.tar.gz > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darklands-${{ env.VERSION }}
+          path: dist/*
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Darklands $GITHUB_REF_NAME" \
+            --generate-notes $flags

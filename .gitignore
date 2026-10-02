@@ -4,3 +4,4 @@ darklands
 data
 *.d
 /obj/
+dist/
