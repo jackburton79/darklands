@@ -133,10 +133,13 @@ CityVisit::_FightSpiders()
 }
 
 
-// Won: the reputation up by 4, card 11. Lost (the party wakes in the
-// webs): the night passes until hour 5, the reputation down by 2, card 12.
-// Fled: the reputation down by 4, back to the choice (card 13).
-// BattleView does not tell the game's two kinds of defeat apart
+// The fight's end. The game's results are 0 won, 1 and 2 a retreat, 3 and 4
+// beaten (the battle sets 2 when the party leaves the field, 3 when all
+// fall); this job gives them the cards the other way round, as its code
+// has it: a retreat is "the party wakes in the webs" (the time to hour 5,
+// the reputation down by 2, card 12) and a defeat "flees" (the reputation
+// down by 4, back to the choice, card 13). Won: the reputation up by 4,
+// card 11
 int
 CityVisit::_ResolveSpidersBattle(int outcome)
 {
@@ -145,7 +148,7 @@ CityVisit::_ResolveSpidersBattle(int outcome)
         _ChangeReputation(4, 4);
         return SCREEN_JOB_DONE;
     }
-    if (outcome == BATTLE_LOST) {
+    if (outcome != BATTLE_LOST) {
         if (fClock != NULL)
             fClock->AddHours(uint32(_HoursUntil(*fClock, 5)));
         _ChangeReputation(-2, -2);

@@ -579,6 +579,23 @@ CityVisit::_SaintsFor(int screen) const
         saints = { 3, 69, 107, 121 };
     if (screen == SCREEN_BLIZZARD)
         saints = { 22, 38, 60, 130 };
+    // the tatzelwurms (file 0x141E0E) and the spiders (0x142FD6): Genevieve,
+    // Godfrey, Willehad and Aidan (the spiders: saint 69 instead of Aidan
+    // on the tile types 4..14) when warned; Januarius, Pantaleon, Perpetua
+    // and Tarachus once ambushed (the tatzelwurms: not at the start)
+    const bool tatzel = screen >= SCREEN_TATZEL && screen <= SCREEN_TATZEL_HIDDEN;
+    const bool spiders = screen >= SCREEN_SPIDERS && screen <= SCREEN_SPIDERS_HIDDEN;
+    if (tatzel || spiders) {
+        const bool ambushed = screen == SCREEN_TATZEL_AMBUSH
+            || screen == SCREEN_TATZEL_HIDDEN || screen == SCREEN_SPIDERS_AMBUSH
+            || screen == SCREEN_SPIDERS_HIDDEN;
+        if (ambushed && !fMonsterSaintsFirst)
+            saints = { 74, 103, 107, 121 };
+        else if (spiders)
+            saints = { 54, 61, 131, fMeetTerrain >= 4 && fMeetTerrain <= 14 ? 69 : 3 };
+        else
+            saints = { 54, 61, 131, 3 };
+    }
     if (screen == SCREEN_BOG || screen == SCREEN_BOG_AGAIN
             || screen == SCREEN_BOG_ALONE)
         saints = { 18, 50, 51, 60 };
@@ -811,6 +828,14 @@ CityVisit::_SaintAnswered(int screen, int index)
         case SCREEN_CAMPB_UNANSWERED:
             _Mark(kMarkCampSafe, 168);
             return SCREEN_CAMPB_PRAYED;				// card 2 (file 0x17BCBB)
+        case SCREEN_TATZEL:
+        case SCREEN_TATZEL_AMBUSH:
+        case SCREEN_TATZEL_HIDDEN:
+            return SCREEN_TATZEL_CALMED;			// card 4, on (file 0x141F9B)
+        case SCREEN_SPIDERS:
+        case SCREEN_SPIDERS_AMBUSH:
+        case SCREEN_SPIDERS_HIDDEN:
+            return SCREEN_SPIDERS_CALMED;			// card 4, on
         case SCREEN_WOLVES:
             // file 0x108912: an hour, card 7
             if (fClock != NULL)
@@ -925,6 +950,20 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_TATZEL:
+            fPrayerFailed = true;
+            fMeetBack = SCREEN_TATZEL;
+            return SCREEN_TATZEL_UNHEARD_BACK;		// card 5, then the options
+        case SCREEN_TATZEL_AMBUSH:
+        case SCREEN_TATZEL_HIDDEN:
+            return SCREEN_TATZEL_UNHEARD;			// card 5, the fight
+        case SCREEN_SPIDERS:
+            fPrayerFailed = true;
+            fMeetBack = SCREEN_SPIDERS;
+            return SCREEN_SPIDERS_UNHEARD_BACK;
+        case SCREEN_SPIDERS_AMBUSH:
+        case SCREEN_SPIDERS_HIDDEN:
+            return SCREEN_SPIDERS_UNHEARD;
         case SCREEN_WOLVES:
             fMeetBack = SCREEN_WOLVES;
             return SCREEN_WOLVES_UNHEARD;			// card 8

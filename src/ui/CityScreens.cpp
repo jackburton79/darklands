@@ -1452,6 +1452,85 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_WOLVES_PURSUED, "MEETW00", 11, NULL, { DO(ACTION_MEET_BACK) } },
     { CityVisit::SCREEN_WOLVES_EATEN_MOUNTED, "MEETW00", 12, NULL, { LEAVE } },
     { CityVisit::SCREEN_WOLVES_EATEN, "MEETW00", 13, NULL, { LEAVE } },
+    // MEETT00, ambushers (state 0x111): the options in card order, the
+    // potions' (not offered) and the placeholders hidden
+    { CityVisit::SCREEN_TATZEL_MEET, "MEETT00", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL, "MEETT00", 0, NULL, {
+        DO(ACTION_AMBUSH_ONWARD),				// press onward
+        DO(ACTION_AMBUSH_ONWARD),				// bluff
+        HIDE,									// a potion
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_AMBUSH_SURRENDER),
+        DO(ACTION_AMBUSH_AROUND),
+        HIDE,
+        DO(ACTION_AMBUSH_UP)					// sneak up
+    } },
+    { CityVisit::SCREEN_TATZEL_AMBUSH, "MEETT00", 1, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE, HIDE,
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_TATZEL_HIDDEN, "MEETT00", 2, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE,
+        DO(ACTION_AMBUSH_AROUND),
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_TATZEL_CALMED, "MEETT00", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_UNHEARD, "MEETT00", 5, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_TATZEL_UNHEARD_BACK, "MEETT00", 5, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_TATZEL_AROUND, "MEETT00", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_HOPELESS, "MEETT00", 7, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_TATZEL_BOLTED, "MEETT00", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_ESCAPED, "MEETT00", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_EATEN, "MEETT00", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_WON, "MEETT00", 11, NULL, { LEAVE } },
+    { CityVisit::SCREEN_TATZEL_THROWN, "MEETT00", 13, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    // MEETG02, ambushers (state 0x112): the options in card order, the
+    // potions' (not offered) and the placeholders hidden
+    { CityVisit::SCREEN_SPIDERS_MEET, "MEETG02", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SPIDERS, "MEETG02", 0, NULL, {
+        DO(ACTION_AMBUSH_ONWARD),				// press onward
+        DO(ACTION_AMBUSH_ONWARD),				// bluff
+        HIDE,									// a potion
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        DO(ACTION_AMBUSH_SURRENDER),
+        DO(ACTION_AMBUSH_AROUND),
+        HIDE,
+        DO(ACTION_AMBUSH_UP)					// sneak up
+    } },
+    { CityVisit::SCREEN_SPIDERS_AMBUSH, "MEETG02", 1, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE, HIDE,
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_SPIDERS_HIDDEN, "MEETG02", 2, NULL, {
+        HIDE, HIDE, HIDE,
+        DO_IF(ACTION_SAINT, kNeedsFreshSaint),
+        HIDE,
+        DO(ACTION_AMBUSH_AROUND),
+        DO(ACTION_AMBUSH_FIGHT),
+        HIDE,
+        DO(ACTION_AMBUSH_RUN)
+    } },
+    { CityVisit::SCREEN_SPIDERS_CALMED, "MEETG02", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SPIDERS_UNHEARD, "MEETG02", 5, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_SPIDERS_UNHEARD_BACK, "MEETG02", 5, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_SPIDERS_AROUND, "MEETG02", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SPIDERS_HOPELESS, "MEETG02", 7, NULL, { DO(ACTION_AMBUSH_FIGHT) } },
+    { CityVisit::SCREEN_SPIDERS_HAIL, "MEETG02", 8, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_SPIDERS_ESCAPED, "MEETG02", 9, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SPIDERS_TAKEN, "MEETG02", 10, NULL, { LEAVE } },
+    { CityVisit::SCREEN_SPIDERS_WON, "MEETG02", 11, NULL, { LEAVE } },
     // Wild boars ($meetb00, state 0xA5, file 0x10B390): dodge, a ride (all
     // mounted), a saint, attack
     { CityVisit::SCREEN_BOARS_MEET, "MEETB00", 0, NULL, { LEAVE } },

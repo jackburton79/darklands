@@ -634,6 +634,33 @@ public:
         SCREEN_JOB_DONE,		// (12), or fled from (13)
         SCREEN_JOB_WEBBED,
         SCREEN_JOB_FLED,
+        SCREEN_TATZEL_MEET,		// $MeetT00, tatzelwurms (state 0x111): the
+        SCREEN_TATZEL,			// start, 0 (warned), 1 (ambushed), 2 (seen
+        SCREEN_TATZEL_AMBUSH,	// from hiding), 4 (a saint answered), 5
+        SCREEN_TATZEL_HIDDEN,	// (not), 6 (round them, or a retreat), 7
+        SCREEN_TATZEL_CALMED,	// (no use running), 8 (the mounts bolt), 9
+        SCREEN_TATZEL_UNHEARD,	// (outrun), 10 (one is eaten), 11 (won), 13
+        SCREEN_TATZEL_UNHEARD_BACK,	// (the mounts throw their riders)
+        SCREEN_TATZEL_AROUND,
+        SCREEN_TATZEL_HOPELESS,
+        SCREEN_TATZEL_BOLTED,
+        SCREEN_TATZEL_ESCAPED,
+        SCREEN_TATZEL_EATEN,
+        SCREEN_TATZEL_WON,
+        SCREEN_TATZEL_THROWN,
+        SCREEN_SPIDERS_MEET,	// $MeetG02, giant spiders (state 0x112): the
+        SCREEN_SPIDERS,			// same cards, but 8 (a hail is not
+        SCREEN_SPIDERS_AMBUSH,	// answered), 10 (one is dragged off)
+        SCREEN_SPIDERS_HIDDEN,
+        SCREEN_SPIDERS_CALMED,
+        SCREEN_SPIDERS_UNHEARD,
+        SCREEN_SPIDERS_UNHEARD_BACK,
+        SCREEN_SPIDERS_AROUND,
+        SCREEN_SPIDERS_HOPELESS,
+        SCREEN_SPIDERS_HAIL,
+        SCREEN_SPIDERS_ESCAPED,
+        SCREEN_SPIDERS_TAKEN,
+        SCREEN_SPIDERS_WON,
         SCREEN_NOT_IMPLEMENTED,
         SCREEN_COUNT
     };
@@ -679,6 +706,8 @@ public:
     bool			CampSafe() const;
     // The bishop's tithe (false) or the nobleman's toll (true)
     void			SetToll(bool toll)			{ fToll = toll; }
+    // The tile type under the party at a meeting of the map
+    void			SetMeetTerrain(int terrain)	{ fMeetTerrain = terrain; }
     void			SetBandits(bool soldiers, int terrain)
                         { fBanditsSoldiers = soldiers; fBanditsTerrain = terrain; }
     // The members who retired, waiting in the cities (not owned; NULL: none)
@@ -1102,6 +1131,16 @@ private:
     void			_FriarCurse();
     void			_FriarPenalties();
     void			_FightFriar();
+    // The monsters in ambush on the map: the tatzelwurms and the giant
+    // spiders (DARKLAND.EXE, states 0x111 and 0x112)
+    int				_MeetAmbushers(int kind);
+    int				_AmbushScreen();
+    int				_AmbushAround();
+    int				_AmbushUp();
+    int				_AmbushRun();
+    int				_AmbushSurrender();
+    void			_FightAmbushers();
+    int				_ResolveAmbushBattle(int outcome);
     // The spiders' warehouse (DARKLAND.EXE, state 0x168)
     int				_JobStart();
     int				_JobAsk();
@@ -1230,7 +1269,8 @@ private:
         BATTLE_WITH_BOARS,
         BATTLE_AT_CAMP,
         BATTLE_AT_SANCTUARY,
-        BATTLE_WITH_SPIDERS
+        BATTLE_WITH_SPIDERS,
+        BATTLE_WITH_AMBUSHERS
     };
     struct foes {
         int enemy;				// in DARKLAND.ENM
@@ -1313,6 +1353,9 @@ private:
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall
+    int				fMonster;		// the ambushers met: 0 tatzelwurms, 1 spiders
+    bool			fMonsterSaintsFirst;	// the first list of saints
+    int				fMeetTerrain;	// the tile type under the party
     int				fJobFlorins;	// the spiders' job: the pay ($Number1)
     bool			fJobNight;		// accepted at night
     bool			fJobAsked;		// the locals asked

@@ -143,6 +143,9 @@ CityVisit::CityVisit(GameData& data)
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
+    fMonster(0),
+    fMonsterSaintsFirst(false),
+    fMeetTerrain(0),
     fJobFlorins(0),
     fJobNight(false),
     fJobAsked(false),
@@ -954,6 +957,24 @@ CityVisit::Choose(int option)
         case ACTION_JOB_FIGHT:
             _FightSpiders();
             return true;
+        case ACTION_AMBUSH_ONWARD:
+            _Show(_AmbushScreen());
+            return true;
+        case ACTION_AMBUSH_SURRENDER:
+            _Show(_AmbushSurrender());
+            return true;
+        case ACTION_AMBUSH_AROUND:
+            _Show(_AmbushAround());
+            return true;
+        case ACTION_AMBUSH_UP:
+            _Show(_AmbushUp());
+            return true;
+        case ACTION_AMBUSH_RUN:
+            _Show(_AmbushRun());
+            return true;
+        case ACTION_AMBUSH_FIGHT:
+            _FightAmbushers();
+            return true;
         case ACTION_FRIAR_PAY:
             _PayMeetingMoney();
             _Show(SCREEN_FRIAR_PAID);
@@ -1382,6 +1403,10 @@ CityVisit::_Show(int screen, bool withScene)
         _EnterLibrary();
     else if (screen == SCREEN_FORMULAS)
         _EnterFormulas();
+    if (screen == SCREEN_TATZEL_MEET)
+        screen = _MeetAmbushers(0);
+    else if (screen == SCREEN_SPIDERS_MEET)
+        screen = _MeetAmbushers(1);
     if (screen == SCREEN_WOLVES_MEET)
         screen = _MeetWolves();
     else if (screen == SCREEN_BOARS_MEET)

@@ -239,6 +239,7 @@ Game::Run()
             int state) {
         int screen = CityVisit::SCREEN_THIEVES_MAP_MEET;
         visit.SetToll(state == ENCOUNTER_TOLL);
+        visit.SetMeetTerrain(terrain);
         switch (state) {
             case ENCOUNTER_BANDITS:
             case ENCOUNTER_SOLDIERS:
@@ -269,6 +270,12 @@ Game::Run()
                 break;
             case ENCOUNTER_BOARS:
                 screen = CityVisit::SCREEN_BOARS_MEET;
+                break;
+            case ENCOUNTER_TATZELWURM:
+                screen = CityVisit::SCREEN_TATZEL_MEET;
+                break;
+            case ENCOUNTER_SPIDERS:
+                screen = CityVisit::SCREEN_SPIDERS_MEET;
                 break;
             case ENCOUNTER_BLIZZARD:
                 screen = CityVisit::SCREEN_BLIZZARD_MEET;

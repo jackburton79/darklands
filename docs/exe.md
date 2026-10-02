@@ -1881,10 +1881,13 @@ their content comes from the game's events. **verified** (code)
   it, though the card speaks of bites; the square); *change your mind*:
   the reputation down by 2..4, Virtue −1 for all, the square. The giant
   spiders (card 10): 0E76:2278(0x13, ...): random(5) + 1 of enemy 0x39 at
-  variant 3 (after waiting) or 5; won, the reputation + 4, card 11; lost
-  (results 1, 2), the time to hour 5, the reputation − 2, card 12 (0E76:
-  2434, not decoded, wakes the members); fled (3, 4), the reputation − 4
-  and card 13. **verified** (code); the deck $DPOST01 (a moneylender's job)
+  variant 3 (after waiting) or 5; won, the reputation + 4, card 11; results
+  1 and 2, the time to hour 5, the reputation − 2, card 12 (0E76:2434, not
+  decoded, wakes the members); 3 and 4, the reputation − 4 and card 13. The
+  battle sets 2 when the party leaves the field and 3 when all fall (file
+  0x3A140..), the meetings' other fights give 1, 2 the retreat's card and
+  3, 4 the defeat's: this job has them the other way round (its own mix-up,
+  *inferred*; the program follows the code). **verified** (code); the deck $DPOST01 (a moneylender's job)
   is not named in the program. Reproduced in `CityJobs.cpp`; which of the
   game's results is a retreat and which a defeat is *inferred*.
 
@@ -2115,11 +2118,54 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   the argument of the fight's function (not decoded; the tatzelwurms and
   the schrats 0x2E or 0x2F). The tatzelwurms (state 0x111): enemy 0x3B at
   variant 1, s / 3 + 1 of them; the spiders (0x112): enemy 0x39 at
-  variant 1, random(3) + 2 · (s / 5); the schrats (0x113): enemy 0x3E at
+  variant 1, random(3) + 3 · (s / 5) + 1; the schrats (0x113): enemy 0x3E at
   variant random(3) + s, random(5) + 3 of them. A win calls 0E76:19D0(the
   nearest place of the map (09C0:1FA9 from the tile of the meeting,
   DS:E3D0/E3D2), a, b): the tatzelwurms' is (1, 1) after card 11 and an
   hour. **verified** (code)
+- **The tatzelwurms and the giant spiders** (states 0x111 and 0x112, $MeetT00
+  and $MeetG02, files 0x141E0E and 0x142FD6; the same code, the options by
+  position as in the other decks, their functions in the table DS:EA14
+  give the chances, and for a potion or a saint the selected one's in the
+  tables at DS:EB0A and DS:EA14 + ...). **verified** (code) but where marked.
+  - *The start*: the member with the best Woodwise (0E76:184A(0x12, 3)) is
+    $ChosenOneName; with his Perception + random(10) + Woodwise / 2 under
+    random(100) and no Orpiment (item 79, 0E76:32CE(0x4F)) the party is
+    ambushed (card 1), else warned (card 0). Saints: before the ambush
+    Genevieve, Godfrey, Willehad (54, 61, 131) and Aidan (3; the spiders:
+    69 on the tile types 4..14), after it Januarius, Pantaleon, Perpetua,
+    Tarachus (74, 103, 107, 121; the tatzelwurms' ambush at the start keeps
+    the first list). The potions are Sunburst and Thunderbolt (items 101,
+    102), not offered here.
+  - *Card 0*: press onward and bluff both lead to the ambush (card 1); a
+    saint (answered: card 4 and on; not: card 5 and the options again with
+    no more prayers); surrender (the tatzelwurms: the ambush; the spiders:
+    card 8, the options again); sneak round them; sneak up.
+  - *Sneaking round* (card 6 on success): the time to hour 18, a lesson in
+    Woodwise (mode 7, 10); failure an hour, a lesson (mode 0) and the
+    ambush. The chance of the spiders is clamp(10, 85, the average Woodwise
+    (0E76:1600) + 2/3 of the average speed (0E76:060E) + 5); the
+    tatzelwurms' option function gives −1 (a text, no chance): it never
+    works, a slip of the original. *Sneaking up*: the tatzelwurms',
+    clamp(1, 89, the average Woodwise + 2/3 of the speed); the spiders' is
+    the one that gives −1. Success: a lesson (7) and card 2 (a menu: saint,
+    sneak round, attack, run); else a lesson (0) and the ambush.
+  - *Running*: with mounts (0E76:1326(5)) clamp(25, 99, 2 · the lowest
+    Riding); without, the tatzelwurms 0 (card 7, the fight), the spiders the
+    result of 0E76:088E (*inferred*: the watcher's number). Tatzelwurms:
+    success card 9 and a lesson in Riding (1); else the lowest Riding loses
+    4 Endurance and the watcher 2 Strength, a lesson (0): with a roll of 50
+    or less the mounts are lost (09C0:202B(−2, 0x2000)), two hours, card 8;
+    else card 13 and the fight. Spiders: success a lesson (7, with mounts),
+    three hours, card 9; else a lesson (0, with mounts), card 7, the fight.
+  - *The fight* (field 0x2E or 0x2F, 0x30 for the spiders): tatzelwurms
+    enemy 0x3B variant 1, s / 3 + 1; spiders enemy 0x39 variant 1, random(3)
+    + 3 · (s / 5) + 1. Won: card 11, an hour, the reputation of the nearest
+    place + 1 (09C0:1F31(1), not decoded). 1, 2: 0E76:2434, card 6, the time
+    to hour 5. 3, 4: (the spiders: the party searched, 09C0:1EB9(−2)) the
+    member with the lowest Strength (0E76:164A(1)) leaves (09C0:18B5), card
+    10, random(3) + 3 hours.
+
 - **The thieves on the map** (state 0x24 with DS:A891 = 3): as in the
   city (see "Encounters in the city") but card 2 for the options (no
   saints nor alchemy), card 0 when they strike first (then the fight),

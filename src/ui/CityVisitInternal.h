@@ -264,7 +264,13 @@ enum option_action {
     ACTION_JOB_WAIT,			// wait for daytime, then enter
     ACTION_JOB_ENTER,			// enter now
     ACTION_JOB_ABANDON,			// change one's mind
-    ACTION_JOB_FIGHT			// the giant spiders
+    ACTION_JOB_FIGHT,			// the giant spiders
+    ACTION_AMBUSH_ONWARD,		// the ambushers: press on, bluff (the ambush)
+    ACTION_AMBUSH_SURRENDER,	// surrender (the tatzelwurms: the ambush too)
+    ACTION_AMBUSH_AROUND,		// sneak round them
+    ACTION_AMBUSH_UP,			// sneak up on them
+    ACTION_AMBUSH_RUN,
+    ACTION_AMBUSH_FIGHT
 };
 
 // Options that need the city to have something: a place slot, a harbor
