@@ -13,6 +13,7 @@
 #include "GameTime.h"
 #include "Travel.h"
 
+#include <map>
 #include <random>
 #include <string>
 #include <vector>
@@ -80,6 +81,7 @@ private:
     bool			fSelectParty;
     std::vector<uint8> fLocationFlags;	// by location: its state (+0x14)
     std::vector<uint16> fEnterStates;	// by location: its arrival (+0x0C)
+    std::map<int, std::vector<cache_item> > fCaches;	// left at the inns
     int				fCity;			// the party is in this city, or -1
     int				fScreen;		// the city screen to start from
     map_position	fPosition;		// else on the map, here

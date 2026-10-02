@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "Character.h"
 #include "GraphicsDefs.h"
 #include "SupportDefs.h"
 
@@ -53,13 +54,6 @@ enum merchant_kind {
     MERCHANT_COUNT
 };
 
-// An item left with an innkeeper: one entry per item and quality, with
-// a count (DARKLAND.EXE, 4 bytes in CACHE.TMP: code, quality, count)
-struct cache_item {
-    uint16 code;
-    uint8 quality;
-    uint8 count;
-};
 
 class TradeView {
 public:

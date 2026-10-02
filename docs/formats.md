@@ -863,8 +863,19 @@ layout is wendigo's; checked on the four characters:
 
 The items left with innkeepers (see exe.md, "The inn's cache"): a word
 per cache, the offset of its data; there, a count byte and 4-byte
-entries (item code word, quality, count). *inferred* from the code;
-the game's file (198 bytes) has only empty caches.
+entries (item code word, quality, count). The file is 198 bytes and
+starts with 99 and the number of caches (byte 1); the table words are at
+2n for the cache n from 1, and the data of the caches is appended after
+the first 198 bytes in the order they were made (DARKLAND.EXE: reading at
+file 0x6E900, writing at 0x6EA18: a new cache takes the next number and is
+appended; the others are copied again when one changes). A location's
+word +0x18 is its cache's number, -1 for none. **verified** for the empty
+case: the last 198 bytes of every saved game and of SAVES/DEFAULT are
+exactly the game's empty CACHE.TMP, and +0x18 is -1 everywhere; the rest
+is *inferred* from the code (no sample has items). The saved games hold the
+caches: they end with the 198 bytes, longer with items in them
+(`SaveFile::Caches()`, `saved_game::caches`; the program numbers them in
+the order of their locations).
 
 ## Saved games (`SAVES/DKSAVEn.SAV`, `SAVES/DEFAULT`)
 
@@ -927,7 +938,8 @@ on `DEFAULT` and two saved games (see `SaveFile.cpp`):
 - **Leader**: 1 with the party order Hans, Gretchen, Gunther, Ebhard:
   a party slot, Gretchen, as in the new game. *inferred*
 - **Events and locations** — **verified**: the counts and sizes add up
-  to the file's end (198 bytes remain: 0x63, then zeros); only 10
+  to the file's end (198 bytes remain: 0x63, then zeros: CACHE.TMP, see
+  "The inns' caches"); only 10
   location records differ from DARKLAND.LOC in `DKSAVE0.SAV`, in the
   fields +0x0, +0x8, +0xC..+0xE, +0x12 and +0x14; Olmütz, where the
   party is, has a reputation of 64. DARKLAND.EXE reads the reputation at +0x12 and the
@@ -1525,8 +1537,9 @@ wolf). Not decoded.
       grows during the game), the sex byte (one female sample), where
       the starting money comes from
 - [ ] Saved games: 0x76..0x79, 0x84..0x9F (the quests' state), 0xA2,
-      0xA3, 0xA6, what follows the locations (198 bytes: the inns'
-      caches, `cache.tmp`?)
+      0xA3, 0xA6; the layout of the saved caches with items in them
+      (read and written as DARKLAND.EXE's code has it, but no sample has
+      any)
 - [ ] Information screens: the words for fame, the carrying capacity
 - [ ] Trade: which shop call is which place (two masks for some
       guilds), what the location flags mean

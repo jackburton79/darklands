@@ -109,6 +109,7 @@ Game::LoadGame(const std::string& fileName)
     fEvents = save.Events();
     fLocationFlags = save.LocationFlags();
     fEnterStates = save.EnterStates();
+    fCaches = save.Caches();
     // the cities are the first locations of DARKLAND.LOC; in a city the
     // game goes on at the inn if it was saved there (DS:A772 0x1D, 0x1E
     // at night), else in the main street
@@ -145,6 +146,7 @@ Game::Run()
     visit.SetReputations(&fReputations);
     _PrepareWorld();
     visit.SetWorld(&fEvents, &fLocationFlags, &fEnterStates);
+    visit.SetCaches(&fCaches);
     MapViewer map(fData);
     map.SetClock(&fTime);
     InfoView info(fData);
@@ -373,7 +375,7 @@ Game::Save(const std::string& comment, int location,
         spare.push_back(who.member);
     const saved_game game = { comment, fTime, fSeed, &fParty, location,
         position.x, position.y, state, &fEvents, &fReputations,
-        &fLocationFlags, &fEnterStates, fSettings.difficulty, &spare };
+        &fLocationFlags, &fEnterStates, fSettings.difficulty, &spare, &fCaches };
     template_.Write(directory + "/" + name, game, fData.Locations());
     return name;
 }

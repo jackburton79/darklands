@@ -47,6 +47,14 @@ enum equipment_slot {
 };
 static const uint8 kNoEquipment = 0xFF;
 
+// An item left with an innkeeper: one entry per item and quality, with
+// a count (DARKLAND.EXE, 4 bytes in CACHE.TMP: code, quality, count)
+struct cache_item {
+    uint16 code;
+    uint8 quality;
+    uint8 count;
+};
+
 struct item {
     uint16 code;
     uint8 type;

@@ -81,6 +81,7 @@ CityVisit::CityVisit(GameData& data)
     fResidence(data),
     fPendingResidence(false),
     fPendingCache(false),
+    fCaches(&fOwnCaches),
     fTreatmentOffered(false),
     fStoneOffered(false),
     fWatchReturn(SCREEN_NOT_IMPLEMENTED),
@@ -272,7 +273,7 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
         }
         if (fPendingCache) {
             fTrade.SetPlace(fCity, _Reputation());
-            fTrade.SetCache(&fCaches[fCity]);
+            fTrade.SetCache(&(*fCaches)[fCity]);
             fTrade.Run(window);
             fPendingCache = false;
             _Show(fScreen, false);
@@ -430,7 +431,7 @@ CityVisit::Choose(int option)
         case ACTION_CACHE:
             if (fClock != NULL)
                 fClock->AddMinutes(MinutesFor(rule, *fClock));
-            fCaches[fCity];		// the location has a cache now
+            (*fCaches)[fCity];		// the location has a cache now
             fPendingCache = true;
             fScreen = rule.then;
             return true;
@@ -1690,7 +1691,7 @@ CityVisit::_HiddenOptions(int screen, std::vector<int>* dim) const
         else if (rule.needs == kNeedsInnPrice)
             hide = fParty == NULL || TotalPfennigs(fParty->cash) < InnPrice();
         else if (rule.needs == kNeedsCache)
-            hide = fCaches.find(fCity) == fCaches.end();
+            hide = fCaches->find(fCity) == fCaches->end();
         else if (rule.needs == kNeedsBankNotes)
             hide = fParty == NULL || fParty->bankNotes == 0;
         else if (rule.needs == kNeedsFlorins)

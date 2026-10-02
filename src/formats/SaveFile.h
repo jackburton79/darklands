@@ -12,10 +12,14 @@
 #include "EventFile.h"
 #include "GameTime.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 class LocationFile;
+
+// The items left at the inns, by location (index into DARKLAND.LOC)
+typedef std::map<int, std::vector<cache_item> > cache_map;
 
 // What Write() puts into a saved game
 struct saved_game {
@@ -33,6 +37,7 @@ struct saved_game {
     const std::vector<uint16>* enterStates;
     int difficulty;					// DS:906A: 0 basic, 1 standard, 2 expert
     const std::vector<character>* spare;	// the characters not in the party
+    const cache_map* caches;		// NULL: the file's own are kept
 };
 
 class SaveFile {
@@ -58,6 +63,10 @@ public:
     const std::vector<uint8>& LocationFlags() const	{ return fLocationFlags; }
     // The state the game enters there (+0x0C, see LocationFile.h)
     const std::vector<uint16>& EnterStates() const	{ return fEnterStates; }
+    // The items left at the inns: the 198 bytes that end a saved game are
+    // CACHE.TMP (docs/formats.md), and a location's word +0x18 is its
+    // cache's number, -1 for none
+    const cache_map& Caches() const				{ return fCaches; }
     // The game's events (see EventFile.h)
     const std::vector<world_event>& Events() const	{ return fEvents; }
     // Empty in DEFAULT, the new game template.
@@ -89,6 +98,7 @@ private:
     std::vector<int16>	fReputations;
     std::vector<uint8>	fLocationFlags;
     std::vector<uint16>	fEnterStates;
+    cache_map		fCaches;
     std::vector<world_event> fEvents;
     party			fParty;
     std::vector<character> fSpare;

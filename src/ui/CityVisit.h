@@ -733,7 +733,10 @@ public:
     // After Choose(): whether the party opens the inn's cache (Run() then
     // shows it on the trade screen), and the items left, by city.
     bool			PendingCache() const		{ return fPendingCache; }
-    std::map<int, std::vector<cache_item> >& Caches()	{ return fCaches; }
+    typedef std::map<int, std::vector<cache_item> > cache_map;
+    cache_map&		Caches()				{ return *fCaches; }
+    // The inns' caches kept elsewhere (not owned), e.g. to be saved
+    void			SetCaches(cache_map* caches)	{ fCaches = caches; }
     ResidenceView&	Residence()				{ return fResidence; }
     // After Choose(): whether the party fights the night watch or the
     // guards (Run() then shows the battle, and ResolveBattle() its
@@ -1198,8 +1201,9 @@ private:
     bool			fPendingResidence;
     bool			fPendingCache;
     // the items left at the inns; the game keeps them in CACHE.TMP, one
-    // cache per location (not read here)
-    std::map<int, std::vector<cache_item> > fCaches;
+    // cache per location (saved with the game: SaveFile)
+    cache_map		fOwnCaches;
+    cache_map*		fCaches;
     bool			fTreatmentOffered;
     bool			fStoneOffered;			// once a visit
     std::map<int, uint32> fAlchemistAngryUntil;

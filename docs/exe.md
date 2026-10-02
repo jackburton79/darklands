@@ -1533,8 +1533,9 @@ enable "recover" (location property 0x27: the location record's word
 - **CACHE.TMP** (file 0x6E900): a word per cache, the offset of its data
   (the cache number's word at 2 · number); there, a count byte and the
   4-byte entries. The game's file is 198 bytes, all caches empty.
-- Not reproduced: CACHE.TMP (the caches are kept for the session), the
-  deterioration card 6 speaks of (not found in this code).
+- Reproduced: the caches are saved with the game, in the tail of the
+  .SAV (the file CACHE.TMP is not used: formats.md "The inns' caches"). Not
+  reproduced: the deterioration card 6 speaks of (not found in this code).
 
 ## The residence
 

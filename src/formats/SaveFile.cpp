@@ -42,6 +42,15 @@ static const size_t kLocationSize		= 58;
 static const size_t kReputationOffset	= 0x12;	// in a location record
 static const size_t kLocationFlagsOffset = 0x14;
 static const size_t kEnterStateOffset	= 0x0C;
+static const size_t kCacheNumberOffset	= 0x18;	// -1: no cache
+// CACHE.TMP: byte 0 is 99, byte 1 the number of caches; the offset of the
+// data of cache n (from 1) is the word at 2n; the data (appended after the
+// first 198 bytes, in the order the caches were made) is a count byte and
+// 4 bytes for each entry: the item's code, its quality, its quantity.
+// DARKLAND.EXE, file 0x6E900 (reading) and 0x6EA18 (writing): *inferred*,
+// the game's files have only empty caches
+static const size_t kCacheHeaderSize	= 198;
+static const size_t kMaxCaches			= 98;
 
 
 static uint16
@@ -106,6 +115,27 @@ SaveFile::SaveFile(const std::string& fileName)
                     fLocationFlags.push_back(data[record + kLocationFlagsOffset]);
                     fEnterStates.push_back(WordAt(data,
                         record + kEnterStateOffset));
+                }
+                // the caches: the tail of the file
+                const size_t tail = offset + locations * kLocationSize;
+                for (size_t i = 0; i < locations; i++) {
+                    const uint16 number = WordAt(data,
+                        offset + i * kLocationSize + kCacheNumberOffset);
+                    if (number == 0 || number == 0xFFFF
+                            || 2 * size_t(number) + 2 > size - tail)
+                        continue;
+                    const size_t start = WordAt(data, tail + 2 * number);
+                    if (start >= size - tail)
+                        continue;
+                    const size_t entries = data[tail + start];
+                    if (start + 1 + entries * 4 > size - tail)
+                        continue;
+                    std::vector<cache_item>& cache = fCaches[int(i)];
+                    for (size_t e = 0; e < entries; e++) {
+                        const size_t at = tail + start + 1 + e * 4;
+                        cache.push_back(cache_item{ WordAt(data, at),
+                            data[at + 2], data[at + 3] });
+                    }
                 }
             }
         }
@@ -248,8 +278,37 @@ SaveFile::Write(const std::string& fileName, const saved_game& game,
         if (game.enterStates != NULL && i < game.enterStates->size())
             PutWord(data, record + kEnterStateOffset, (*game.enterStates)[i]);
     }
-    data.insert(data.end(), fBytes.begin() + old + oldLocations * kLocationSize,
-        fBytes.end());
+    if (game.caches != NULL) {
+        // the caches, numbered in the order of their locations
+        std::vector<uint8> tail(kCacheHeaderSize, 0);
+        tail[0] = 99;
+        size_t number = 0;
+        for (size_t i = 0; i < locationCount; i++) {
+            const size_t record = offset + 2 + i * kLocationSize;
+            const cache_map::const_iterator found = game.caches->find(int(i));
+            if (found == game.caches->end() || number >= kMaxCaches) {
+                PutWord(data, record + kCacheNumberOffset, 0xFFFF);
+                continue;
+            }
+            number++;
+            PutWord(data, record + kCacheNumberOffset, uint16(number));
+            PutWord(tail, 2 * number, uint16(tail.size()));
+            const size_t entries = std::min(found->second.size(), size_t(255));
+            tail.push_back(uint8(entries));
+            for (size_t e = 0; e < entries; e++) {
+                const cache_item& stored = found->second[e];
+                tail.push_back(uint8(stored.code & 0xFF));
+                tail.push_back(uint8(stored.code >> 8));
+                tail.push_back(stored.quality);
+                tail.push_back(stored.count);
+            }
+        }
+        tail[1] = uint8(number);
+        data.insert(data.end(), tail.begin(), tail.end());
+    } else {
+        data.insert(data.end(), fBytes.begin() + old + oldLocations * kLocationSize,
+            fBytes.end());
+    }
 
     FILE* file = fopen(fileName.c_str(), "wb");
     if (file == NULL)
