@@ -48,7 +48,9 @@ What works so far:
   not implemented yet).
 - **Battles** (provisional, seen from above): the party and the enemies
   on the game's battlefield maps, with their sprites; the game's melee
-  rules, wounds, deaths and loot.
+  rules, wounds, deaths and loot; orders for the members (walk, attack a
+  chosen enemy, halt) and their stances (Std Attack, Vulnerable, Berserk,
+  Parry).
 - **The party**: the Quickstart characters or a saved game, the
   information screens (F1..F6) with the **equipment** scroll (ready, unready, drop, give), the party recovering as time passes;
   **saving** and loading in the original's format; the **party selection**

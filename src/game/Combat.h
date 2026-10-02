@@ -5,8 +5,8 @@
  * location, the damage through armor and what it does.
  *
  * Some terms of the game's formulas come from fields that are not
- * decoded yet (the fighters' orders, the load they carry, record fields
- * +0x23..+0x55): they are left out, as if 0.
+ * decoded yet (the load they carry, record fields +0x23..+0x55): they are
+ * left out, as if 0. The fighters' orders (the Attack menu) are used.
  */
 #pragma once
 
@@ -32,8 +32,20 @@ enum hit_location {
     HIT_LIMBS = 1
 };
 
+// A fighter's way of fighting, the bits of its Orders word (record +0x10)
+// that the strike's formulas test (file 0x43CA2, 0x44232, 0x44418): all
+// have bit 0x02, "fighting". The names are the Attack menu's (the order of
+// the bits and the items is *inferred*)
+enum battle_stance {
+    STANCE_STANDARD = 0x02,		// Std Attack
+    STANCE_VULNERABLE = 0x06,	// slower and surer, easier to hit
+    STANCE_BERSERK = 0x0A,		// faster, wilder, hits deeper
+    STANCE_PARRY = 0x22			// hard to hit, less sure
+};
+
 // What a combatant's record holds, as the game sets it up (file 0x446E0)
 struct fighter {
+    int orders;					// a battle_stance
     int status;					// fighter_status
     int endurance;
     int strength;

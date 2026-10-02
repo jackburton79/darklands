@@ -56,6 +56,14 @@ Positive(int value)
 }
 
 
+// Whether the Orders have all of the bits
+static bool
+Has(int orders, int bits)
+{
+    return (orders & bits) == bits;
+}
+
+
 int
 MeleeAttack(const fighter& f, const exe_weapon& weapon)
 {
@@ -71,6 +79,7 @@ fighter
 FighterFromCharacter(const character& member, const ExeData& exe)
 {
     fighter f = {};
+    f.orders = STANCE_STANDARD;
     f.status = FIGHTER_ACTIVE;
     f.endurance = member.attributes[ATTRIBUTE_ENDURANCE];
     f.strength = member.attributes[ATTRIBUTE_STRENGTH];
@@ -100,6 +109,7 @@ fighter
 FighterFromEnemy(const enemy_type& type, const ExeData& exe)
 {
     fighter f = {};
+    f.orders = STANCE_STANDARD;
     f.status = FIGHTER_ACTIVE;
     f.endurance = type.attributes[ATTRIBUTE_ENDURANCE];
     f.strength = type.attributes[ATTRIBUTE_STRENGTH];
@@ -127,7 +137,15 @@ StrikeRate(const fighter& f, const ExeData& exe)
     const exe_weapon* w = WeaponOf(f, exe);
     const int speed = w != NULL ? w->speed : 0;
     const int d = (200 - f.weaponSkill - f.agility) / 2 + (speed + 15) * 2;
-    return d > 0 ? 6000 / d : 100;
+    int rate = d > 0 ? 6000 / d : 100;
+    // the stance (file 0x43CA2)
+    if (Has(f.orders, 0x06))
+        rate -= 30;
+    else if (Has(f.orders, 0x22))
+        rate += 60;
+    else if (Has(f.orders, 0x0A))
+        rate += 120;
+    return rate;
 }
 
 
@@ -154,8 +172,24 @@ ChanceToHit(const fighter& attacker, const fighter& defender,
         }
     }
     const int defense = Positive(defender.attack + shield);
-    return (attacker.attack - defense) * 2 / 3 + 50 + 10 * helpers
-        - 10 * threats;
+    // the stances (file 0x44232): the attacker's care or wildness, then
+    // the defender's guard or exposure
+    int m = 0;
+    if (Has(attacker.orders, 0x0A))
+        m = -5;
+    else if (Has(attacker.orders, 0x22))
+        m = -2 - attacker.weaponSkill / 4;
+    else if (Has(attacker.orders, 0x06))
+        m = std::max(attacker.weaponSkill / 4, 10);
+    if (Has(defender.orders, 0x22))
+        m -= defender.weaponSkill / 4 + 5;
+    else if (Has(defender.orders, 0x06))
+        m = std::min(-(attacker.weaponSkill / 4), -10);
+    int chance = (attacker.attack - defense) * 2 / 3 + 50 + m
+        + 10 * helpers - 10 * threats;
+    if (Has(attacker.orders, 0x06))
+        chance = std::max(chance, 10);
+    return chance;
 }
 
 
@@ -213,6 +247,8 @@ Strike(const fighter& attacker, const fighter& defender, const ExeData& exe,
     // file 0x44418
     const int armor = defender.armor[blow.location];
     int penetration = w->penetration;
+    if (Has(attacker.orders, 0x0A))
+        penetration += Die(random, 4);
     if (blow.result == STRIKE_WEAK_HIT)
         penetration -= Die(random, 4);
     int value;

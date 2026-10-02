@@ -127,7 +127,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `Run(window, page)`).
 - `BattleView`: a provisional top view of a battlefield map (cells,
   walls, objects) and figures (party and enemies, with their sprites
-  and colors; members walk where one clicks, `BattlePath`, with their
+  and colors; members walk where one clicks or attack the foe one clicks
+  and have a stance (the Attack menu), `BattlePath`, with their
   walking animation; the enemies walk up to the nearest member; the
   figures next to a foe fight it, `Combat`; `AfterBattle()` then
   applies the wounds and the deaths), until the game's own drawing is

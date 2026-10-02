@@ -163,6 +163,9 @@ public:
     std::string		ItemText(int menu, int item) const;
     std::string		ItemShortcut(int menu, int item) const;
     bool			IsChecked(menu_command command) const;
+    // The Attack menu's checked item (a battle's selected member's way of
+    // fighting), or MENU_NONE
+    void			SetStance(menu_command stance)	{ fStance = stance; }
 
 private:
     const menu_item_definition& _Item(int menu, int item) const;
@@ -183,6 +186,7 @@ private:
     game_settings	fOwnSettings;
     game_settings*	fSettings;
     bool			fEnabled[MENU_COUNT];
+    menu_command	fStance;
 
     int				fMenu;			// open: 0..3, or -1
     int				fItem;			// highlighted in it, or -1

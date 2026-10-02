@@ -2478,9 +2478,20 @@ mouse button held down, or F10, shows it; it has four pull-down menus,
   kept: the game has neither the messages nor the sound), Pause (waits
   for a key), Quit. Change Marching Order asks who goes first, second... (the prompts are
   made up; not in a battle or at a merchant); Party Info opens the F6
-  screen. In a battle Resume
-  and Halt work (and H); the other orders of the menu are dim, as the
-  battle has no such orders yet.
+  screen. In a battle Resume,
+  Halt (H) and the Attack menu's four stances work (A, V, B, P, with the
+  selected member's checked); the other orders of the menu are dim.
+  **Stances** (`battle_stance`): the strike's formulas (above) test the
+  bits 0x06, 0x0A and 0x22 of the Orders on top of the bit 0x02 that every
+  fighter has; the program gives Std Attack 0x02, Vulnerable 0x06, Berserk
+  0x0A and Parry 0x22 (which bit is which item is *inferred* from what the
+  terms do: 0x06 is slower and surer and leaves the fighter exposed, 0x0A
+  faster, wilder and deeper, 0x22 guarded). Orders on the field: a click on
+  a member selects it (also 1..5, Tab), a click on a cell sends it there, a
+  click on a standing foe sends it against that foe (it follows it, one
+  step at a time, and fights only it until it falls, a red frame marks
+  it); a bar along the bottom shows each member's number, name, Endurance
+  and stance (provisional, the game's own panel is not decoded).
 
 ## Battles
 

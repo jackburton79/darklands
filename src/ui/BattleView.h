@@ -87,7 +87,8 @@ public:
     bool			EnemiesActive() const	{ return fEnemiesActive; }
 
     // A click on the screen (320x200 coordinates): selects the party
-    // member there, or sends the selected one to that cell.
+    // member there, sends the selected one against the standing foe there,
+    // or sends it to that cell.
     void			Clicked(const GFX::point& point);
     // The open cell without a figure nearest to (x, y), in rings around
     // it; false if there is none.
@@ -105,12 +106,29 @@ public:
     // inferred), Party Info is off (manual p. 20), of the Orders only
     // Resume and Halt do anything so far.
     void			SetMenuBar(MenuBar* menu)	{ fMenu = menu; }
-    // The selected member stops where it is
+    // The selected member stops where it is, and drops its attack order
     void			HaltSelected();
+    // Orders for the selected member. AttackFigure() sends it against one
+    // enemy (a figure's index): it walks up to it, a step at a time as the
+    // enemy moves, and fights it, and only it, until it falls; false if
+    // there is no such foe standing. A click on an enemy does the same.
+    // SelectedTarget() is that enemy's figure, or -1.
+    bool			AttackFigure(int foe);
+    int				SelectedTarget() const;
+    // The figure standing on a cell, or -1
+    int				FigureAt(int x, int y) const;
+    // How the selected member fights (a battle_stance of Combat.h, the
+    // Attack menu: Std Attack, Vulnerable, Berserk, Parry)
+    void			SetSelectedStance(int stance);
+    int				SelectedStance() const;
+    // The next member standing after the selected one
+    void			SelectNext();
 
     // Runs until the battle ends (then a message waits for a key or a
-    // click) or Esc; the arrow keys scroll, 1..5 select a member, a click
-    // selects or moves, the space bar stops or starts the enemies.
+    // click) or Esc; the arrow keys scroll, 1..5 and Tab select a member, a
+    // click selects, moves or attacks, the space bar stops or starts the
+    // enemies, the Attack menu's letters (A, V, B, P) set the selected
+    // member's stance.
     battle_outcome	Run(GameWindow& window);
 
     // Moves the view by cells, within the map
@@ -138,6 +156,8 @@ private:
         int			colors;		// the first of its 8 colors, or -1
         int			member;		// in the party, or -1 (an enemy)
         int			enemyType;	// DARKLAND.ENM, or -1 (the party)
+        std::string	name;		// of a member
+        int			orderTarget;	// the foe it was sent against, or -1
         std::vector<battle_position> path;	// still to walk
         std::shared_ptr<ImcFile> death;		// falling ("DY")
         fighter		stats;
@@ -150,6 +170,8 @@ private:
 
     figure			_MakeFigure(const std::string& image, int weapon, int x,
                         int y, int direction);
+    bool			_StepToward(figure& mover, const figure& goal);
+    void			_DrawStatus();
     bool			_Hostile(const figure& a, const figure& b) const;
     void			_Fight();
 

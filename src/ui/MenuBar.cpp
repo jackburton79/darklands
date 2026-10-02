@@ -140,6 +140,7 @@ MenuBar::MenuBar(GameData& data)
 {
     // The Game menu and Party Info are on, the battle's orders off until
     // a battle turns them on
+    fStance = MENU_NONE;
     for (int i = 0; i < MENU_COUNT; i++)
         fEnabled[i] = false;
     for (int menu = 0; menu < kMenuCount; menu++) {
@@ -213,6 +214,11 @@ MenuBar::IsChecked(menu_command command) const
             return fSettings->music;
         case MENU_SOUND_EFFECTS:
             return fSettings->soundEffects;
+        case MENU_STD_ATTACK:
+        case MENU_VULNERABLE:
+        case MENU_BERSERK:
+        case MENU_PARRY:
+            return command == fStance;
         default:
             return false;
     }

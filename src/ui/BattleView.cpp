@@ -118,6 +118,7 @@ BattleView::_MakeFigure(const std::string& image, int weapon, int x, int y,
     f.colors = -1;
     f.member = -1;
     f.enemyType = -1;
+    f.orderTarget = -1;
     f.stats = fighter();
     f.target = -1;
     f.strikeFrame = 0;
@@ -137,6 +138,7 @@ BattleView::AddPartyMember(int member, const character& who,
         direction);
     f.colors = kPartyColors + kFigureColors * member;
     f.member = member;
+    f.name = who.shortName;
     f.stats = FighterFromCharacter(who, *fExe);
     for (int i = 0; i < kFigureColors && size_t(3 * i + 2) < colors.size(); i++) {
         GFX::Color& color = fPalette.colors[f.colors + i];
@@ -227,8 +229,77 @@ BattleView::SelectMember(int member)
 void
 BattleView::HaltSelected()
 {
-    if (fSelected >= 0)
-        fFigures[size_t(fSelected)].path.clear();
+    if (fSelected < 0)
+        return;
+    fFigures[size_t(fSelected)].path.clear();
+    fFigures[size_t(fSelected)].orderTarget = -1;
+}
+
+
+int
+BattleView::FigureAt(int x, int y) const
+{
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        if (fFigures[i].x == x && fFigures[i].y == y
+                && fFigures[i].stats.status == FIGHTER_ACTIVE)
+            return int(i);
+    }
+    return -1;
+}
+
+
+bool
+BattleView::AttackFigure(int foe)
+{
+    if (fSelected < 0 || foe < 0 || size_t(foe) >= fFigures.size())
+        return false;
+    figure& attacker = fFigures[size_t(fSelected)];
+    const figure& target = fFigures[size_t(foe)];
+    if (attacker.stats.status != FIGHTER_ACTIVE
+            || target.stats.status != FIGHTER_ACTIVE
+            || !_Hostile(attacker, target))
+        return false;
+    attacker.orderTarget = foe;
+    attacker.path.clear();
+    return true;
+}
+
+
+int
+BattleView::SelectedTarget() const
+{
+    return fSelected >= 0 ? fFigures[size_t(fSelected)].orderTarget : -1;
+}
+
+
+void
+BattleView::SetSelectedStance(int stance)
+{
+    if (fSelected >= 0 && fFigures[size_t(fSelected)].member >= 0)
+        fFigures[size_t(fSelected)].stats.orders = stance;
+}
+
+
+int
+BattleView::SelectedStance() const
+{
+    return fSelected >= 0 ? fFigures[size_t(fSelected)].stats.orders
+        : STANCE_STANDARD;
+}
+
+
+void
+BattleView::SelectNext()
+{
+    const int count = int(fFigures.size());
+    for (int step = 1; step <= count; step++) {
+        const int i = ((fSelected < 0 ? -1 : fSelected) + step) % count;
+        if (fFigures[size_t(i)].member >= 0
+                && fFigures[size_t(i)].stats.status == FIGHTER_ACTIVE) {
+            fSelected = i;
+            return;
+        }
+    }
 }
 
 
@@ -247,6 +318,7 @@ BattleView::MoveSelectedTo(int x, int y)
     figure& mover = fFigures[size_t(fSelected)];
     if (mover.stats.status != FIGHTER_ACTIVE)
         return false;
+    mover.orderTarget = -1;
     std::vector<battle_position> path = FindBattlePath(*fMap,
         battle_position{ mover.x, mover.y }, battle_position{ x, y },
         _Occupied(&mover));
@@ -301,6 +373,25 @@ BattleView::Tick()
             f.frame = 0;
             f.ticks = 0;
         }
+        // a member sent against a foe: stand beside it, or step toward it
+        // (it may have moved: one step at a time)
+        bool chasing = false;
+        if (f.member >= 0 && f.orderTarget >= 0) {
+            const figure& foe = fFigures[size_t(f.orderTarget)];
+            if (foe.stats.status != FIGHTER_ACTIVE) {
+                f.orderTarget = -1;
+            } else if (std::abs(foe.x - f.x) <= 1
+                    && std::abs(foe.y - f.y) <= 1) {
+                f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
+                f.path.clear();
+                f.frame = 0;
+                f.ticks = 0;
+            } else {
+                chasing = true;
+                if (f.path.empty())
+                    _StepToward(f, foe);
+            }
+        }
         if (f.path.empty())
             continue;
         f.frame = (f.frame + 1) % f.walk->CountFrames();
@@ -324,7 +415,7 @@ BattleView::Tick()
         f.y = next.y;
         f.path.erase(f.path.begin());
         // an enemy plans its next step at the next tick: keep its pace
-        if (f.path.empty() && !enemy) {
+        if (f.path.empty() && !enemy && !chasing) {
             f.frame = 0;
             f.ticks = 0;
         }
@@ -351,6 +442,16 @@ BattleView::_Fight()
         f.target = -1;
         if (f.stats.status != FIGHTER_ACTIVE || !f.path.empty())
             continue;
+        // the foe it was sent against, once beside it, and no other
+        if (f.orderTarget >= 0) {
+            const figure& ordered = fFigures[size_t(f.orderTarget)];
+            if (ordered.stats.status == FIGHTER_ACTIVE
+                    && std::abs(ordered.x - f.x) <= 1
+                    && std::abs(ordered.y - f.y) <= 1) {
+                f.target = f.orderTarget;
+                continue;
+            }
+        }
         for (size_t j = 0; j < fFigures.size() && f.target < 0; j++) {
             const figure& foe = fFigures[j];
             if (foe.stats.status == FIGHTER_ACTIVE && _Hostile(f, foe)
@@ -446,15 +547,43 @@ BattleView::_PlanEnemy(figure& enemy)
 }
 
 
+// One step toward a figure along the paths, to its cell as if it were
+// free (the last step is not taken); false if there is no way
+bool
+BattleView::_StepToward(figure& mover, const figure& goal)
+{
+    if (!fMap)
+        return false;
+    std::vector<battle_position> occupied = _Occupied(&mover);
+    occupied.erase(std::remove(occupied.begin(), occupied.end(),
+        battle_position{ goal.x, goal.y }), occupied.end());
+    const std::vector<battle_position> path = FindBattlePath(*fMap,
+        battle_position{ mover.x, mover.y },
+        battle_position{ goal.x, goal.y }, occupied);
+    if (path.size() < 2)
+        return false;
+    mover.path.assign(1, path.front());
+    return true;
+}
+
+
+// A click: on a member selects it; on a standing foe, with a member
+// selected, sends the member against it; elsewhere sends the member there
 void
 BattleView::Clicked(const GFX::point& point)
 {
     const int x = (point.x + fOrigin.x) / kCellSize;
     const int y = (point.y + fOrigin.y) / kCellSize;
-    for (const figure& f : fFigures) {
-        if (f.x == x && f.y == y) {
-            if (f.member >= 0)
-                SelectMember(f.member);
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        const figure& f = fFigures[i];
+        if (f.x != x || f.y != y)
+            continue;
+        if (f.member >= 0) {
+            SelectMember(f.member);
+            return;
+        }
+        if (f.stats.status == FIGHTER_ACTIVE) {
+            AttackFigure(int(i));
             return;
         }
     }
@@ -594,6 +723,11 @@ struct BattleMenu {
         bar->SetEnabled(MENU_MARCHING_ORDER, true);
         bar->SetEnabled(MENU_RESUME, false);
         bar->SetEnabled(MENU_HALT, false);
+        bar->SetEnabled(MENU_STD_ATTACK, false);
+        bar->SetEnabled(MENU_VULNERABLE, false);
+        bar->SetEnabled(MENU_BERSERK, false);
+        bar->SetEnabled(MENU_PARRY, false);
+        bar->SetStance(MENU_NONE);
     }
 
     MenuBar*	bar;
@@ -613,6 +747,19 @@ BattleView::Run(GameWindow& window)
             // Resume starts the enemies; Halt needs a member selected
             fMenu->SetEnabled(MENU_RESUME, !fEnemiesActive);
             fMenu->SetEnabled(MENU_HALT, fSelected >= 0);
+            // the way the selected member fights, checked in the menu
+            const bool member = fSelected >= 0
+                && fFigures[size_t(fSelected)].member >= 0
+                && fFigures[size_t(fSelected)].stats.status == FIGHTER_ACTIVE;
+            static const menu_command kStances[4] = { MENU_STD_ATTACK,
+                MENU_VULNERABLE, MENU_BERSERK, MENU_PARRY };
+            for (menu_command stance : kStances)
+                fMenu->SetEnabled(stance, member);
+            const int stance = SelectedStance();
+            fMenu->SetStance(!member ? MENU_NONE
+                : stance == STANCE_VULNERABLE ? MENU_VULNERABLE
+                : stance == STANCE_BERSERK ? MENU_BERSERK
+                : stance == STANCE_PARRY ? MENU_PARRY : MENU_STD_ATTACK);
         }
         const battle_outcome outcome = Outcome();
         if (dirty) {
@@ -651,6 +798,14 @@ BattleView::Run(GameWindow& window)
                     SetEnemiesActive(true);
                 else if (command == MENU_HALT)
                     HaltSelected();
+                else if (command == MENU_STD_ATTACK)
+                    SetSelectedStance(STANCE_STANDARD);
+                else if (command == MENU_VULNERABLE)
+                    SetSelectedStance(STANCE_VULNERABLE);
+                else if (command == MENU_BERSERK)
+                    SetSelectedStance(STANCE_BERSERK);
+                else if (command == MENU_PARRY)
+                    SetSelectedStance(STANCE_PARRY);
                 else if (command == MENU_PAUSE)
                     MenuBar::Pause(window);
                 dirty = true;
@@ -683,6 +838,9 @@ BattleView::Run(GameWindow& window)
                         return BATTLE_LEFT;
                     case SDLK_SPACE:
                         SetEnemiesActive(!fEnemiesActive);
+                        break;
+                    case SDLK_TAB:
+                        SelectNext();
                         break;
                     case SDLK_1:
                     case SDLK_2:
@@ -767,7 +925,64 @@ BattleView::Draw()
         }
         _DrawFigure(*f);
     }
+    // the foe the selected member was sent against: a red frame
+    const int target = SelectedTarget();
+    if (target >= 0 && fFigures[size_t(target)].stats.status == FIGHTER_ACTIVE) {
+        const figure& foe = fFigures[size_t(target)];
+        fBuffer->StrokeRect(GFX::rect(foe.x * kCellSize - fOrigin.x,
+            foe.y * kCellSize - fOrigin.y, kCellSize, kCellSize), kRed + 7);
+    }
+    _DrawStatus();
     return fBuffer;
+}
+
+
+// The party along the bottom: the number that selects a member, his name,
+// his Endurance and the letter of his stance (S, V, B, P); the selected
+// one is lit, the fallen are dim. Provisional: the game's own panel is
+// not decoded
+void
+BattleView::_DrawStatus()
+{
+    const int height = fFont->Height() + 3;
+    const int top = kScreenHeight - height;
+    fBuffer->FillRect(GFX::rect(0, top, kScreenWidth, height), kGray + 1);
+    int slots = 0;
+    for (const figure& f : fFigures)
+        slots += f.member >= 0;
+    if (slots == 0)
+        return;
+    const int width = kScreenWidth / slots;
+    int slot = 0;
+    for (size_t i = 0; i < fFigures.size(); i++) {
+        const figure& f = fFigures[i];
+        if (f.member < 0)
+            continue;
+        const char letter = f.stats.orders == STANCE_VULNERABLE ? 'V'
+            : f.stats.orders == STANCE_BERSERK ? 'B'
+            : f.stats.orders == STANCE_PARRY ? 'P' : 'S';
+        std::string name = f.name;
+        std::string text;
+        for (;;) {
+            text = std::to_string(f.member + 1) + " " + name + " "
+                + std::to_string(std::max(f.stats.endurance, 0)) + " "
+                + letter;
+            if (name.size() <= 3 || fFont->StringWidth(
+                    Font::ToGameCharset(text)) <= width - 4)
+                break;
+            name.erase(name.size() - 1);
+        }
+        const bool selected = int(i) == fSelected;
+        const bool down = f.stats.status != FIGHTER_ACTIVE;
+        if (selected) {
+            fBuffer->FillRect(GFX::rect(slot * width, top, width, height),
+                kGray + 4);
+        }
+        fFont->RenderString(Font::ToGameCharset(text), fBuffer,
+            GFX::point(slot * width + 2, top + 2),
+            down ? kGray + 3 : selected ? kYellow + 7 : kGray + 7);
+        slot++;
+    }
 }
 
 
