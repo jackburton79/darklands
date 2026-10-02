@@ -603,16 +603,21 @@ A `.MSG` file is a deck of **cards**, each a text box with options:
     +0x00   1     text top
     +0x01   1     text left
     +0x02   1     unknown, 0
-    +0x03   1     text right limit
+    +0x03   1     text width + 10 (the right limit when left is 10)
     +0x04   1     unknown, 0
     +0x05   ...   text, NUL-terminated (game character set + control codes)
 
 - **verified**: all 419 files parse to exactly their last byte.
-- Header meaning from the wendigo reference: top/left relative to the
-  inner edge of the card frame, the column is `right − left` wide.
-  The width is **verified**: with it, the gate card (`$SELEC00.MSG`
-  card 0) breaks its lines exactly as on the manual's screenshot (see
-  "Card screen"). The exact origin is only measured (±1 pixel). 3248 of the 3756 cards have
+- Header meaning: top/left relative to the inner edge of the card
+  frame; the column is `+0x03 − 10` wide (the wendigo reference says
+  `right − left`: the same for the standard left of 10). **verified**
+  in DARKLAND.EXE: the card's text routine (0265:0134) gets the x as
+  left + 5 and the width as `+0x03 − 10` (file 0x8D110 + 0x587), and the
+  gate card (`$SELEC00.MSG` card 0) breaks its lines exactly as on the
+  manual's screenshot (see "Card screen"). Only `$MEETB00.MSG` (the boars)
+  has cards with another left, which it sizes to the text and centers
+  around x 140: read as `right − left` they came out 78 pixels wide and
+  ran off the screen. The exact origin is only measured (±1 pixel). 3248 of the 3756 cards have
   `0A 0A 00 F0 00` (10, 10, 240); 3344 have a right limit of 240, the
   others range from 3 to 255.
 - Bytes +2 and +4 are 0 in every card except the 76 of `$MCGUF07.MSG`

@@ -31,6 +31,7 @@ static const int kCardLeft			= 60;
 // manual's screenshot, about +-1 pixel)
 static const int kTextOffsetX		= -2;
 static const int kTextOffsetY		= 1;
+static const int kTextWidthMargin	= 10;	// header's third value less this is the width
 static const int kLineGap			= 1;	// between lines of a paragraph
 static const int kParagraphGap		= 2;	// extra, per 0x14 code
 static const int kOptionTextGap		= 1;	// after the "..." of an option
@@ -578,7 +579,11 @@ CardView::_Layout(const msg_card& card, const std::string& text,
     const int interiorLeft = kCardLeft + fBorders[BORDER_LEFT].width;
     const int interiorTop = fBorders[BORDER_TOP].height;
     const int left = interiorLeft + card.textLeft + kTextOffsetX;
-    const int right = interiorLeft + card.textRight + kTextOffsetX;
+    // the header's third value is the text's width plus 10, not its right
+    // edge (DARKLAND.EXE hands the text routine textRight - 10 as the
+    // width, textLeft + 5 as the x: file 0x8D110 + 0x587); the standard
+    // cards (10, 240) are the same either way
+    const int right = left + card.textRight - kTextWidthMargin;
     const int lineHeight = fFont->Height() + kLineGap;
     int y = interiorTop + card.textTop + kTextOffsetY;
     int optionNumber = -1;

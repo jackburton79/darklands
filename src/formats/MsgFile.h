@@ -27,7 +27,8 @@ struct msg_card {
     uint8 textTop;			// header +0: top of the text
     uint8 textLeft;			// header +1: left of the text
     uint8 unknown1;			// header +2: 0 in every real card
-    uint8 textRight;		// header +3: right limit of the text
+    uint8 textRight;		// header +3: the text's width + 10 (the right edge
+                            // for left 10)
     uint8 unknown2;			// header +4: 0 in every real card
     std::string text;		// game character set, with msg_code codes
 };
