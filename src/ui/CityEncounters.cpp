@@ -7,6 +7,7 @@
 #include "BattleView.h"
 #include "Catalog.h"
 #include "Character.h"
+#include "Equipment.h"
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "GameData.h"
@@ -190,7 +191,7 @@ CityVisit::_RunFromThieves()
     if (fClock != NULL)
         fClock->AddHours(1);
     const int speed = fParty != NULL && !fParty->members.empty()
-        ? fParty->members[size_t(_Slowest())].attributes[ATTRIBUTE_AGILITY] : 0;
+        ? MemberSpeed(fParty->members[size_t(_Slowest())]) : 0;
     return int(fRandom() % 100) <= speed + 5 ? SCREEN_THIEVES_ELUDED
         : SCREEN_THIEVES_CAUGHT;
 }

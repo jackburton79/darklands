@@ -468,6 +468,33 @@ public:
         SCREEN_CAMPB_STUMBLE,
         SCREEN_CAMPB_UNANSWERED,
         SCREEN_CAMPB_WON,
+        SCREEN_BLIZZARD_MEET,	// $MeetB03, a blizzard (state 0x117): the
+        SCREEN_BLIZZARD,		// start, 0, 1 (keep going), 2 (a saint
+        SCREEN_BLIZZARD_ONWARD,	// helped), 3 (no answer), 4 (the camp)
+        SCREEN_BLIZZARD_PRAYED,
+        SCREEN_BLIZZARD_UNHEARD,
+        SCREEN_BLIZZARD_CAMP,
+        SCREEN_BOG_MEET,		// $MeetP02, a peat bog (state 0x116): the
+        SCREEN_BOG,				// start, 0, 1 (the rope), 2 (it failed), 3
+        SCREEN_BOG_ROPE,		// (again), 4 (by hand), 5 (alone), 6 (the
+        SCREEN_BOG_ROPED,		// possessions dumped), 7 (left to die),
+        SCREEN_BOG_AGAIN,		// 8 (his curse), 13, 14 (a saint helped), 16
+        SCREEN_BOG_HAND,		// (no answer)
+        SCREEN_BOG_ALONE,
+        SCREEN_BOG_DUMPED,
+        SCREEN_BOG_DEAD,
+        SCREEN_BOG_CURSED,
+        SCREEN_BOG_MIRACLE,
+        SCREEN_BOG_PRAYER,
+        SCREEN_BOG_UNHEARD,
+        SCREEN_FLOOD_MEET,		// $MeetS01, a flood (state 0x11B): the
+        SCREEN_FLOOD,			// start, 0, 1 (higher ground too late), 2
+        SCREEN_FLOOD_LOST,		// (in time), 3 and 4 (the raft failed, or
+        SCREEN_FLOOD_SAFE,		// not), 5 (no answer), 6 (a saint helped)
+        SCREEN_FLOOD_RAFT_FAILED,
+        SCREEN_FLOOD_RAFT,
+        SCREEN_FLOOD_AGAIN,
+        SCREEN_FLOOD_PRAYED,
         SCREEN_CAMPB_FLED,
         SCREEN_CAMPB_BEATEN,
         SCREEN_SHELL_GAME,		// $SHELL00: the shell game man (0), the
@@ -812,7 +839,7 @@ private:
     bool			_HasHorses() const;
     void			_LeaveHorses();
     void			_DropItems(uint32 flags);
-    void			_LoseItems(int keepPercent);
+    void			_LoseItems(int keepPercent, int only = -1);
     bool			_ColdWater() const;
     int				_Swim();
     bool			_SwimNext();
@@ -947,6 +974,20 @@ private:
     int				_BanditsSneak();
     void			_FightBandits();
     int				_ResolveBanditsBattle(int outcome);
+    // The weather and the ground of the map (CityWeather.cpp)
+    int				_MeetBlizzard();
+    int				_BlizzardOnward();
+    int				_BlizzardCamp();
+    int				_MeetBog();
+    int				_BogChance(int way);
+    int				_BogDrown();
+    int				_BogPull(int way);
+    int				_BogAbandon();
+    int				_BogSaint(int index);
+    int				_BogUnheard(int menu);
+    int				_MeetFlood();
+    int				_FloodSearch();
+    int				_FloodRaft();
     // The other meetings of the map (CityMeetings.cpp)
     int				_MeetPilgrims();
     int				_PilgrimsGive();
@@ -1151,6 +1192,10 @@ private:
     bool			fBanditsSoldiers;	// MEETB02, not MEETB01
     int				fBanditsTerrain;	// the tile type under the party
     int				fBanditsReturn;	// where an unanswered prayer leads back
+    int				fWeatherMember;	// the one in the bog, or the guide in
+                                    // the flood
+    bool			fBogFailed[3];	// the rope, by hand, the possessions
+    bool			fFloodRope;		// the party carries a rope
     int				fShellReturn;	// the square or the market
     bool			fShellWon;		// DS:8E1C: the man lets a party win once
     int				fGroveHours;	// the nap until nightfall

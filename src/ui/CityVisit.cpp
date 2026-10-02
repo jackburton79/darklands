@@ -4,6 +4,7 @@
 #include "BattleView.h"
 #include "Catalog.h"
 #include "Character.h"
+#include "Equipment.h"
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "GameData.h"
@@ -125,6 +126,9 @@ CityVisit::CityVisit(GameData& data)
     fBanditsSoldiers(false),
     fBanditsTerrain(0),
     fBanditsReturn(SCREEN_BANDITS_WARNING),
+    fWeatherMember(0),
+    fBogFailed(),
+    fFloodRope(false),
     fShellReturn(SCREEN_SQUARE),
     fShellWon(false),
     fGroveHours(0),
@@ -222,8 +226,11 @@ CityVisit::Run(GameWindow& window, int cityIndex, int screen)
         }
         if (option < 0)
             return QUIT;
-        if (!Choose(option))
-            return LEAVE_CITY;
+        if (!Choose(option)) {
+            // the last member drowned in the bog: the game is over
+            return fParty != NULL && fParty->members.empty() ? PARTY_LOST
+                : LEAVE_CITY;
+        }
         if (fParty != NULL && fParty->members.empty())
             return PARTY_LOST;			// all executed
         if (fPendingSelection) {
@@ -703,6 +710,24 @@ CityVisit::Choose(int option)
             return true;
         case ACTION_PILGRIMS_ARRIVE:
             _Show(_PilgrimsArrive());
+            return true;
+        case ACTION_BLIZZARD_ONWARD:
+            _Show(_BlizzardOnward());
+            return true;
+        case ACTION_BLIZZARD_CAMP:
+            _Show(_BlizzardCamp());
+            return true;
+        case ACTION_BOG_PULL:
+            _Show(_BogPull(rule.target));
+            return true;
+        case ACTION_BOG_ABANDON:
+            _Show(_BogAbandon());
+            return true;
+        case ACTION_FLOOD_SEARCH:
+            _Show(_FloodSearch());
+            return true;
+        case ACTION_FLOOD_RAFT:
+            _Show(_FloodRaft());
             return true;
         case ACTION_HERMIT_MEET:
             _Show(_HermitMeet());
@@ -1227,6 +1252,12 @@ CityVisit::_Show(int screen, bool withScene)
         screen = _MeetCampSoldiers();
     else if (screen == SCREEN_CAMPB_MEET)
         screen = _MeetCampBandits();
+    else if (screen == SCREEN_BLIZZARD_MEET)
+        screen = _MeetBlizzard();
+    else if (screen == SCREEN_BOG_MEET)
+        screen = _MeetBog();
+    else if (screen == SCREEN_FLOOD_MEET)
+        screen = _MeetFlood();
     if (screen == SCREEN_THIEVES_MAP_MEET) {
         fThievesReturn = -1;
         screen = _MeetThieves();
@@ -1571,6 +1602,10 @@ CityVisit::_HiddenOptions(int screen) const
             hide = fPrayerFailed || !_SaintKnown(screen);
         } else if (rule.needs == kNeedsCampIgnore) {
             hide = fCampIgnored;
+        } else if (rule.needs == kNeedsBogOption) {
+            hide = fBogFailed[rule.target];
+        } else if (rule.needs == kNeedsRaft) {
+            hide = !fFloodRope;
         } else if (rule.needs == kNeedsMemberHere) {
             hide = fParty == NULL || size_t(rule.target) >= fParty->members.size();
         } else if (rule.needs == kNeedsSaint) {
@@ -1789,16 +1824,19 @@ CityVisit::_Mark(int kind, uint32 hours, bool extend)
 }
 
 
-// The member who falls behind (0E76:0656): the lowest agility (the game
-// lowers it by the load carried: not kept here)
+// The member who falls behind (0E76:0656): the lowest speed, the Agility
+// lowered by the load carried (the first of them)
 int
 CityVisit::_Slowest() const
 {
     int slowest = 0;
-    for (size_t i = 1; fParty != NULL && i < fParty->members.size(); i++) {
-        if (fParty->members[i].attributes[ATTRIBUTE_AGILITY]
-                < fParty->members[slowest].attributes[ATTRIBUTE_AGILITY])
+    int lowest = 0x7FFF;
+    for (size_t i = 0; fParty != NULL && i < fParty->members.size(); i++) {
+        const int speed = MemberSpeed(fParty->members[i]);
+        if (speed < lowest) {
+            lowest = speed;
             slowest = int(i);
+        }
     }
     return slowest;
 }

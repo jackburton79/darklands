@@ -784,7 +784,7 @@ CityVisit::_HasHorses() const
 
 
 // What was in use and is gone is no longer in use
-static void
+void
 ClearGoneEquipment(character& member)
 {
     for (uint8& slot : member.equipment) {
@@ -829,13 +829,17 @@ CityVisit::_LeaveHorses()
 
 
 // Each item (a whole stack) is lost if random(100) is over the percent
-// (09C0:2021(-2, percent): file 0x666E8, the loop of 18E7:0B02)
+// (09C0:2021(member, percent), -2 for all: file 0x666E8, the loop of
+// 18E7:0B02)
 void
-CityVisit::_LoseItems(int keepPercent)
+CityVisit::_LoseItems(int keepPercent, int only)
 {
     if (fParty == NULL)
         return;
-    for (character& member : fParty->members) {
+    for (size_t m = 0; m < fParty->members.size(); m++) {
+        if (only >= 0 && int(m) != only)
+            continue;
+        character& member = fParty->members[m];
         for (int i = int(member.items.size()) - 1; i >= 0; i--) {
             if (int(fRandom() % 100) > keepPercent)
                 member.items.erase(member.items.begin() + i);

@@ -70,6 +70,35 @@ WeightInUse(character& member)
 }
 
 
+int
+EncumbranceClass(character& member)
+{
+    const int capacity = member.attributes[ATTRIBUTE_ENDURANCE]
+        + member.attributes[ATTRIBUTE_STRENGTH];
+    // the byte is read as signed, then compared as unsigned
+    const unsigned weight = unsigned(sint16(sint8(WeightInUse(member) & 0xFF)))
+        & 0xFFFF;
+    if (unsigned(capacity) >= weight)
+        return 0;
+    return weight > unsigned(capacity * 3 / 2) ? 3 : 2;
+}
+
+
+int
+MemberSpeed(character& member)
+{
+    const int agility = member.attributes[ATTRIBUTE_AGILITY];
+    switch (EncumbranceClass(member)) {
+        case 0:
+            return agility;
+        case 3:
+            return 1;
+        default:
+            return agility * 2 / 3;
+    }
+}
+
+
 bool
 ReadyItem(character& member, size_t index,
     const std::vector<item_definition>& definitions)

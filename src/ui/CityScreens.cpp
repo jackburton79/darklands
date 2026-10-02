@@ -1306,6 +1306,59 @@ static const screen_rules kDayScreens[] = {
     { CityVisit::SCREEN_CAMPB_WON, "CAMPB00", 7, NULL, { LEAVE } },
     { CityVisit::SCREEN_CAMPB_FLED, "CAMPB00", 8, NULL, { LEAVE } },
     { CityVisit::SCREEN_CAMPB_BEATEN, "CAMPB00", 9, NULL, { LEAVE } },
+    // A blizzard ($MeetB03, state 0x117, file 0x1470EA): keep going, a saint,
+    // camp
+    { CityVisit::SCREEN_BLIZZARD_MEET, "MEETB03", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BLIZZARD, "MEETB03", 0, NULL, {
+        DO(ACTION_BLIZZARD_ONWARD),
+        DO_IF(ACTION_SAINT, kNeedsSaint),
+        DO(ACTION_BLIZZARD_CAMP)
+    } },
+    { CityVisit::SCREEN_BLIZZARD_ONWARD, "MEETB03", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BLIZZARD_PRAYED, "MEETB03", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BLIZZARD_UNHEARD, "MEETB03", 3, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_BLIZZARD_CAMP, "MEETB03", 4, NULL, { LEAVE } },
+    // A peat bog ($MeetP02, state 0x116, file 0x14649C): the rope, by hand,
+    // the possessions, a saint, (a potion), leave him. Alone: only the saint
+#define BOG_OPTIONS \
+        { ACTION_BOG_PULL, 0, kNeedsBogOption, 0 }, \
+        { ACTION_BOG_PULL, 1, kNeedsBogOption, 0 }, \
+        { ACTION_BOG_PULL, 2, kNeedsBogOption, 0 }, \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
+        HIDE, \
+        DO(ACTION_BOG_ABANDON)
+    { CityVisit::SCREEN_BOG_MEET, "MEETP02", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG, "MEETP02", 0, NULL, { BOG_OPTIONS } },
+    { CityVisit::SCREEN_BOG_AGAIN, "MEETP02", 3, NULL, { BOG_OPTIONS } },
+#undef BOG_OPTIONS
+    { CityVisit::SCREEN_BOG_ALONE, "MEETP02", 5, NULL, {
+        HIDE, HIDE, HIDE, DO_IF(ACTION_SAINT, kNeedsSaint), HIDE, HIDE } },
+    { CityVisit::SCREEN_BOG_ROPE, "MEETP02", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_ROPED, "MEETP02", 2, NULL, { DO(ACTION_MEET_BACK) } },
+    { CityVisit::SCREEN_BOG_HAND, "MEETP02", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_DUMPED, "MEETP02", 6, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_DEAD, "MEETP02", 7, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_CURSED, "MEETP02", 8, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_MIRACLE, "MEETP02", 13, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_PRAYER, "MEETP02", 14, NULL, { LEAVE } },
+    { CityVisit::SCREEN_BOG_UNHEARD, "MEETP02", 16, NULL, { DO(ACTION_MEET_BACK) } },
+    // A flood ($MeetS01, state 0x11B, file 0x149F5A): higher ground, a raft
+    // (with a rope), a saint. The other lists of saints (the states 0x11C,
+    // 0x11D) are never offered: their options stay hidden in the game
+#define FLOOD_OPTIONS \
+        DO(ACTION_FLOOD_SEARCH), \
+        DO_IF(ACTION_FLOOD_RAFT, kNeedsRaft), \
+        DO_IF(ACTION_SAINT, kNeedsSaint), \
+        HIDE, HIDE
+    { CityVisit::SCREEN_FLOOD_MEET, "MEETS01", 0, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FLOOD, "MEETS01", 0, NULL, { FLOOD_OPTIONS } },
+    { CityVisit::SCREEN_FLOOD_AGAIN, "MEETS01", 5, NULL, { FLOOD_OPTIONS } },
+#undef FLOOD_OPTIONS
+    { CityVisit::SCREEN_FLOOD_LOST, "MEETS01", 1, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FLOOD_SAFE, "MEETS01", 2, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FLOOD_RAFT_FAILED, "MEETS01", 3, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FLOOD_RAFT, "MEETS01", 4, NULL, { LEAVE } },
+    { CityVisit::SCREEN_FLOOD_PRAYED, "MEETS01", 6, NULL, { LEAVE } },
     // "Your eye is caught by a sleek-skulled little man with three walnut
     // half-shells..." (state 0xB2, file 0x110C20)
     { CityVisit::SCREEN_SHELL_GAME, "SHELL00", 0, NULL, SHELL_OPTIONS },

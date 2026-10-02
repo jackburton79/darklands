@@ -7,6 +7,7 @@
 #include "BattleView.h"
 #include "Catalog.h"
 #include "Character.h"
+#include "Equipment.h"
 #include "CityFile.h"
 #include "DescriptionFile.h"
 #include "GameData.h"
@@ -387,13 +388,13 @@ CityVisit::_EnterChase()
 
 
 // Running's value (file 0xF238A): three times the slowest's speed
-// (0E76:0656; the speed is the agility, the load is not kept)
+// (0E76:0656, the agility lowered by the load)
 int
 CityVisit::_ChaseRunChance() const
 {
     if (fParty == NULL || fParty->members.empty())
         return 0;
-    return 3 * fParty->members[size_t(_Slowest())].attributes[ATTRIBUTE_AGILITY];
+    return 3 * MemberSpeed(fParty->members[size_t(_Slowest())]);
 }
 
 

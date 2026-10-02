@@ -36,6 +36,13 @@ bool UnreadyItem(character& member, size_t index);
 // The weight of what is in use, at most 500 (18E7:140A); also kept in
 // the record's byte 0x49
 int WeightInUse(character& member);
+// How loaded a member is (0E76:013A): 0 if the weight in use (a signed
+// byte, as the game keeps it) is at most Endurance + Strength, 2 up to one
+// and a half times that, else 3
+int EncumbranceClass(character& member);
+// A member's speed (0E76:0656's measure, 0E76:7F8E): the Agility, two
+// thirds of it when loaded (2), 1 when overloaded (3)
+int MemberSpeed(character& member);
 
 // Adds an item: to the stack of the same code, type and quality if
 // the quantity stays under 256, else as a new one, if there is room

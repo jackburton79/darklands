@@ -66,7 +66,7 @@ AddToSkill(character& member, int skill, int amount)
 }
 
 
-static void
+void
 AddToMaximum(character& member, int attribute, int amount)
 {
     member.maxAttributes[attribute] = uint8(std::max(1, std::min(99,

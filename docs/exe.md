@@ -2133,13 +2133,71 @@ the chooser (file 0x5E1DB..0x5EC40) gives the state of the meeting.
   s % 5. Won: an hour, card 8, **no** change of reputation; retreated: until
   six and until five, card 11; lost: an hour, the search, card 10.
   **verified**
+- **The weather and the ground** (states 0x117, 0x116 and 0x11B; the
+  other lists of saints of the flood, 0x11C and 0x11D with the decks
+  $MeetS02 and $MeetS03, are never offered: their options' flags stay 0).
+  Helpers: 0E76:1800(a) the party's average of attribute a, 0E76:16FE(a)
+  the best, 0E76:14A4(s) the best skill s (first member with the highest,
+  and DS:991D is who), 0E76:013A the load class of a member (the byte of
+  the weight in use, record 0x49, read as signed and compared as
+  unsigned: 0 up to Endurance + Strength, 2 up to one and a half times
+  that, else 3; `EncumbranceClass()`), 0E76:7F8E a member's speed (the
+  Agility, two thirds of it in class 2, 1 in class 3; `MemberSpeed()`),
+  0E76:0656 the slowest member (the first lowest speed, DS:991D),
+  0E76:060E the average speed, 09C0:2021(member, p) every item lost if
+  random(100) is over p (-2: the whole party). **verified** (code)
+  - *A blizzard* ($MeetB03, file 0x1470EA): *keep going* (file 0x147322):
+    random(4) + 2 days ($Number1); each member loses 1 Endurance and
+    twice the days of Strength (kept at 1 at least); the items whose flags
+    are exactly 0x400 (components) are ruined with random(100) at most 15,
+    the cloth armors (exactly 0x04000000) lose a point of quality (1..99);
+    card 1, the days pass. *A saint* (22, 38, 60, 130; file 0x1474D4):
+    answered card 2 and the map, unanswered card 3 and the options again.
+    *Camp* (file 0x1475B4): the days (random(4) + 2) and 12 hours; each
+    member loses 5 Endurance and random(3) Strength; card 4.
+  - *A peat bog* ($MeetP02, file 0x14649C): the slowest member falls in
+    (card 0; card 5 for a party of one, where only a saint is offered).
+    The rope is not offered without a polearm, a bow or a metal armor in
+    the party (flags 0x64, 0E76:0DD8(-2, 0x64)). Chances (random(100) at
+    most it): rope, the party's average Agility + 3 · its average
+    Strength − the weight the victim carries (a signed byte); by hand, +
+    2 · Strength; the possessions, + 3 · Strength without the weight; each
+    1..99. Success takes an hour and the victim's items are lost with
+    09C0:2021 (Agility + 50, at most 95, for the rope and the hands, 5
+    for the possessions): cards 1, 4, 6. Failure takes an hour: the rope
+    closes itself and the hands (card 2, then card 3's options), the hands
+    only themselves (card 3), the possessions all three (card 3). *A saint*
+    (18, 50, 51, 60): answered an hour, 90 kept: card 13 for the first
+    three, card 14 for the fourth; unanswered card 16, an hour, the
+    options again. *Leave him*: if the hands were tried (their flag is 2)
+    card 7 and he dies; else card 8 and everybody loses 99 Divine Favor
+    (kept at 1) and 2 of its maximum, 5 Charisma, 3 Strength and 1 of its
+    maximum; he leaves the party. A party of one without a saint is
+    offered nothing: the program lets him drown (*inferred*).
+  - *A flood* ($MeetS01, file 0x149F5A): the member with the best Woodwise
+    leads. *Higher ground* (file 0x14A1C2): the average speed + the best
+    Perception, 1..99: card 2; else card 1 and every item lost with
+    p = the leader's Agility + 10 (at most 95). *A raft* (offered with a
+    rope, item 59): 2 · the best Woodwise + the best Artifice / 3, 1..99:
+    card 4, else card 3 and p = Agility + 20; both give lessons in
+    Woodwise (10) and Artifice (5) (09C0:1F63 mode 1 made, 0 not). Both
+    take 23 + random(3) hours. *A saint* (44, 50, 51, 103): answered card
+    6 (no time), unanswered card 5 and the options again. **verified**
+    (code)
+- **States the chooser never gives**: 0x105 is the deck $Rescu00 (not
+  decoded). 0x10A $MeetA02 (an army), 0x10B $MeetA03 (soldiers in
+  ambush), 0x119 $MeetH01 (Hussites) and 0xB3 $MeetI00 (the emperor's
+  messenger) are never set by the chooser or by the locations' states
+  (nothing in the executable sets them directly): they are probably
+  started by the world's events. 0x11A $MeetR00 (river pirates) belongs
+  to a voyage by river.
 - **Not decoded, *inferred* in the program**: the Perception chance of
   the warning (as the thieves'), the bluff's chance (the leader's
   Charisma + Speak Common), the sneaking's (the party's average of
   Stealth and Woodwise), the wilderness map (IWILDGEN.101..106,
   111..116), the win's reputation (+1..+5, as the thieves'), the loss's
   (−2..−1), the potions (not offered) and the members left behind; and
-  every other state's code: the program skips them (`IsEncounterPlayed()`).
+  the other states' code: the program skips them (`IsEncounterPlayed()`).
 
 ## The church
 

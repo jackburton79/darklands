@@ -208,6 +208,12 @@ enum option_action {
     ACTION_CAMPB_IGNORE,		// the camp's bandits
     ACTION_CAMPB_AMBUSH,
     ACTION_CAMPB_FIGHT,
+    ACTION_BLIZZARD_ONWARD,		// the weather: a blizzard, keep going or camp
+    ACTION_BLIZZARD_CAMP,
+    ACTION_BOG_PULL,			// a peat bog: way `target` to get him out
+    ACTION_BOG_ABANDON,
+    ACTION_FLOOD_SEARCH,		// a flood: higher ground, a raft
+    ACTION_FLOOD_RAFT,
     ACTION_SHELL_PAY,			// the shell game
     ACTION_SHELL_PICK,			// target: 0 right, 1 middle, 2 left
     ACTION_SHELL_LEAVE,
@@ -360,6 +366,10 @@ static const int kNeedsPlea			= -61;
 static const int kNeedsFreshSaint	= -62;
 static const int kNeedsMemberHere	= -63;
 static const int kNeedsCampIgnore	= -64;
+// the peat bog's ways (`target`: 0 the rope, 1 by hand, 2 the possessions)
+// not yet failed, the flood's raft (needs a rope)
+static const int kNeedsBogOption	= -65;
+static const int kNeedsRaft			= -66;
 static const int kMarkCampSafe		= 0x60;	// 168 hours without danger
 static const int kRopeCode			= 59;	// in DARKLAND.LST
 
@@ -431,3 +441,8 @@ void CheckScreenTables();
 
 // The octile distance on the map (1462:271A: rows count a third)
 int MapDistance(int x1, int y1, int x2, int y2);
+
+// Shared by the meetings' files: what was in use and is gone is no longer
+// in use (CityGate.cpp); a maximum attribute changed (CityMeetings.cpp)
+void ClearGoneEquipment(character& member);
+void AddToMaximum(character& member, int attribute, int amount);

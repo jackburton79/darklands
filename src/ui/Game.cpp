@@ -262,6 +262,15 @@ Game::Run()
             case ENCOUNTER_REFUGEES:
                 screen = CityVisit::SCREEN_REFUGEES_MEET;
                 break;
+            case ENCOUNTER_BLIZZARD:
+                screen = CityVisit::SCREEN_BLIZZARD_MEET;
+                break;
+            case ENCOUNTER_PEAT_BOG:
+                screen = CityVisit::SCREEN_BOG_MEET;
+                break;
+            case ENCOUNTER_FLOOD:
+                screen = CityVisit::SCREEN_FLOOD_MEET;
+                break;
             default:
                 break;
         }

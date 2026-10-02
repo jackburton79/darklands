@@ -569,6 +569,16 @@ CityVisit::_SaintsFor(int screen) const
         saints = { 54, 61, 69 };
     if (screen == SCREEN_CAMPB || screen == SCREEN_CAMPB_UNANSWERED)
         saints = { 54, 61, 35 };
+    // a blizzard (file 0x1470EA): Christopher, Drogo, Godehard, Wilfrid; a
+    // peat bog (0x14649C): Cecilia, Finnian, Florian, Godehard; a flood
+    // (0x149F5A): Engelbert, Finnian, Florian, Pantaleon
+    if (screen == SCREEN_BLIZZARD)
+        saints = { 22, 38, 60, 130 };
+    if (screen == SCREEN_BOG || screen == SCREEN_BOG_AGAIN
+            || screen == SCREEN_BOG_ALONE)
+        saints = { 18, 50, 51, 60 };
+    if (screen == SCREEN_FLOOD || screen == SCREEN_FLOOD_AGAIN)
+        saints = { 44, 50, 51, 103 };
     // the thieves (file 0xAC27F): Apollinarius, Genevieve, Godfrey
     if (screen == SCREEN_THIEVES)
         saints = { 12, 54, 61 };
@@ -796,6 +806,15 @@ CityVisit::_SaintAnswered(int screen, int index)
         case SCREEN_CAMPB_UNANSWERED:
             _Mark(kMarkCampSafe, 168);
             return SCREEN_CAMPB_PRAYED;				// card 2 (file 0x17BCBB)
+        case SCREEN_BLIZZARD:
+            return SCREEN_BLIZZARD_PRAYED;			// card 2 (file 0x147525)
+        case SCREEN_BOG:
+        case SCREEN_BOG_AGAIN:
+        case SCREEN_BOG_ALONE:
+            return _BogSaint(index);
+        case SCREEN_FLOOD:
+        case SCREEN_FLOOD_AGAIN:
+            return SCREEN_FLOOD_PRAYED;				// card 6 (file 0x14A377)
         case SCREEN_CARAVAN:
             // the devil-man's band seen (card 6), else an honest caravan
             // (card 4)
@@ -891,6 +910,16 @@ CityVisit::_SaintIgnored(int screen)
             return SCREEN_INNER_SAINT_UNANSWERED;	// card 11, an hour
         case SCREEN_THIEVES:
             return SCREEN_THIEVES_UNANSWERED;		// card 9, the fight
+        case SCREEN_BLIZZARD:
+            fMeetBack = SCREEN_BLIZZARD;
+            return SCREEN_BLIZZARD_UNHEARD;			// card 3 (file 0x14755A)
+        case SCREEN_BOG:
+        case SCREEN_BOG_AGAIN:
+        case SCREEN_BOG_ALONE:
+            return _BogUnheard(screen);
+        case SCREEN_FLOOD:
+        case SCREEN_FLOOD_AGAIN:
+            return SCREEN_FLOOD_AGAIN;				// card 5 again
         case SCREEN_CARAVAN:
             fPrayerFailed = true;
             fMeetBack = SCREEN_CARAVAN;
