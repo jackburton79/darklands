@@ -405,7 +405,8 @@ BattleView::Tick()
                     && std::abs(foe.y - f.y) <= 1)
                 || (f.stats.orders == STANCE_MISSILE && CanShoot(f.stats)
                     && std::max(std::abs(foe.x - f.x), std::abs(foe.y - f.y))
-                        <= MissileRange(f.stats, *fExe))) {
+                        <= MissileRange(f.stats, *fExe)
+                    && _HasLineOfFire(f, foe))) {
                 f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
                 f.path.clear();
                 f.frame = 0;
@@ -521,6 +522,21 @@ BattleView::_Fight()
 }
 
 
+bool
+BattleView::_HasLineOfFire(const figure& from, const figure& to) const
+{
+    if (!fMap)
+        return true;
+    std::vector<battle_position> others;
+    for (const figure& f : fFigures) {
+        if (&f != &from && &f != &to && f.stats.status == FIGHTER_ACTIVE)
+            others.push_back(battle_position{ f.x, f.y });
+    }
+    return HasLineOfFire(*fMap, battle_position{ from.x, from.y },
+        battle_position{ to.x, to.y }, others);
+}
+
+
 // The foe a figure in the Use Missile order shoots at: the one it was
 // sent against if it is in range, else the nearest standing one in
 // range; -1 if none
@@ -536,6 +552,8 @@ BattleView::_ShotTarget(const figure& shooter) const
             continue;
         const int distance = std::max(std::abs(foe.x - shooter.x),
             std::abs(foe.y - shooter.y));
+        if (distance <= range && !_HasLineOfFire(shooter, foe))
+            continue;
         if (int(j) == shooter.orderTarget && distance <= range)
             return int(j);
         if (distance < bestDistance) {

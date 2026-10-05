@@ -2841,8 +2841,20 @@ Where the battle code starts; the rules are not decoded yet.
   not known. The function at file 0x4D9A0 (1EF8:0000 of overlay 0x12)
   queues the shot's effect (a flight of the weapon types 0x17..0x21);
   PCMissileAttack is above. *Not decoded*: the chance to hit and the
-  damage of a missile, the pace of shooting, the line of fire, the
-  enemies' shots (no enemy type has a missile weapon in +0xA0).
+  damage of a missile, the pace of shooting, the enemies' shots (no
+  enemy type has a missile weapon in +0xA0).
+  *The line of fire* (1D69:000C, file 0x4874C; the shot's flight is
+  traced by the function at file 0x4D9A0 + 0x2BE, which calls it for each
+  step): it goes through the cells of the box between the two points (in
+  pixels, 16 and 32 per cell step) and tests the segment against each
+  wall edge whose type is 1..11 (12 and over do not stop it), against
+  the objects' footprints (tables at DS:D7BE.., objects of a class under
+  DS:C1CF are ignored) and against the combatants on the way. **verified**
+  (code), not decoded to the geometry. Reproduced provisionally
+  (`HasLineOfFire()`, *inferred*): the cells the straight line between the
+  two cell centers crosses; closed cells, walls 1..11 on the edges crossed
+  (a diagonal step is stopped if both ways round are) and the other
+  standing figures stop it; objects do not.
   Reproduced provisionally (`Shoot()`, `BattleView::_Shoot()`; *inferred*):
   the range is a quarter of the table's, in cells; a member in the Use
   Missile order with a missile weapon and ammunition shoots at the foe it

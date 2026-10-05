@@ -190,6 +190,8 @@ private:
     // The shots of this combat step; true for those who shot
     std::vector<bool> _Shoot();
     int				_ShotTarget(const figure& shooter) const;
+    // Whether a shot from one figure reaches the other (BattlePath.h)
+    bool			_HasLineOfFire(const figure& from, const figure& to) const;
 
     std::shared_ptr<ImcFile> _LoadSprites(const std::string& image,
                         const char* set, int weapon);
