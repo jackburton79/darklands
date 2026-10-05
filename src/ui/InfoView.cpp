@@ -124,6 +124,18 @@ static const char* kLimbsPictures[9] = {
 static const char* kShieldPictures[3] = {
     "SMALLSH.PIC", "MEDIUMSH.PIC", "MEDIUMSH.PIC"
 };
+// The weapon pictures, "WEAPON<n>.PIC": the n of each weapon type, from the
+// two jump tables of the figure's drawing (file 0x61F02: the weapon in
+// use, types 0..33, and the missile weapon, types 23..33), -1: none.
+// **verified** (code); not the item type, as an earlier revision had it
+static const int kWeaponPictures[34] = {
+    2, 3, 4, 5, 6, 7, 8, 0, 9, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+};
+static const int kMissilePictures[11] = {	// types 23..33
+    23, 26, 27, 1, 28, 29, 30, 31, 32, 33, 34
+};
+static const int kFirstMissileType		= 23;
 
 // City sizes (3..8) as words (inferred: Kassel, size 5, is
 // "Moderate-Sized" on the manual's screenshot)
@@ -862,7 +874,8 @@ InfoView::_DrawCharacterPage()
     const character& member = fParty->members[fPage];
     const std::vector<item_definition>& definitions = fData.Lists().Items();
 
-    // the figure: limb armor, vitals armor, shield, weapon
+    // the figure, in the order of the game's drawing (file 0x61F02): limb
+    // armor, vitals armor, the weapon in use, the shield, the missile weapon
     std::vector<std::string> layers;
     const uint8* equipment = member.equipment;
     const int limbs = equipment[EQUIPMENT_LIMBS] - kFirstLimbsType;
@@ -871,16 +884,17 @@ InfoView::_DrawCharacterPage()
     const int vitals = equipment[EQUIPMENT_VITALS] - kFirstVitalsType;
     if (vitals >= 0 && vitals < 9)
         layers.push_back(kVitalsPictures[vitals]);
+    const int weapon = equipment[EQUIPMENT_WEAPON];
+    if (weapon != kNoEquipment && weapon < 34 && kWeaponPictures[weapon] >= 0)
+        layers.push_back("WEAPON" + std::to_string(kWeaponPictures[weapon])
+            + ".PIC");
     const int shield = equipment[EQUIPMENT_SHIELD] - kFirstShieldType;
     if (shield >= 0 && shield < 3)
         layers.push_back(kShieldPictures[shield]);
-    // weapon pictures are "pics\weapon<n>.pic" in DARKLAND.EXE; the
-    // number is the weapon's item type (inferred)
-    int weapon = equipment[EQUIPMENT_WEAPON];
-    if (weapon == kNoEquipment)
-        weapon = equipment[EQUIPMENT_MISSILE];
-    if (weapon != kNoEquipment)
-        layers.push_back("WEAPON" + std::to_string(weapon) + ".PIC");
+    const int missile = equipment[EQUIPMENT_MISSILE] - kFirstMissileType;
+    if (missile >= 0 && missile < 11)
+        layers.push_back("WEAPON" + std::to_string(kMissilePictures[missile])
+            + ".PIC");
     for (const std::string& layer : layers) {
         const raw_picture* picture = _Picture(layer);
         if (picture != NULL)

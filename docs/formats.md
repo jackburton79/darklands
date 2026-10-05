@@ -1110,9 +1110,16 @@ their screenshots. See `InfoView.cpp` for a reference implementation.
   index 0 transparent: limb armor (`PAD-LIMS`, `LEAT-LIM`, `STUDLIM`,
   `CUIRBLIM`, `SCALELIM`, `CHAINLIM`, `BRIGLIM`, `PLATELIM`), vitals
   armor (`PAD-VIT` ... `PLATEVIT`), shield (`SMALLSH`, `MEDIUMSH`) and
-  weapon (`WEAPONn`, n presumably the weapon's item type). The picture
-  lists are in `DARKLAND.EXE` in the item type order (clothing and
-  padded share `PAD-*`, medium and large shields `MEDIUMSH`).
+  weapons (`WEAPONn`). The armor and shield lists are in `DARKLAND.EXE`
+  in the item type order (clothing and padded share `PAD-*`, medium and
+  large shields `MEDIUMSH`); the weapons' n is not the item type: two jump
+  tables (file 0x61F02, **verified**) give it, for the weapon in use
+  type 0 (Two-hand Sword) 2, 1 (Long Sword) 3, 2 Falchion 4, 3 Short
+  Sword 5, 4 Poniard 6, 5 Dagger 7, 6 Battle Axe 8, 7 Hand Axe 0, 8 Field
+  Axe 9, 10..21 the type + 1, 22 (Quarterstaff) 24, and for the missile
+  weapon types 23, 24, 25, 26, 27..33 the pictures 23, 26, 27, 1, 28..34.
+  They are drawn in the order limb armor, vitals armor, weapon in use,
+  shield, missile weapon, both weapons at once.
   The encumbrance board needs the carrying capacity, whose formula the
   manual does not give.
 
