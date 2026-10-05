@@ -29,6 +29,21 @@ Die(std::mt19937& random, int n)
 }
 
 
+static const potion_effect kDamagePotions[kDamagePotionCount] = {
+    { 136, "Eater Water", 14, 0 },
+    { 137, "Breath of Death", 12, 1 },
+    { 139, "Thunderbolt", 24, 0 },
+    { 140, "Arabian Fire", 16, 1 }
+};
+
+
+const potion_effect&
+DamagePotion(int index)
+{
+    return kDamagePotions[index];
+}
+
+
 static const exe_weapon*
 WeaponOf(const fighter& f, const ExeData& exe)
 {
@@ -103,6 +118,22 @@ FighterFromCharacter(const character& member, const ExeData& exe)
     f.weaponSkill = member.skills[w != NULL ? w->category : kEdgedSkill];
     f.attack = w != NULL ? MeleeAttack(f, *w) : 0;
 
+    // the potions that hurt
+    for (int k = 0; k < kDamagePotionCount; k++) {
+        f.potionQuality[k] = 25;
+        for (const item& i : member.items) {
+            if (i.type == kDamagePotions[k].type) {
+                f.potions[k] += i.quantity;
+                f.potionQuality[k] = i.quality;
+            }
+        }
+    }
+    f.potionChoice = -1;
+    for (int k = 0; k < kDamagePotionCount && f.potionChoice < 0; k++) {
+        if (f.potions[k] > 0)
+            f.potionChoice = k;
+    }
+
     // the missile weapon, and the pieces it shoots (a thrown weapon is
     // its own piece)
     f.missileType = -1;
@@ -147,6 +178,7 @@ FighterFromEnemy(const enemy_type& type, const ExeData& exe)
     f.weaponSkill = type.skills[w != NULL ? w->category : kEdgedSkill];
     f.attack = w != NULL ? MeleeAttack(f, *w) : 0;
     f.missileType = -1;
+    f.potionChoice = -1;
     return f;
 }
 
@@ -157,6 +189,27 @@ MissileAttack(const fighter& f, const exe_weapon& weapon, int skill)
     const int weak = Positive(weapon.minStrength - f.maxStrength);
     const int unskilled = Positive(weapon.skill - skill);
     return std::min(255, Positive(skill - weak - 2 * unskilled));
+}
+
+
+bool
+CanThrow(const fighter& f)
+{
+    return f.potionChoice >= 0
+        && f.potions[f.potionChoice] > f.potionsThrown[f.potionChoice];
+}
+
+
+int
+NextPotion(const fighter& f)
+{
+    for (int step = 1; step <= kDamagePotionCount; step++) {
+        const int k = (std::max(f.potionChoice, -1) + step)
+            % kDamagePotionCount;
+        if (f.potions[k] > f.potionsThrown[k])
+            return k;
+    }
+    return -1;
 }
 
 
@@ -358,6 +411,18 @@ Shoot(fighter& attacker, const fighter& defender, const ExeData& exe,
 }
 
 
+strike
+PotionBlow(int index, int quality, std::mt19937& random)
+{
+    strike blow = { STRIKE_HIT, HIT_VITALS, 0, 0 };
+    blow.location = HIT_VITALS;
+    const int value = std::max(1, kDamagePotions[index].damage
+        * std::max(quality, 1) / 25);
+    RollDamage(value, 1, 1, random, blow);
+    return blow;
+}
+
+
 void
 TakeStrike(fighter& defender, const strike& blow)
 {
@@ -394,6 +459,17 @@ AfterBattle(party& members, const std::vector<fighter>& fighters)
                 if (member.items[k].type == fighters[i].ammoType) {
                     DropItem(member, k, false);
                     break;
+                }
+            }
+        }
+        for (int k = 0; k < kDamagePotionCount; k++) {
+            for (int thrown = 0; thrown < fighters[i].potionsThrown[k];
+                    thrown++) {
+                for (size_t n = 0; n < member.items.size(); n++) {
+                    if (member.items[n].type == kDamagePotions[k].type) {
+                        DropItem(member, n, false);
+                        break;
+                    }
                 }
             }
         }

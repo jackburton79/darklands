@@ -2866,6 +2866,25 @@ Where the battle code starts; the rules are not decoded yet.
   crossbow every third, a handgun every fourth; the pieces shot leave the
   list after the battle; with the last one the order goes back to Std
   Attack.
+- **Thrown potions** (Throw, order 0x100, key T, a sub-menu of the
+  member's potions: file 0x4CAE2, function 0x4CACE, the sub-menu's entries
+  are 22-byte records at DS:9A4F..; the chosen potion's type and quality
+  go to DS:C1CE and DS:C1F2). **verified** (code). The potions are the
+  items 95..116 (types 132..153): ten throwable (flags byte 3 bit 0:
+  Noxious Aroma, Eyeburn, Black Cloud, Fleadust, Eater Water, Breath of
+  Death, Sunburst, Thunderbolt, Arabian Fire, Stone-tar), twelve to drink
+  (Deadly Blade ... Firewall). Their effects are *not decoded*. Reproduced
+  provisionally (`BattleView::SetSelectedThrow()`, *inferred*): only the
+  four that hurt (Eater Water, Breath of Death, Thunderbolt, Arabian
+  Fire) are offered; Throw takes the first kind the member carries, and
+  each further Throw the next; the member throws one at the foe it was
+  sent against or the nearest within 10 cells and a line of fire, every
+  second combat step; it hurts everybody within its radius of the foe's cell
+  (0: only it; 1: its neighbors too, the party included), by the damage
+  of its kind (Eater Water 14, Breath of Death 12, Thunderbolt 24,
+  Arabian Fire 16, at quality 25 and scaled by the quality), as a blow
+  against an armor of its own strength; the potions thrown leave the list
+  after the battle.
 - **Loot**: the battle's orders menu has "Loot Bodies" (DS:718, with
   "Open Chest", "Pick Lock", "Dissolve Lock", "Surrender (All)", "Exit
   Battlefield"). The loot screen is an overlay of its own (segment 1462,

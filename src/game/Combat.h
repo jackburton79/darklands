@@ -42,8 +42,22 @@ enum battle_stance {
     STANCE_VULNERABLE = 0x0A,	// slower, deeper blows
     STANCE_BERSERK = 0x06,		// faster, wilder
     STANCE_PARRY = 0x22,		// hard to hit, less sure
-    STANCE_MISSILE = 0x80		// Use Missile (M): shoots, does not fight
+    STANCE_MISSILE = 0x80,		// Use Missile (M): shoots, does not fight
+    STANCE_THROW = 0x100		// Throw (T): throws a potion
 };
+
+// The potions that hurt when thrown (item types of DARKLAND.LST). Provisional:
+// their effects are not decoded; the damage (at quality 25) and the radius
+// in cells are made up from their names.
+static const int kDamagePotionCount = 4;
+struct potion_effect {
+    int type;					// the item type
+    const char* name;
+    int damage;
+    int radius;
+};
+const potion_effect& DamagePotion(int index);
+static const int kThrowRange = 10;	// cells (provisional)
 
 // What a combatant's record holds, as the game sets it up (file 0x446E0)
 struct fighter {
@@ -72,6 +86,12 @@ struct fighter {
     int ammoType;
     int ammo;
     int shots;
+    // The damage potions it carries (DamagePotion()), how many it has
+    // thrown, their quality and the one the Throw order uses
+    int potions[kDamagePotionCount];
+    int potionsThrown[kDamagePotionCount];
+    int potionQuality[kDamagePotionCount];
+    int potionChoice;
 };
 
 fighter FighterFromCharacter(const character& member, const ExeData& exe);
@@ -87,6 +107,11 @@ int MissileAttack(const fighter& f, const exe_weapon& weapon, int skill);
 
 // Whether the fighter can shoot now: a missile weapon and a piece to shoot
 bool CanShoot(const fighter& f);
+// Whether the fighter has a damage potion left in its choice
+bool CanThrow(const fighter& f);
+// The next damage potion it has left (cycling from the choice), or -1
+int NextPotion(const fighter& f);
+
 // The range in cells. Provisional: the weapon table's range (file
 // 0x77E3) is in units the program does not know; a quarter of it fits
 // the arms (bows 9..13 cells, crossbows 33..41, guns 45..48)
@@ -127,6 +152,11 @@ strike Strike(const fighter& attacker, const fighter& defender,
 // melee's with the missile weapon.
 strike Shoot(fighter& attacker, const fighter& defender, const ExeData& exe,
     int distance, std::mt19937& random);
+
+// The blow of a thrown damage potion on a defender in its reach: the
+// damage of the potion (scaled by its quality), as against an armor of its
+// own strength
+strike PotionBlow(int index, int quality, std::mt19937& random);
 
 // Takes a strike's damage; the defender may fall
 void TakeStrike(fighter& defender, const strike& blow);

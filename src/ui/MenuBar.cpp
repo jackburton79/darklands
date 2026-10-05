@@ -222,6 +222,7 @@ MenuBar::IsChecked(menu_command command) const
         case MENU_BERSERK:
         case MENU_PARRY:
         case MENU_USE_MISSILE:
+        case MENU_THROW:
             return command == fStance;
         default:
             return false;

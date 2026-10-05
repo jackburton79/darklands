@@ -130,6 +130,11 @@ public:
     // if it has no missile weapon or nothing to shoot. Provisional: the
     // rules of the game's missiles are not decoded (Combat.h, Shoot()).
     bool			SetSelectedMissile();
+    // Throw (T): the selected member throws its damage potions (Combat.h)
+    // at the foe it is sent against or the nearest in reach; each call
+    // goes to the next kind it has. Provisional, like the missiles; false
+    // if it has none.
+    bool			SetSelectedThrow();
     // The next member standing after the selected one
     void			SelectNext();
 
@@ -189,7 +194,7 @@ private:
     void			_Fight();
     // The shots of this combat step; true for those who shot
     std::vector<bool> _Shoot();
-    int				_ShotTarget(const figure& shooter) const;
+    int				_ShotTarget(const figure& shooter, int range) const;
     // Whether a shot from one figure reaches the other (BattlePath.h)
     bool			_HasLineOfFire(const figure& from, const figure& to) const;
 

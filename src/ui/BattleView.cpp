@@ -307,6 +307,23 @@ BattleView::SetSelectedMissile()
 }
 
 
+bool
+BattleView::SetSelectedThrow()
+{
+    if (fSelected < 0 || fFigures[size_t(fSelected)].member < 0
+            || fFigures[size_t(fSelected)].stats.status != FIGHTER_ACTIVE)
+        return false;
+    fighter& f = fFigures[size_t(fSelected)].stats;
+    const int next = f.orders == STANCE_THROW ? NextPotion(f)
+        : (CanThrow(f) ? f.potionChoice : NextPotion(f));
+    if (next < 0)
+        return false;
+    f.potionChoice = next;
+    f.orders = STANCE_THROW;
+    return true;
+}
+
+
 void
 BattleView::SelectNext()
 {
@@ -406,7 +423,10 @@ BattleView::Tick()
                 || (f.stats.orders == STANCE_MISSILE && CanShoot(f.stats)
                     && std::max(std::abs(foe.x - f.x), std::abs(foe.y - f.y))
                         <= MissileRange(f.stats, *fExe)
-                    && _HasLineOfFire(f, foe))) {
+                    && _HasLineOfFire(f, foe))
+                || (f.stats.orders == STANCE_THROW && CanThrow(f.stats)
+                    && std::max(std::abs(foe.x - f.x), std::abs(foe.y - f.y))
+                        <= kThrowRange && _HasLineOfFire(f, foe))) {
                 f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
                 f.path.clear();
                 f.frame = 0;
@@ -541,9 +561,8 @@ BattleView::_HasLineOfFire(const figure& from, const figure& to) const
 // sent against if it is in range, else the nearest standing one in
 // range; -1 if none
 int
-BattleView::_ShotTarget(const figure& shooter) const
+BattleView::_ShotTarget(const figure& shooter, int range) const
 {
-    const int range = MissileRange(shooter.stats, *fExe);
     int best = -1;
     int bestDistance = range + 1;
     for (size_t j = 0; j < fFigures.size(); j++) {
@@ -575,11 +594,13 @@ BattleView::_Shoot()
     std::vector<bool> shot(fFigures.size(), false);
     for (size_t i = 0; i < fFigures.size(); i++) {
         figure& f = fFigures[i];
-        if (f.member < 0 || f.stats.orders != STANCE_MISSILE
+        const bool throwing = f.stats.orders == STANCE_THROW;
+        if (f.member < 0 || (f.stats.orders != STANCE_MISSILE && !throwing)
                 || f.stats.status != FIGHTER_ACTIVE || !f.path.empty()
-                || !CanShoot(f.stats))
+                || !(throwing ? CanThrow(f.stats) : CanShoot(f.stats)))
             continue;
-        const int target = _ShotTarget(f);
+        const int target = _ShotTarget(f, throwing ? kThrowRange
+            : MissileRange(f.stats, *fExe));
         if (target < 0)
             continue;
         shot[i] = true;
@@ -588,20 +609,51 @@ BattleView::_Shoot()
             continue;
         }
         figure& foe = fFigures[size_t(target)];
+        f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
+        f.strikeFrame = 1;
+        f.shotTicks = 3;
+        f.shotX = foe.x * kCellSize + kCellSize / 2;
+        f.shotY = foe.y * kCellSize + kCellSize / 2;
+        if (throwing) {
+            // a potion: it hurts everybody standing within its radius of
+            // the cell it lands on, the party too (provisional)
+            const int k = f.stats.potionChoice;
+            f.reload = 1;
+            f.stats.potionsThrown[k]++;
+            for (figure& victim : fFigures) {
+                if (victim.stats.status != FIGHTER_ACTIVE
+                        || std::max(std::abs(victim.x - foe.x),
+                            std::abs(victim.y - foe.y))
+                            > DamagePotion(k).radius)
+                    continue;
+                const strike blow = PotionBlow(k, f.stats.potionQuality[k],
+                    fRandom);
+                TakeStrike(victim.stats, blow);
+                victim.damage = blow.endurance;
+                victim.damageTicks = 2 * kCombatTicks;
+                if (victim.stats.status != FIGHTER_ACTIVE) {
+                    victim.path.clear();
+                    victim.fallFrame = 0;
+                }
+            }
+            if (!CanThrow(f.stats)) {
+                const int next = NextPotion(f.stats);
+                if (next >= 0)
+                    f.stats.potionChoice = next;
+                else
+                    f.stats.orders = STANCE_STANDARD;
+            }
+            continue;
+        }
         const exe_weapon& weapon
             = fExe->Weapons()[size_t(f.stats.missileType)];
         f.reload = weapon.category == WEAPON_MISSILE_DEVICE
             ? (weapon.range >= 180 ? 3 : 2)
             : 1;
-        f.direction = DirectionOf(foe.x - f.x, foe.y - f.y);
         const int distance = std::max(std::abs(foe.x - f.x),
             std::abs(foe.y - f.y));
         const strike blow = Shoot(f.stats, foe.stats, *fExe, distance,
             fRandom);
-        f.strikeFrame = 1;
-        f.shotTicks = 3;
-        f.shotX = foe.x * kCellSize + kCellSize / 2;
-        f.shotY = foe.y * kCellSize + kCellSize / 2;
         if (blow.result == STRIKE_HIT || blow.result == STRIKE_WEAK_HIT) {
             TakeStrike(foe.stats, blow);
             foe.damage = blow.endurance;
@@ -902,12 +954,15 @@ BattleView::Run(GameWindow& window)
                 fMenu->SetEnabled(stance, member);
             fMenu->SetEnabled(MENU_USE_MISSILE, member
                 && CanShoot(fFigures[size_t(fSelected)].stats));
+            fMenu->SetEnabled(MENU_THROW, member
+                && NextPotion(fFigures[size_t(fSelected)].stats) >= 0);
             const int stance = SelectedStance();
             fMenu->SetStance(!member ? MENU_NONE
                 : stance == STANCE_VULNERABLE ? MENU_VULNERABLE
                 : stance == STANCE_BERSERK ? MENU_BERSERK
                 : stance == STANCE_PARRY ? MENU_PARRY
                 : stance == STANCE_MISSILE ? MENU_USE_MISSILE
+                : stance == STANCE_THROW ? MENU_THROW
                 : MENU_STD_ATTACK);
         }
         const battle_outcome outcome = Outcome();
@@ -957,6 +1012,8 @@ BattleView::Run(GameWindow& window)
                     SetSelectedStance(STANCE_PARRY);
                 else if (command == MENU_USE_MISSILE)
                     SetSelectedMissile();
+                else if (command == MENU_THROW)
+                    SetSelectedThrow();
                 else if (command == MENU_PAUSE)
                     MenuBar::Pause(window);
                 dirty = true;
@@ -1132,7 +1189,8 @@ BattleView::_DrawStatus()
         const char letter = f.stats.orders == STANCE_VULNERABLE ? 'V'
             : f.stats.orders == STANCE_BERSERK ? 'B'
             : f.stats.orders == STANCE_PARRY ? 'P'
-            : f.stats.orders == STANCE_MISSILE ? 'M' : 'S';
+            : f.stats.orders == STANCE_MISSILE ? 'M'
+            : f.stats.orders == STANCE_THROW ? 'T' : 'S';
         std::string name = f.name;
         std::string text;
         for (;;) {
