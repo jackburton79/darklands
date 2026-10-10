@@ -1505,6 +1505,65 @@ byte of all 333 files.
 four bytes (`05 02 06 03` for the humans, `0a 04 0a 04` for M00, the
 wolf). Not decoded.
 
+## Sound
+
+The game's sound is in two kinds of files (README.TXT of the game: "digital
+speech" and the music of the sound boards; the INSTALL program offers no
+sound, AdLib, Covox Sound Master, Sound Blaster (original, Pro early and
+later) and Roland MT-32 / LAPC-1; the README adds the Pro Audio
+Spectrum, Thunderboard and ATI F/X among the boards that use the
+digital speech).
+
+### Digitized speech (`*.DGT`)
+
+`OPENDARK.DGT` (61,754 bytes), `ENDDARK1.DGT` (60,252) and `ENDDARK2.DGT`
+(100,311): raw unsigned 8-bit mono samples, no header. **verified**: the
+silence is the value 0x80 (runs of 0x80 and 0x81 at the start) and the sizes
+have no room for a header. They go with the animations (`.PAN`): the names
+sit next to each other in DARKLAND.EXE's strings, `opendark.dgt` before
+`opening2`.., `enddark1.dgt` before `fin0a`..`fin2a` and `enddark2.dgt`
+before `fin3a`..`fin5a` (*inferred*: the files each belong to). The
+sampling rate is not stored and not found in the code. *Inferred*: 8000 Hz:
+the spectra of the three files have no energy above 0.75..0.8 of the
+Nyquist frequency, 3.0..3.2 kHz at 8000 Hz, the band of digitized speech
+(README.TXT calls them "speech"); the program takes the rate as a parameter
+(`--wav`, `--play`; `DigitalSound`).
+
+The game plays them itself, not through the sound drivers (README.TXT: with
+the Roland's music files copied over the other drivers the speech still
+plays on the board set by INSTALL): CONFIG.DRK (8 bytes, words `2, 0x220,
+5, 1`: *inferred* the board's number, its I/O port, its IRQ and a fourth
+value, for a Sound Blaster at its default 0x220 and IRQ 5) holds INSTALL's
+choice; DARKLAND.CFG (96 bytes) is `nsound.dl` and the path of
+`mgraphic.exe` (the sound driver's name and the graphics driver's).
+
+### Sound drivers (`?SOUND.DLB`, `?SOUND.DLC`)
+
+DARKLAND.EXE has the strings `%csound.dlb` and `%csound.dlc` (DS:0FEE and
+DS:1140): it loads the driver of the board by its letter, the battle one
+(`.DLB`) and the one of the cards (`.DLC`, the map and the cities). The
+letters: `A` (name "AdLib"), `I` ("IBM"), `P`, `R` ("RLND": the Roland), `N`
+("No Sound", only a `.DLC`); README.TXT says `A` and `P` are the files the
+non-Roland boards use and the Roland's `R` files are copied over them to get
+its music with the digital speech of another board. **verified** (names,
+sizes): each is a DOS executable (MZ, 0x200 bytes of header, relocations
+at 0x1E) used as an overlay; its image has: the driver's name and date at
++0x10 (`DKBttleAdLib06-19-92`, `DrkCardAdLib07-29-92`, `DarkBattlIBM
+6-18-92`, `P DarkBattle 7-29-92`, `RLND DrkLand06-19-92`, `No Sound
+1-04-91`), the segment of its data at +0x2A (relocated), a word count 0x0B
+at +0x30 and **eleven far entry points** (words, offsets in the image) from
++0x32: six are code and the last five are `retf` in every driver. The
+"No Sound" driver (810 bytes of image) shows their shape: the first
+sets a flag at `cs:0x4F` (with the data segment in DS), the third clears it
+and returns a word, the fourth returns 0 and the sixth returns a counter
+that a near routine (`inc [cs:0x54]`, not in the table: a timer's) increments;
+the second and the fifth are a bare `retf`. *Inferred*: start, stop, status
+and tick entries. Sizes: the
+`.DLC` are 24..61 KB and the `.DLB` 7..13 KB (the music and the effects'
+data and the board's code, the battle ones smaller). The music's data
+format, the effects ("WFX" strings) and the calls the game makes are
+*not decoded*.
+
 ## Open questions
 
 - [x] `.CAT`: timestamp encoding — DOS FAT date/time (verified)
@@ -1561,4 +1620,5 @@ wolf). Not decoded.
       stock, the item that lets the party enter water
 - [ ] Card screen: the real colors (paper, text, highlight), the
       crimson option letters, the party sidebar
-- [ ] Other resource formats: `.DLB`/`.DLC` sound archives, ...
+- [ ] The sound drivers' music and effects data (`.DLB`/`.DLC`, see
+  "Sound"); the sampling rate of the `.DGT` speech (8000 Hz is a guess)

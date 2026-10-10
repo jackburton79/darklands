@@ -48,6 +48,8 @@ make                           # needs SDL2 (pkg-config sdl2) and zlib
 ./darklands --extract EINFO.CAT out/ # export them as BMP (out/ must exist)
 ./darklands --extract E00C.CAT out/  # battle sprites, as sheets
 ./darklands --map [prefix]           # full map render, with city names
+./darklands --wav OPENDARK.DGT out.wav [rate]  # a digitized sound as WAV
+./darklands --play OPENDARK.DGT [rate]         # ... played (rate is a guess)
 ./darklands --locations              # dump DARKLAND.LOC
 ./darklands --cities                 # dump DARKLAND.CTY
 ./darklands --enemies                # dump DARKLAND.ENM
@@ -77,6 +79,8 @@ include path: include headers by name (`#include "CityFile.h"`).
   `ImcFile` (the battle sprites, `GameData::SpritePalette()` for their
   colors), `ImgFile` (BATTLEGR.IMG, COMMONSP.IMG; both use `Sprite`),
   `BattleMap` (the IMAPS.CAT maps; it and `ImcFile` use `Lzexe`),
+  `DigitalSound` (the `.DGT` speech, raw 8-bit PCM; `SoundEngine` of
+  libjgame plays it),
   `ExeData` (the people's names, the jobs, the weapon table, read
   from DARKLAND.EXE),
   `CharacterFile` (CHARACTR.TMP) and `SaveFile` (SAVES/*.SAV), both made

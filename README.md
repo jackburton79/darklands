@@ -144,7 +144,8 @@ screen, sound, the other quests, and many places' options (they say
 - [x] The monastery: prayers, the library and the abbess (asking)
 - [ ] What happens in the other places (training, audiences...), the
       other quests
-- [ ] Sound playback
+- [ ] Sound playback (the digitized speech of the opening and the endings
+      plays with `--play`; the music and the effects are not decoded)
 - [ ] Character creation, the game's own battle screen
 
 ## Building
